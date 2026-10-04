@@ -6,6 +6,7 @@ import {
   joinTeacherNames,
   lessonTitle,
   mergeWithNext,
+  needsSubstitute,
   planCells,
   slotRangeLabel,
   slotRangeTimes,
@@ -137,4 +138,15 @@ test("lesson titles read like Time 1 - Islam", () => {
   assert.equal(lessonTitle({ ...plan(2, 3), subject: "Koran" }, SLOTS, "Hele dagen"), "Time 2 + Time 3 - Koran");
   assert.equal(lessonTitle(plan(1, 3), SLOTS, "Hele dagen"), "Hele dagen");
   assert.equal(lessonTitle(plan(2, 2), SLOTS, "Hele dagen"), "Time 2");
+});
+
+test("needsSubstitute flags lessons whose teachers are all away", () => {
+  const away = new Set(["a"]);
+  assert.equal(needsSubstitute({ teacher_guardian_id: "a", co_teacher_guardian_id: null, cancelled: false }, away), true);
+  assert.equal(needsSubstitute({ teacher_guardian_id: "a", co_teacher_guardian_id: "b", cancelled: false }, away), false);
+  assert.equal(needsSubstitute({ teacher_guardian_id: "a", co_teacher_guardian_id: null, cancelled: true }, away), false);
+  assert.equal(needsSubstitute({ teacher_guardian_id: "c", co_teacher_guardian_id: null, cancelled: false }, away), false);
+  assert.equal(needsSubstitute({ teacher_guardian_id: null, co_teacher_guardian_id: null, cancelled: false }, away, ["a"]), true);
+  assert.equal(needsSubstitute({ teacher_guardian_id: null, co_teacher_guardian_id: null, cancelled: false }, away, ["a", "b"]), false);
+  assert.equal(needsSubstitute({ teacher_guardian_id: null, co_teacher_guardian_id: null, cancelled: false }, away), false);
 });

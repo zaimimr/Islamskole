@@ -142,6 +142,17 @@ export function lessonTeacherIds(lesson: Pick<BookableLesson, "teacher_guardian_
   return [lesson.teacher_guardian_id, lesson.co_teacher_guardian_id ?? null].filter((id): id is string => Boolean(id));
 }
 
+export function needsSubstitute(
+  lesson: Pick<BookableLesson, "teacher_guardian_id" | "co_teacher_guardian_id" | "cancelled">,
+  absent: ReadonlySet<string>,
+  classTeacherIds: string[] = [],
+): boolean {
+  if (lesson.cancelled || absent.size === 0) return false;
+  const assigned = lessonTeacherIds(lesson);
+  const responsible = assigned.length ? assigned : classTeacherIds;
+  return responsible.length > 0 && responsible.every((id) => absent.has(id));
+}
+
 export function findDoubleBookings(lessons: BookableLesson[]): Set<string> {
   const clashes = new Set<string>();
   const active = lessons.filter((lesson) => lessonTeacherIds(lesson).length && !lesson.cancelled);

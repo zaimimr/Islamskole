@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import {
+  CalendarX2,
   ChevronDown,
   CircleCheck,
+  GraduationCap,
   Mail,
   MessageSquareText,
-  GraduationCap,
   Phone,
   Search,
   UserCheck,
@@ -18,7 +19,7 @@ import { TeacherStatusSelect } from "@/components/admin/teacher-status-select";
 import { TeacherRegisterDialog } from "@/components/admin/teacher-register-dialog";
 import { isPlaceholderEmail } from "@/lib/portal/emails";
 import { formatNok } from "@/lib/money";
-import { formatOsloDateTime } from "@/lib/dates";
+import { formatOsloDate, formatOsloDateTime } from "@/lib/dates";
 import { Pagination } from "@/components/admin/pagination";
 import {
   FilterSkeleton,
@@ -29,6 +30,7 @@ import { EmptyState } from "@/components/admin/empty-state";
 import { OptimisticRemovalList } from "@/components/admin/optimistic-removal-list";
 import { TeacherRowMenu } from "./teacher-row-menu";
 import { StatusPill } from "@/components/admin/status-pill";
+import { NoticeBadge } from "@/components/admin/notice-badge";
 import {
   BulkActions,
   BulkSelectAll,
@@ -140,11 +142,14 @@ type TeacherRow = {
   teacher_suspended_by: string | null;
 };
 
+type TeacherAbsence = { id: string; date: string; notified: boolean; reason: string | null };
+
 async function getRegisteredTeachers(): Promise<{
   teachers: TeacherRow[];
   familyByGuardian: Map<string, string>;
   giftTotals: Map<string, { amount: number; students: number }>;
   classesByGuardian: Map<string, { id: string; name: string }[]>;
+  absencesByGuardian: Map<string, TeacherAbsence[]>;
 }> {
   try {
     const supabase = await createClient();
@@ -153,7 +158,7 @@ async function getRegisteredTeachers(): Promise<{
       .select("id")
       .eq("is_active", true)
       .maybeSingle();
-    const [teacherResult, linkResult, giftResult, assignmentResult] = await Promise.all([
+    const [teacherResult, linkResult, giftResult, assignmentResult, absenceResult] = await Promise.all([
       supabase
         .from("guardians")
         .select(
@@ -171,7 +176,29 @@ async function getRegisteredTeachers(): Promise<{
             .select("guardian_id, classes(id, name_no, sort_order)")
             .eq("school_year_id", activeYear.id)
         : Promise.resolve({ data: [], error: null }),
+      activeYear
+        ? supabase
+            .from("teacher_absences")
+            .select("id, guardian_id, notified, reason, school_day:school_days!inner(date, school_year_id)")
+            .eq("school_day.school_year_id", activeYear.id)
+        : Promise.resolve({ data: [], error: null }),
     ]);
+
+    const absencesByGuardian = new Map<string, TeacherAbsence[]>();
+    for (const row of (absenceResult.data as
+      | {
+          id: string;
+          guardian_id: string;
+          notified: boolean;
+          reason: string | null;
+          school_day: { date: string } | null;
+        }[]
+      | null) ?? []) {
+      if (!row.school_day) continue;
+      const list = absencesByGuardian.get(row.guardian_id) ?? [];
+      list.push({ id: row.id, date: row.school_day.date, notified: row.notified, reason: row.reason });
+      absencesByGuardian.set(row.guardian_id, list.sort((left, right) => right.date.localeCompare(left.date)));
+    }
 
     const classesByGuardian = new Map<string, { id: string; name: string }[]>();
     for (const row of ((assignmentResult.data as
@@ -221,6 +248,7 @@ async function getRegisteredTeachers(): Promise<{
       familyByGuardian,
       giftTotals,
       classesByGuardian,
+      absencesByGuardian,
     };
   } catch {
     return {
@@ -228,6 +256,7 @@ async function getRegisteredTeachers(): Promise<{
       familyByGuardian: new Map(),
       giftTotals: new Map(),
       classesByGuardian: new Map(),
+      absencesByGuardian: new Map(),
     };
   }
 }
@@ -258,6 +287,7 @@ async function TeacherContent({
           familyByGuardian: new Map<string, string>(),
           giftTotals: new Map<string, { amount: number; students: number }>(),
           classesByGuardian: new Map<string, { id: string; name: string }[]>(),
+          absencesByGuardian: new Map<string, TeacherAbsence[]>(),
         }),
     tab === "soknader"
       ? getApplications(page, q, status)
@@ -305,6 +335,8 @@ async function TeacherContent({
             const familyId = registry.familyByGuardian.get(teacher.id);
             const gift = registry.giftTotals.get(teacher.id);
             const assigned = registry.classesByGuardian.get(teacher.id) ?? [];
+            const absences = registry.absencesByGuardian.get(teacher.id) ?? [];
+            const unnotified = absences.filter((absence) => !absence.notified).length;
             return {
               id: teacher.id,
               content: (
@@ -385,6 +417,29 @@ async function TeacherContent({
                         </span>
                       )}
                     </p>
+                    {absences.length ? (
+                      <details className="group mt-1">
+                        <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-lg text-sm font-bold outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:min-h-8 [&::-webkit-details-marker]:hidden">
+                          <CalendarX2 aria-hidden="true" className="size-4 text-admin-muted" />
+                          Borte {absences.length} {absences.length === 1 ? "gang" : "ganger"}
+                          {unnotified ? (
+                            <span className="text-[#8B2F2B]">· {unnotified} ikke varslet</span>
+                          ) : null}
+                          <ChevronDown aria-hidden="true" className="size-4 text-admin-muted transition-transform group-open:rotate-180" />
+                        </summary>
+                        <ul className="mt-1 grid gap-1 text-sm">
+                          {absences.map((absence) => (
+                            <li key={absence.id} className="flex flex-wrap items-center gap-2">
+                              <span className="tabular-nums">
+                                {formatOsloDate(absence.date, { weekday: "short", day: "numeric", month: "short" })}
+                              </span>
+                              <NoticeBadge notified={absence.notified} />
+                              {absence.reason ? <span className="text-admin-muted">{absence.reason}</span> : null}
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    ) : null}
                   </div>
                   <div className="flex flex-wrap items-center gap-3 sm:justify-end">
                     {gift ? (

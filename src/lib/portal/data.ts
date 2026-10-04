@@ -425,3 +425,29 @@ export async function getMyAbsenceReports(
     date: school_days?.date ?? null,
   }));
 }
+
+export type MyTeacherAbsence = {
+  id: string;
+  school_day_id: string;
+  date: string;
+  reason: string | null;
+  source: string;
+};
+
+export async function getMyTeacherAbsences(): Promise<MyTeacherAbsence[]> {
+  const context = await getPortalContext();
+  if (!context.guardianIds.length) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("teacher_absences")
+    .select("id, school_day_id, reason, source, school_day:school_days!inner(date)")
+    .in("guardian_id", context.guardianIds)
+    .gte("school_day.date", osloToday());
+  if (error) {
+    console.error("teacher_absences failed", error);
+    return [];
+  }
+  return ((data ?? []) as unknown as (Omit<MyTeacherAbsence, "date"> & { school_day: { date: string } })[])
+    .map(({ school_day, ...row }) => ({ ...row, date: school_day.date }))
+    .sort((left, right) => left.date.localeCompare(right.date));
+}

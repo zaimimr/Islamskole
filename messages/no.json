@@ -833,6 +833,22 @@
         "badge": "Vikar til og med {date}",
         "notice": "Du er vikar i denne klassen til og med {date}."
       },
+      "away": {
+        "title": "Mitt fravær",
+        "open": "Meld fravær",
+        "dialogTitle": "Jeg kan ikke komme",
+        "intro": "Skolen ser meldingen og finner vikar.",
+        "dayLabel": "Hvilken dag?",
+        "reasonLabel": "Grunn (valgfritt)",
+        "submit": "Send",
+        "sent": "Fraværet er meldt",
+        "reportedFor": "Borte {day}",
+        "byAdmin": "Registrert av skolen",
+        "undo": "Angre",
+        "undoFor": "Angre fravær {day}",
+        "withdrawn": "Fraværet er trukket",
+        "alreadyReported": "Meldt"
+      },
       "suspended": {
         "title": "Lærertilgangen er satt på pause",
         "body": "Du har ikke tilgang til Min klasse, oppmøte og klassenotater akkurat nå. Tilgangen som forelder fungerer som vanlig. Ta kontakt med skolen hvis du har spørsmål.",

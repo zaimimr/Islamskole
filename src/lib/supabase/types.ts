@@ -2759,6 +2759,57 @@ export type Database = {
           },
         ]
       }
+      teacher_absences: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          guardian_id: string
+          id: string
+          notified: boolean
+          reason: string | null
+          school_day_id: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          guardian_id: string
+          id?: string
+          notified?: boolean
+          reason?: string | null
+          school_day_id: string
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          guardian_id?: string
+          id?: string
+          notified?: boolean
+          reason?: string | null
+          school_day_id?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_absences_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_absences_school_day_id_fkey"
+            columns: ["school_day_id"]
+            isOneToOne: false
+            referencedRelation: "school_days"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teacher_applications: {
         Row: {
           created_at: string
@@ -3303,6 +3354,7 @@ export type Database = {
         Args: { p_family_id: string }
         Returns: undefined
       }
+      portal_teacher_guardian_id: { Args: never; Returns: string }
       portal_teaches_lesson: { Args: { p_lesson_id: string }; Returns: boolean }
       portal_teaches_student: {
         Args: { p_student_id: string }

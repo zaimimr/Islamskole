@@ -6,6 +6,7 @@ import {
   CalendarRange,
   CheckCircle2,
   CircleAlert,
+  CalendarX2,
   ClipboardCheck,
   Copy,
   GraduationCap,
@@ -25,6 +26,7 @@ import { formatNok } from "@/lib/money";
 import { formatOsloDate, osloToday } from "@/lib/dates";
 import { getActiveYearBalanceSummary } from "@/lib/balances";
 import { getAdminFamilies } from "@/lib/families/service";
+import { needsSubstitute } from "@/lib/lessons";
 import {
   findDuplicateFamilies,
   findDuplicateStudents,
@@ -41,8 +43,11 @@ type SignupRow = {
   studentId: string | null;
 };
 
+type MissingSubstitutes = { count: number; firstDayId: string | null; firstDate: string | null };
+
 type DashboardData = {
   activeYearLabel: string | null;
+  missingSubstitutes: MissingSubstitutes;
   newApplications: number;
   acceptedNotRegistered: number;
   newTeachers: number;
@@ -72,6 +77,51 @@ type EnrollmentRow = {
   status: string;
   school_years: { label: string } | null;
 };
+
+async function getMissingSubstitutes(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  schoolYearId: string | null,
+): Promise<MissingSubstitutes> {
+  const none = { count: 0, firstDayId: null, firstDate: null };
+  if (!schoolYearId) return none;
+  const { data: absences, error } = await supabase
+    .from("teacher_absences")
+    .select("guardian_id, school_day:school_days!inner(id, date, cancelled, school_year_id)")
+    .eq("school_day.school_year_id", schoolYearId)
+    .eq("school_day.cancelled", false)
+    .gte("school_day.date", osloToday());
+  if (error) throw error;
+  if (!absences?.length) return none;
+
+  const absentByDay = new Map<string, Set<string>>();
+  const dateByDay = new Map<string, string>();
+  for (const row of absences) {
+    const day = row.school_day as { id: string; date: string };
+    absentByDay.set(day.id, (absentByDay.get(day.id) ?? new Set()).add(row.guardian_id));
+    dateByDay.set(day.id, day.date);
+  }
+  const [{ data: lessons, error: lessonError }, { data: classTeachers, error: teacherError }] = await Promise.all([
+    supabase
+      .from("lessons")
+      .select("id, class_id, school_day_id, teacher_guardian_id, co_teacher_guardian_id, cancelled")
+      .in("school_day_id", [...absentByDay.keys()]),
+    supabase.from("class_teachers").select("class_id, guardian_id").eq("school_year_id", schoolYearId),
+  ]);
+  if (lessonError) throw lessonError;
+  if (teacherError) throw teacherError;
+
+  const teachersByClass = new Map<string, string[]>();
+  for (const row of classTeachers ?? []) {
+    teachersByClass.set(row.class_id, [...(teachersByClass.get(row.class_id) ?? []), row.guardian_id]);
+  }
+  const uncovered = (lessons ?? []).filter((lesson) =>
+    needsSubstitute(lesson, absentByDay.get(lesson.school_day_id) ?? new Set(), teachersByClass.get(lesson.class_id)),
+  );
+  const first = uncovered
+    .map((lesson) => ({ id: lesson.school_day_id, date: dateByDay.get(lesson.school_day_id) ?? "" }))
+    .sort((left, right) => left.date.localeCompare(right.date))[0];
+  return { count: uncovered.length, firstDayId: first?.id ?? null, firstDate: first?.date ?? null };
+}
 
 async function getDashboard(): Promise<DashboardResult> {
   try {
@@ -209,6 +259,8 @@ async function getDashboard(): Promise<DashboardResult> {
       (acceptedApplications.data as { id: string }[] | null) ?? []
     ).filter((row) => !studentByApplication.has(row.id)).length;
 
+    const missingSubstitutes = await getMissingSubstitutes(supabase, activeYearRow?.id ?? null);
+
     const overdueRows =
       (overdueInstallments.data as { id: string; amount: number }[] | null) ??
       [];
@@ -217,6 +269,7 @@ async function getDashboard(): Promise<DashboardResult> {
       ok: true,
       data: {
         activeYearLabel: activeYearRow?.label ?? null,
+        missingSubstitutes,
         newApplications: newApplications.count ?? 0,
         acceptedNotRegistered,
         newTeachers: newTeachers.count ?? 0,
@@ -442,6 +495,15 @@ export default async function AdminDashboardPage({
       href: `${basePath}/skolear`,
       action: "Velg skoleår",
       icon: CalendarRange,
+      tone: "red",
+    },
+    data.missingSubstitutes.count > 0 && {
+      title: "Mangler vikar",
+      description: `Lærer borte. Neste: ${formatOsloDate(data.missingSubstitutes.firstDate ?? "", { weekday: "long", day: "numeric", month: "long" })}.`,
+      count: data.missingSubstitutes.count,
+      href: `${basePath}/dagsplan?dag=${data.missingSubstitutes.firstDayId}`,
+      action: "Finn vikar",
+      icon: CalendarX2,
       tone: "red",
     },
     data.duplicatePayments > 0 && {

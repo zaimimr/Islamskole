@@ -833,6 +833,22 @@
         "badge": "Substitute until {date}",
         "notice": "You are substitute in this class until {date}."
       },
+      "away": {
+        "title": "My absence",
+        "open": "Report absence",
+        "dialogTitle": "I can't come",
+        "intro": "The school sees it and finds a substitute.",
+        "dayLabel": "Which day?",
+        "reasonLabel": "Reason (optional)",
+        "submit": "Send",
+        "sent": "Absence reported",
+        "reportedFor": "Away {day}",
+        "byAdmin": "Registered by the school",
+        "undo": "Undo",
+        "undoFor": "Undo absence {day}",
+        "withdrawn": "Absence withdrawn",
+        "alreadyReported": "Reported"
+      },
       "suspended": {
         "title": "Your teacher access is paused",
         "body": "You do not have access to My class, attendance and class notes right now. Your access as a parent works as usual. Contact the school if you have questions.",

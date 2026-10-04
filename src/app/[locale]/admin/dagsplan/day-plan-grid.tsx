@@ -44,6 +44,7 @@ export type DayPlanLesson = {
   note: string | null;
   hasData: boolean;
   doubleBooked: boolean;
+  needsSubstitute: boolean;
 };
 
 export type DayPlanClass = {
@@ -317,7 +318,7 @@ function LessonCard({
         "grid h-full gap-1.5 rounded-xl p-3 ring-1",
         lesson.cancelled
           ? "bg-[#F1EFEA] ring-[#E3DED3]"
-          : lesson.doubleBooked
+          : lesson.needsSubstitute || lesson.doubleBooked
             ? "bg-[#FBE7E4] ring-[#E8B4AD]"
             : lesson.isSubstitute
               ? "bg-[#FEF4DE] ring-[#ECDCB9]"
@@ -358,6 +359,7 @@ function LessonCard({
         </div>
       </div>
       <p className="flex flex-wrap gap-1.5">
+        {lesson.needsSubstitute ? <Badge tone="danger">Mangler vikar</Badge> : null}
         {lesson.isSubstitute ? <Badge tone="warn">Vikar</Badge> : null}
         {lesson.doubleBooked ? <Badge tone="danger">Dobbeltbooket</Badge> : null}
         {lesson.cancelled ? <Badge tone="neutral">Avlyst</Badge> : null}

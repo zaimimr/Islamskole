@@ -3,11 +3,12 @@ import Link from "next/link";
 import { CalendarX } from "lucide-react";
 import { adminBasePath } from "@/components/admin/paths";
 import { formatOsloDate, osloToday } from "@/lib/dates";
-import { findDoubleBookings, joinTeacherNames, lessonTeacherIds, type TimeSlot } from "@/lib/lessons";
+import { findDoubleBookings, joinTeacherNames, lessonTeacherIds, needsSubstitute, type TimeSlot } from "@/lib/lessons";
 import { createClient } from "@/lib/supabase/server";
 import { DayPicker } from "./day-picker";
 import { DayPlanGrid, type DayPlanClass, type DayPlanTeacher } from "./day-plan-grid";
 import { EnsureLessonsButton } from "./ensure-lessons-button";
+import { TeacherAbsences, type TeacherAbsenceRow } from "./teacher-absences";
 
 export const metadata: Metadata = { title: "Dagsplan" };
 
@@ -87,7 +88,7 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
         .order("first_name", { ascending: true }),
       supabase
         .from("class_teachers")
-        .select("class_id, guardian:guardians!inner(first_name, last_name, is_teacher)")
+        .select("class_id, guardian_id, guardian:guardians!inner(first_name, last_name, is_teacher)")
         .eq("school_year_id", year.id)
         .eq("guardian.is_teacher", true),
     ]);
@@ -117,7 +118,7 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
     );
   }
 
-  const [{ data: lessonData }, { data: attendanceData }, { data: noteData }] = await Promise.all([
+  const [{ data: lessonData }, { data: attendanceData }, { data: noteData }, { data: absenceData }] = await Promise.all([
     supabase
       .from("lessons")
       .select(
@@ -127,6 +128,11 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
       .order("start_position", { ascending: true }),
     supabase.from("attendance").select("lesson_id").eq("school_day_id", day.id).neq("status", "meldt_fravaer"),
     supabase.from("class_notes").select("lesson_id").eq("school_day_id", day.id),
+    supabase
+      .from("teacher_absences")
+      .select("id, guardian_id, notified, source, reason, created_at")
+      .eq("school_day_id", day.id)
+      .order("created_at", { ascending: true }),
   ]);
 
   const lessons = (lessonData as LessonRow[] | null) ?? [];
@@ -135,6 +141,7 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
     ...new Set(
       lessons
         .flatMap((row) => [...lessonTeacherIds(row), row.plan?.teacher_guardian_id ?? null])
+        .concat((absenceData ?? []).map((row) => row.guardian_id))
         .filter((id): id is string => Boolean(id) && !knownIds.has(id as string)),
     ),
   ];
@@ -145,10 +152,20 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
     [...(teacherData ?? []), ...(missingPeople ?? [])].map((row) => [row.id, joinName(row)]),
   );
   const classTeachers = new Map<string, string[]>();
+  const classTeacherIds = new Map<string, string[]>();
   for (const row of classTeacherData ?? []) {
     if (!row.guardian) continue;
     classTeachers.set(row.class_id, [...(classTeachers.get(row.class_id) ?? []), joinName(row.guardian)]);
+    classTeacherIds.set(row.class_id, [...(classTeacherIds.get(row.class_id) ?? []), row.guardian_id]);
   }
+  const absentIds = new Set((absenceData ?? []).map((row) => row.guardian_id));
+  const uncovered = new Set(
+    day.cancelled
+      ? []
+      : lessons
+          .filter((row) => needsSubstitute(row, absentIds, classTeacherIds.get(row.class_id)))
+          .map((row) => row.id),
+  );
   const withData = new Set(
     [...(attendanceData ?? []), ...(noteData ?? [])]
       .map((row) => row.lesson_id)
@@ -192,6 +209,7 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
       note: row.note,
       hasData: withData.has(row.id),
       doubleBooked: clashes.has(row.id),
+      needsSubstitute: uncovered.has(row.id),
     });
     classMap.set(row.class_id, entry);
   }
@@ -205,6 +223,23 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
   }));
   const substitutes = lessons.filter((row) => row.is_substitute && !row.cancelled).length;
   const cancelled = lessons.filter((row) => row.cancelled).length;
+  const absences: TeacherAbsenceRow[] = (absenceData ?? []).map((row) => ({
+    id: row.id,
+    guardianId: row.guardian_id,
+    name: nameOf(row.guardian_id),
+    notified: row.notified,
+    reason: row.reason,
+    byTeacher: row.source === "laerer",
+    missingLessons: lessons.filter(
+      (lesson) =>
+        uncovered.has(lesson.id) &&
+        (lessonTeacherIds(lesson).length
+          ? lessonTeacherIds(lesson)
+          : classTeacherIds.get(lesson.class_id) ?? []
+        ).includes(row.guardian_id),
+    ).length,
+  }));
+  const dayLabel = formatOsloDate(day.date, { weekday: "long", day: "numeric", month: "long" });
 
   return (
     <div className="grid gap-6 lg:gap-7">
@@ -232,10 +267,20 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
         </p>
       ) : null}
 
+      {day.cancelled ? null : (
+        <TeacherAbsences
+          dayId={day.id}
+          dayLabel={dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1)}
+          absences={absences}
+          teachers={teachers.filter((teacher) => !teacher.suspended || absentIds.has(teacher.id))}
+        />
+      )}
+
       {classes.length ? (
         <>
           <p className="text-sm text-admin-muted tabular-nums">
             {lessons.length} timer i {classes.length} {classes.length === 1 ? "klasse" : "klasser"}
+            {uncovered.size ? ` · ${uncovered.size} mangler vikar` : ""}
             {substitutes ? ` · ${substitutes} med vikar` : ""}
             {clashes.size ? ` · ${clashes.size} dobbeltbooket` : ""}
             {cancelled ? ` · ${cancelled} avlyst` : ""}

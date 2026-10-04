@@ -6,6 +6,7 @@ import {
   getClassRoster,
   getLessons,
   getMyClasses,
+  getMyTeacherAbsences,
   getSchoolDays,
   getSubstituteOptions,
   getTimeSlots,
@@ -13,13 +14,15 @@ import {
 import { lessonView } from "@/lib/portal/lesson-view";
 import { capitalize, defaultSchoolDay, formatSchoolDay } from "@/lib/portal/teacher-days";
 import { SubstitutePicker } from "@/components/portal/teacher/substitute-picker";
+import { TeacherAbsence } from "@/components/portal/teacher/teacher-absence";
 
 export async function TeacherHome({ locale }: { locale: string }) {
-  const [t, tHome, classes, substituteOptions] = await Promise.all([
+  const [t, tHome, classes, substituteOptions, myAbsences] = await Promise.all([
     getTranslations({ locale, namespace: "portal.teacher" }),
     getTranslations({ locale, namespace: "portal.home" }),
     getMyClasses(),
     getSubstituteOptions(),
+    getMyTeacherAbsences(),
   ]);
   const days = await getSchoolDays(classes[0]?.school_year_id);
   const nextDay = defaultSchoolDay({ ...days, past: [] });
@@ -34,6 +37,8 @@ export async function TeacherHome({ locale }: { locale: string }) {
   const wholeDay = t("lessons.wholeDay");
   const classIds = new Set(classes.map((row) => row.class_id));
   const extraLessons = lessons.filter((lesson) => lesson.is_mine && !classIds.has(lesson.class_id));
+  const reportedDays = new Set(myAbsences.map((absence) => absence.school_day_id));
+  const dayLabel = (date: string) => formatSchoolDay(date, locale, { weekday: "long", day: "numeric", month: "long" });
 
   return (
     <section aria-labelledby="teacher-home-title" className="grid gap-3">
@@ -130,6 +135,21 @@ export async function TeacherHome({ locale }: { locale: string }) {
             })}
           </ul>
         </div>
+      ) : null}
+      {classes.length ? (
+        <TeacherAbsence
+          days={days.upcoming
+            .filter((day) => !day.cancelled)
+            .slice(0, 8)
+            .map((day) => ({ id: day.id, label: dayLabel(day.date), reported: reportedDays.has(day.id) }))}
+          absences={myAbsences.map((absence) => ({
+            id: absence.id,
+            label: dayLabel(absence.date),
+            reason: absence.reason,
+            byAdmin: absence.source === "admin",
+            canUndo: absence.source === "laerer",
+          }))}
+        />
       ) : null}
       {substituteOptions.length ? (
         <SubstitutePicker

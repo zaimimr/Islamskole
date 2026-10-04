@@ -224,3 +224,80 @@ export async function resetDayLessons(schoolDayId: string, classId: string): Pro
   revalidate();
   return { ok: true };
 }
+
+const teacherAbsenceSchema = z.object({
+  guardianId: uuid,
+  schoolDayId: uuid,
+  notified: z.boolean(),
+  reason: text(500),
+});
+
+export async function saveTeacherAbsence(values: {
+  guardianId: string;
+  schoolDayId: string;
+  notified: boolean;
+  reason: string | null;
+}): Promise<ActionResult> {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+  const parsed = teacherAbsenceSchema.safeParse(values);
+  if (!parsed.success) return { ok: false, error: "Velg lærer og om fraværet var varslet." };
+
+  const supabase = await createClient();
+  const { data: existing, error: findError } = await supabase
+    .from("teacher_absences")
+    .select("id")
+    .eq("guardian_id", parsed.data.guardianId)
+    .eq("school_day_id", parsed.data.schoolDayId)
+    .maybeSingle();
+  if (findError) return failure(findError);
+
+  const { data, error } = existing
+    ? await supabase
+        .from("teacher_absences")
+        .update({ notified: parsed.data.notified, reason: parsed.data.reason })
+        .eq("id", existing.id)
+        .select("id")
+        .single()
+    : await supabase
+        .from("teacher_absences")
+        .insert({
+          guardian_id: parsed.data.guardianId,
+          school_day_id: parsed.data.schoolDayId,
+          notified: parsed.data.notified,
+          reason: parsed.data.reason,
+          source: "admin",
+        })
+        .select("id")
+        .single();
+  if (error) return failure(error);
+
+  await writeAudit({
+    action: existing ? "teacher_absence.update" : "teacher_absence.create",
+    entityType: "teacher_absence",
+    entityId: data.id,
+    metadata: parsed.data,
+  });
+  revalidate();
+  return { ok: true };
+}
+
+export async function removeTeacherAbsence(id: string): Promise<ActionResult> {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+  if (!uuid.safeParse(id).success) return { ok: false, error: "Ugyldig fravær." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("teacher_absences")
+    .delete()
+    .eq("id", id)
+    .select("guardian_id, school_day_id")
+    .maybeSingle();
+  if (error) return failure(error);
+  if (!data) return { ok: false, error: "Fraværet finnes ikke lenger." };
+
+  await writeAudit({ action: "teacher_absence.delete", entityType: "teacher_absence", entityId: id, metadata: data });
+  revalidate();
+  return { ok: true };
+}

@@ -711,7 +711,8 @@
       "home": "Oversikt",
       "family": "Min familie",
       "economy": "Min økonomi",
-      "enroll": "Påmelding"
+      "enroll": "Påmelding",
+      "announcements": "Beskjeder"
     },
     "enroll": {
       "title": "Påmelding",
@@ -1035,6 +1036,64 @@
       "title": "Gi en gave som fortsetter å gi",
       "body": "Det et barn lærer om Koranen og bønnen, bærer det med seg hele livet. Din gave holder undervisningen åpen for alle familier og kan bli en sadaqa jariyah, en veldedighet som fortsetter å gi.",
       "more": "Les mer om å gi"
+    }
+  },
+  "announcements": {
+    "title": "Beskjeder",
+    "new": "Ny beskjed",
+    "audience": "Mottakere",
+    "wholeSchool": "Hele skolen",
+    "subject": "Tittel",
+    "body": "Beskjed",
+    "email": "Send på e-post",
+    "ackRequired": "Be om bekreftelse fra familien",
+    "review": "Se gjennom",
+    "back": "Tilbake",
+    "publish": "Publiser og send",
+    "publishPortal": "Publiser i portalen",
+    "publishing": "Publiserer…",
+    "previewTitle": "Se gjennom beskjeden",
+    "families": "{count, plural, one {# familie} other {# familier}}",
+    "emails": "{count, plural, one {# e-postadresse} other {# e-postadresser}}",
+    "missingEmail": "{count, plural, one {# familie har ingen mottaker på e-post.} other {# familier har ingen mottaker på e-post.}} Beskjeden vises i portalen.",
+    "emailUnavailable": "E-post er ikke tilgjengelig. Velg kun publisering i portalen.",
+    "empty": "Ingen beskjeder ennå",
+    "acknowledge": "Jeg har lest og forstått",
+    "acknowledged": "Bekreftet",
+    "awaitingAck": "Venter på bekreftelse",
+    "ackNeeded": "Må bekreftes",
+    "ackSaved": "Beskjeden er bekreftet",
+    "published": "Beskjeden er publisert",
+    "recipients": "Mottakeroversikt",
+    "family": "Familie",
+    "delivery": "E-post",
+    "acknowledgement": "Bekreftelse",
+    "retry": "Prøv e-post på nytt",
+    "sendPending": "Send ventende e-post",
+    "retryStarted": "E-post er lagt i kø",
+    "refresh": "Oppdater status",
+    "previous": "Forrige",
+    "next": "Neste",
+    "page": "Side {page}",
+    "allAnnouncements": "Alle beskjeder",
+    "pendingLink": "{count, plural, one {# beskjed må bekreftes} other {# beskjeder må bekreftes}}",
+    "closeComposer": "Lukk",
+    "sentLabel": "Publisert {date}",
+    "ackCount": "{confirmed} av {total} familier har bekreftet",
+    "notRequired": "Ikke påkrevd",
+    "status": {
+      "pending": "I kø",
+      "sent": "Sendt",
+      "failed": "Sending feilet",
+      "portal_only": "Kun portal",
+      "missing_email": "Ingen e-postmottaker"
+    },
+    "errors": {
+      "invalid": "Kontroller tittel, beskjed og mottakere.",
+      "forbidden": "Du har ikke tilgang til denne handlingen.",
+      "unavailable": "Beskjeden kunne ikke behandles. Prøv igjen.",
+      "no_recipients": "Ingen familier er påmeldt for denne mottakergruppen i aktivt skoleår.",
+      "email_unavailable": "E-post er ikke tilgjengelig. Velg kun publisering i portalen."
     }
   }
 }

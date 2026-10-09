@@ -3,6 +3,7 @@ import { ChevronRight, ClipboardPen, HeartPulse, Mail, Users, Wallet } from "luc
 import { localePrefix } from "@/components/admin/paths";
 import { Link } from "@/i18n/navigation";
 import { ChildCard } from "@/components/portal/parent/child-card";
+import { AnnouncementInboxNotice } from "@/components/announcements/inbox-notice";
 import { NextDay } from "@/components/portal/parent/next-day";
 import { UpcomingList } from "@/components/portal/parent/upcoming-list";
 import { formatNok } from "@/lib/money";
@@ -84,6 +85,8 @@ export async function ParentHome({ locale }: { locale: string }) {
             <ChevronRight aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
           </Link>
         ) : null}
+
+        <AnnouncementInboxNotice locale={locale} />
 
         <div className="lg:hidden">
           <NextDay

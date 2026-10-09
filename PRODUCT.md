@@ -14,6 +14,8 @@ Families use the public enrollment flow without an account. After enrollment, gu
 
 Teachers sign in the same way to "Min klasse": their class roster on a phone, one-tap Sunday attendance, a weekly note with homework, and absences reported by parents. One person can be both a parent and a teacher.
 
+Administrators publish announcements to the whole school or individual classes. Teachers publish to their own classes. Guardians read announcements in "Beskjeder" and one guardian acknowledges important notices for the family. Publishing defaults to email when delivery is configured, with a portal-only option.
+
 ## Product Purpose
 
 Islamskole Bærum replaces Google Sheets and paper-based enrollment and payment administration with one dependable operational system. Success means the principal can see what needs attention, complete enrollment and payment work without double entry, and trust that family, placement, and financial history is complete and correct.
@@ -41,7 +43,9 @@ Parents enroll one or more children publicly and pay intentionally through Vipps
 - Financial history must be traceable and must not be silently or destructively lost.
 - Schema and payment changes require migration safety, automated coverage, and reconciliation checks.
 - The application remains a school operations system and does not replace bookkeeping software.
-- Student logins, Quran progress tracking, grading, full learning management, payroll, transport, inventory, general chat, and native mobile applications are outside this release. Quran progress is a planned later addition.
+- Student logins provide read access to the student's class, plans, notes, and attendance. Announcements are addressed to guardians.
+- The next stages add flexible teacher-written learning goals with optional surah/ayah ranges, statuses and next targets; class materials; activity consent and participation; and attendance follow-up after three consecutive missed school Sundays, with the teacher deciding whether to contact home.
+- Grading, full learning management, payroll, transport, inventory, general chat, and native mobile applications remain outside this release.
 
 ## Brand Commitments
 

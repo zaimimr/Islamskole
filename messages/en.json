@@ -711,7 +711,8 @@
       "home": "Overview",
       "family": "My family",
       "economy": "My payments",
-      "enroll": "Enrollment"
+      "enroll": "Enrollment",
+      "announcements": "Announcements"
     },
     "enroll": {
       "title": "Enrollment",
@@ -1035,6 +1036,64 @@
       "title": "A gift that keeps on giving",
       "body": "What a child learns about the Quran and prayer stays with them for life. Your gift keeps the teaching open to every family and can become a sadaqa jariyah, a charity that keeps on giving.",
       "more": "Read more about giving"
+    }
+  },
+  "announcements": {
+    "title": "Announcements",
+    "new": "New announcement",
+    "audience": "Recipients",
+    "wholeSchool": "Whole school",
+    "subject": "Title",
+    "body": "Announcement",
+    "email": "Send by email",
+    "ackRequired": "Ask the family to acknowledge",
+    "review": "Review",
+    "back": "Back",
+    "publish": "Publish and send",
+    "publishPortal": "Publish in portal",
+    "publishing": "Publishing…",
+    "previewTitle": "Review announcement",
+    "families": "{count, plural, one {# family} other {# families}}",
+    "emails": "{count, plural, one {# email address} other {# email addresses}}",
+    "missingEmail": "{count, plural, one {# family has no email recipient.} other {# families have no email recipient.}} The announcement will appear in the portal.",
+    "emailUnavailable": "Email is unavailable. Choose portal-only publishing.",
+    "empty": "No announcements yet",
+    "acknowledge": "I have read and understood",
+    "acknowledged": "Acknowledged",
+    "awaitingAck": "Awaiting acknowledgement",
+    "ackNeeded": "Acknowledgement required",
+    "ackSaved": "Announcement acknowledged",
+    "published": "Announcement published",
+    "recipients": "Recipient overview",
+    "family": "Family",
+    "delivery": "Email",
+    "acknowledgement": "Acknowledgement",
+    "retry": "Retry email",
+    "sendPending": "Send queued email",
+    "retryStarted": "Email has been queued",
+    "refresh": "Refresh status",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page {page}",
+    "allAnnouncements": "All announcements",
+    "pendingLink": "{count, plural, one {# announcement needs acknowledgement} other {# announcements need acknowledgement}}",
+    "closeComposer": "Close",
+    "sentLabel": "Published {date}",
+    "ackCount": "{confirmed} of {total} families have acknowledged",
+    "notRequired": "Not required",
+    "status": {
+      "pending": "Queued",
+      "sent": "Sent",
+      "failed": "Sending failed",
+      "portal_only": "Portal only",
+      "missing_email": "No email recipient"
+    },
+    "errors": {
+      "invalid": "Check the title, announcement and recipients.",
+      "forbidden": "You do not have access to this action.",
+      "unavailable": "The announcement could not be processed. Try again.",
+      "no_recipients": "No families are enrolled for these recipients in the active school year.",
+      "email_unavailable": "Email is unavailable. Choose portal-only publishing."
     }
   }
 }

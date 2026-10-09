@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   GraduationCap,
   LayoutDashboard,
+  Megaphone,
   ScrollText,
   Settings,
   ShieldCheck,
@@ -79,6 +80,7 @@ function buildNavigation(basePath: string) {
         },
         { href: `${basePath}/klasser`, label: "Klasser", icon: GraduationCap },
         { href: `${basePath}/dagsplan`, label: "Dagsplan", icon: CalendarClock },
+        { href: `${basePath}/beskjeder`, label: "Beskjeder", icon: Megaphone },
         {
           href: `${basePath}/laerere`,
           label: "Lærere",

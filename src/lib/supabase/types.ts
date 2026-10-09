@@ -34,6 +34,152 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcement_deliveries: {
+        Row: {
+          announcement_id: string
+          attempted_at: string | null
+          attempts: number
+          batch_id: string | null
+          email: string
+          error: string | null
+          family_ids: string[]
+          id: string
+          language: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          announcement_id: string
+          attempted_at?: string | null
+          attempts?: number
+          batch_id?: string | null
+          email: string
+          error?: string | null
+          family_ids: string[]
+          id?: string
+          language: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          announcement_id?: string
+          attempted_at?: string | null
+          attempts?: number
+          batch_id?: string | null
+          email?: string
+          error?: string | null
+          family_ids?: string[]
+          id?: string
+          language?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_deliveries_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "school_announcements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcement_families: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          announcement_id: string
+          family_id: string
+          family_name: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          announcement_id: string
+          family_id: string
+          family_name: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          announcement_id?: string
+          family_id?: string
+          family_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_families_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "school_announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_families_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_announcements: {
+        Row: {
+          body: string
+          class_id: string | null
+          class_name_en: string | null
+          class_name_no: string | null
+          created_by: string | null
+          email_enabled: boolean
+          id: string
+          published_at: string
+          requires_acknowledgement: boolean
+          school_year_id: string
+          title: string
+        }
+        Insert: {
+          body: string
+          class_id?: string | null
+          class_name_en?: string | null
+          class_name_no?: string | null
+          created_by?: string | null
+          email_enabled?: boolean
+          id: string
+          published_at?: string
+          requires_acknowledgement?: boolean
+          school_year_id: string
+          title: string
+        }
+        Update: {
+          body?: string
+          class_id?: string | null
+          class_name_en?: string | null
+          class_name_no?: string | null
+          created_by?: string | null
+          email_enabled?: boolean
+          id?: string
+          published_at?: string
+          requires_acknowledgement?: boolean
+          school_year_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_announcements_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_announcements_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       absence_reports: {
         Row: {
           created_at: string
@@ -2973,6 +3119,90 @@ export type Database = {
       }
     }
     Functions: {
+      acknowledge_announcement: {
+        Args: { p_family_id: string; p_id: string }
+        Returns: undefined
+      }
+      announcement_audience: {
+        Args: { p_class_id?: string }
+        Returns: {
+          email_count: number
+          family_count: number
+          missing_email_count: number
+        }[]
+      }
+      announcement_can_manage: { Args: { p_id: string }; Returns: boolean }
+      announcement_can_publish: {
+        Args: { p_class_id: string }
+        Returns: boolean
+      }
+      announcement_family_status: {
+        Args: { p_id: string }
+        Returns: {
+          acknowledged_at: string
+          email_status: string
+          family_id: string
+          family_name: string
+        }[]
+      }
+      announcement_target_emails: {
+        Args: { p_class_id: string }
+        Returns: {
+          email: string
+          family_ids: string[]
+          language: string
+        }[]
+      }
+      announcement_target_families: {
+        Args: { p_class_id: string }
+        Returns: {
+          family_id: string
+          family_name: string
+        }[]
+      }
+      claim_announcement_emails: {
+        Args: { p_id?: string; p_limit?: number }
+        Returns: {
+          announcement_id: string
+          attempted_at: string | null
+          attempts: number
+          batch_id: string | null
+          email: string
+          error: string | null
+          family_ids: string[]
+          id: string
+          language: string
+          sent_at: string | null
+          status: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "announcement_deliveries"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      finish_announcement_email_batch: {
+        Args: {
+          p_attempted_at: string
+          p_batch_id: string
+          p_error?: string
+          p_failed_ids: string[]
+        }
+        Returns: undefined
+      }
+      publish_announcement: {
+        Args: {
+          p_body: string
+          p_class_id: string
+          p_email_enabled?: boolean
+          p_id: string
+          p_requires_acknowledgement?: boolean
+          p_title: string
+        }
+        Returns: string
+      }
+      retry_announcement_emails: { Args: { p_id: string }; Returns: undefined }
       admin_merge_families: {
         Args: { p_keep: string; p_merge: string }
         Returns: undefined

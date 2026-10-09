@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import { CalendarDays, ChevronRight, Users } from "lucide-react";
+import { CalendarDays, ChevronRight, Megaphone, Users } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { osloToday } from "@/lib/dates";
 import {
@@ -35,6 +35,7 @@ export async function TeacherHome({ locale }: { locale: string }) {
   ]);
   const today = osloToday();
   const wholeDay = t("lessons.wholeDay");
+  const tAnnouncements = await getTranslations({ locale, namespace: "announcements" });
   const classIds = new Set(classes.map((row) => row.class_id));
   const extraLessons = lessons.filter((lesson) => lesson.is_mine && !classIds.has(lesson.class_id));
   const reportedDays = new Set(myAbsences.map((absence) => absence.school_day_id));
@@ -42,9 +43,10 @@ export async function TeacherHome({ locale }: { locale: string }) {
 
   return (
     <section aria-labelledby="teacher-home-title" className="grid gap-3">
-      <h2 id="teacher-home-title" className="text-2xl font-bold">
-        {tHome("teacherTitle")}
-      </h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="teacher-home-title" className="text-2xl font-bold">{tHome("teacherTitle")}</h2>
+        <Link href="/min-side/beskjeder" className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-brand-green-dark outline-none hover:bg-primary/10 focus-visible:ring-3 focus-visible:ring-ring/50"><Megaphone aria-hidden="true" className="size-4" />{tAnnouncements("title")}</Link>
+      </div>
       {classes.length === 0 ? (
         <p className="text-pretty text-muted-foreground">{tHome("teacherUnassigned")}</p>
       ) : null}

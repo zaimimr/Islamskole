@@ -1,12 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ClipboardPen, House, Users, Wallet } from "lucide-react";
+import { ClipboardPen, House, Megaphone, Users, Wallet } from "lucide-react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
   { href: "/min-side", key: "home", icon: House },
+  { href: "/min-side/beskjeder", key: "announcements", icon: Megaphone },
   { href: "/min-side/familie", key: "family", icon: Users },
   { href: "/min-side/okonomi", key: "economy", icon: Wallet },
   { href: "/min-side/pamelding", key: "enroll", icon: ClipboardPen },
@@ -29,7 +30,7 @@ export function PortalNav({ variant }: { variant: "top" | "bottom" }) {
         aria-label={t("label")}
         className="fixed inset-x-0 bottom-0 z-40 border-t border-foreground/8 bg-background/95 pb-[env(safe-area-inset-bottom)] supports-backdrop-filter:backdrop-blur-md sm:hidden"
       >
-        <ul className="grid grid-cols-4">
+        <ul className="grid grid-cols-5">
           {items.map((item) => {
             const Icon = item.icon;
             return (

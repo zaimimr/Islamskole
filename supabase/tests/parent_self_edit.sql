@@ -323,7 +323,7 @@ select is(
 );
 
 select is(
-  (select metadata -> 'removed' ->> 'last_name' from public.audit_log where action = 'portal.guardian.remove'),
+  (select metadata -> 'removed' ->> 'last_name' from public.audit_log where action = 'portal.guardian.remove' and actor_id = '5e000000-0000-0000-0000-0000000000a1' and entity_id = '5e000000-0000-0000-0000-000000000063'),
   'Ny Far',
   'removal is audited with the removed values'
 );

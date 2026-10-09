@@ -320,7 +320,7 @@ function renderEmail(opts: {
                     <span style="display:inline-block;padding:4px 12px;border-radius:999px;background:#f9e6bb;color:#513716;font-family:${BODY_FONT};font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;">${escapeHtml(opts.badge)}</span>
                   </td></tr>
                   <tr><td style="padding:0 0 12px;font-family:${HEADING_FONT};font-size:28px;line-height:34px;font-weight:600;color:#19221a;">${escapeHtml(opts.title)}</td></tr>
-                  <tr><td style="padding:0 0 24px;font-family:${BODY_FONT};font-size:16px;line-height:25px;color:#3d4a3f;">${escapeHtml(opts.intro)}</td></tr>
+                  <tr><td style="padding:0 0 24px;font-family:${BODY_FONT};font-size:16px;line-height:25px;color:#3d4a3f;white-space:pre-line;">${escapeHtml(opts.intro)}</td></tr>
                   ${rows}
                   ${cta}
                   ${note}
@@ -735,4 +735,52 @@ export async function sendTeacherApplicationConfirmationEmail(opts: {
     intro: t.teacherConfirmation.intro(opts.fullName),
     rows: [],
   });
+}
+
+export type AnnouncementEmail = {
+  to: string;
+  lang: EmailLang;
+  title: string;
+  body: string;
+  url: string;
+  requiresAcknowledgement: boolean;
+};
+
+function announcementEmailContent(opts: AnnouncementEmail) {
+  return {
+    lang: opts.lang,
+    badge: opts.lang === "en" ? "School announcement" : "Beskjed fra skolen",
+    title: opts.title,
+    intro: opts.body,
+    rows: [] as Row[],
+    note: opts.requiresAcknowledgement
+      ? opts.lang === "en" ? "One guardian needs to acknowledge this for your family." : "Én foresatt må bekrefte beskjeden på vegne av familien."
+      : undefined,
+    cta: { label: opts.lang === "en" ? "Open announcement" : "Åpne beskjeden", url: opts.url },
+  };
+}
+
+export async function sendAnnouncementEmails(emails: AnnouncementEmail[], batchId: string): Promise<boolean[]> {
+  const messages = emails.map((email) => {
+    const content = announcementEmailContent(email);
+    return { to: email.to, subject: email.title, html: renderEmail(content), text: renderText(content), links: [email.url] };
+  });
+  const outbox = process.env.EMAIL_OUTBOX_DIR;
+  if (outbox) return Promise.all(messages.map((message) => writeOutbox(outbox, message)));
+  const resend = getClient();
+  if (!resend) return messages.map(() => false);
+  const { data, error } = await resend.batch.send(
+    messages.map(({ to, subject, html, text }) => ({ from: FROM, to, subject, html, text })),
+    { batchValidation: "permissive", idempotencyKey: `announcement-batch-${batchId}` },
+  );
+  if (error || !data) {
+    console.error("Announcement email batch failed", { batchId, error });
+    return messages.map(() => false);
+  }
+  const failures = new Set(data.errors?.map((failure) => failure.index));
+  if (data.data.length + failures.size !== messages.length) {
+    console.error("Announcement email batch returned incomplete results", { batchId });
+    return messages.map(() => false);
+  }
+  return messages.map((_, index) => !failures.has(index));
 }

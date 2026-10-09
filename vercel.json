@@ -4,6 +4,10 @@
   ],
   "crons": [
     {
+      "path": "/api/cron/announcements",
+      "schedule": "0 8 * * *"
+    },
+    {
       "path": "/api/cron/vipps-sync",
       "schedule": "0 6 * * *"
     },

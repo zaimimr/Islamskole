@@ -34,6 +34,24 @@ Never apply a migration straight to production.
 4. `npm run db:types` regenerates `src/lib/supabase/types.ts`.
 5. `npm run db:drift` compares `supabase/migrations` with the production history. It needs `SUPABASE_ACCESS_TOKEN` and skips without it.
 
+## Announcements
+
+Announcements live in `src/lib/announcements` and `src/components/announcements`, with shared views at `/admin/beskjeder` and `/min-side/beskjeder`. Database functions enforce publishing scope, snapshot recipients, and record one acknowledgement per family. Published text is immutable. Recipient families come from active enrollments in the active school year; emails respect `receives_communication` and are deduplicated by normalized address.
+
+Email uses the existing `EMAILS_ENABLED`/Edge Config switch, Resend configuration, and `NEXT_PUBLIC_SITE_URL`. Set `EMAIL_OUTBOX_DIR` to capture email locally. Publication remains available without email. Resend batches use durable idempotency keys; the database prevents concurrent claims, completes batches atomically, and recovers interrupted claims after 15 minutes. `sent` means the provider accepted the email. Later bounces and inbox delivery are not tracked.
+
+Publishing starts delivery after the response. Senders can retry failed email or process queued email from the recipient overview. `/api/cron/announcements`, protected by the existing `CRON_SECRET`, recovers pending or interrupted delivery daily. Failed email is retried explicitly by the sender.
+
+Run the local acceptance checks with:
+
+```bash
+supabase migration up --local
+supabase test db supabase/tests/announcements.sql
+npm run test:e2e -- --project=e2e tests/e2e/announcements.spec.ts
+```
+
+The browser tests use test families and the local email outbox. The database tests cover role isolation, shared-email deduplication, sibling acknowledgement, opt-outs, retry permissions, and interrupted delivery.
+
 ## Admin session for local testing
 
 With the local stack running:

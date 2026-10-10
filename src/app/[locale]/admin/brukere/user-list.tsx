@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch } from "@/lib/search";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, SearchIcon, Users } from "lucide-react";
 import { formatOsloDate } from "@/lib/dates";
@@ -80,7 +81,7 @@ export function UserList({
     roleFilters.find((filter) => filter.value === role) ?? roleFilters[0];
   const searched = term
     ? allUsers.filter((user) =>
-        `${user.fullName ?? ""} ${user.email}`.toLowerCase().includes(term),
+        matchesSearch(query, `${user.fullName ?? ""} ${user.email}`),
       )
     : allUsers;
   const filtered = searched.filter(activeRole.match);

@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch, normalizeSearch } from "@/lib/search";
 import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -809,15 +810,12 @@ function FamilyMapDialog({
     .map((option) => scoreFamily(option, transaction))
     .sort((a, b) => b.score - a.score || b.remaining - a.remaining);
   const suggested = scored.filter((entry) => entry.score >= 4).slice(0, 3);
-  const term = words(query);
+  const term = normalizeSearch(query).split(" ").filter(Boolean);
   const matches = term.length
     ? scored
-        .filter((entry) => {
-          const haystack = words(
-            [entry.family.name, ...entry.family.guardians, ...entry.family.children.map((child) => child.name)].join(" "),
-          );
-          return term.every((part) => haystack.some((word) => word.startsWith(part)));
-        })
+        .filter((entry) => matchesSearch(query,
+          [entry.family.name, ...entry.family.guardians, ...entry.family.children.map((child) => child.name)].join(" "),
+        ))
         .slice(0, 30)
     : scored.filter((entry) => entry.remaining > 0 && !suggested.includes(entry));
 

@@ -591,19 +591,15 @@ export async function findPaymentCandidates(input: {
   if ("ok" in loaded) return loaded;
   const row = loaded.row;
 
-  const term = (input.query ?? "").replace(/[%,()"]/g, " ").trim().slice(0, 100);
+  const term = (input.query ?? "").trim().slice(0, 120);
   let query = supabase
-    .from("payments")
+    .rpc("admin_search_payments", { p_query: term })
     .select("id, reference, captured_amount, paid_at, payer_name, method, description")
     .gt("captured_amount", 0)
     .is("voided_at", null)
     .order("paid_at", { ascending: false })
     .limit(12);
-  if (term) {
-    query = query.or(
-      `reference.ilike.%${term}%,payer_name.ilike.%${term}%,description.ilike.%${term}%,psp_reference.ilike.%${term}%`,
-    );
-  } else {
+  if (!term) {
     const day = new Date(`${row.booked_on}T12:00:00Z`).getTime();
     query = query
       .eq("captured_amount", row.amount)

@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch } from "@/lib/search";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -161,10 +162,7 @@ export function SadaqaCoverDialog({
   const matches = term
     ? families
         .filter((option) =>
-          [option.name, ...option.children.map((child) => child.name)]
-            .join(" ")
-            .toLocaleLowerCase("nb-NO")
-            .includes(term),
+          matchesSearch(query, [option.name, ...option.children.map((child) => child.name)].join(" ")),
         )
         .slice(0, 8)
     : families

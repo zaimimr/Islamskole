@@ -315,11 +315,11 @@ export async function GET(
 
   const supabase = await createClient();
   const status = searchParams.get("status");
-  const term = (searchParams.get("q") ?? "").replace(/[%,()]/g, " ").trim();
+  const term = searchParams.get("q") ?? "";
 
   const data = await fetchAll<Record<string, unknown>>((from, to) => {
     let query = supabase
-      .from(config.table)
+      .rpc(`admin_search_${config.table}`, { p_query: term })
       .select(config.select)
       .order("created_at", { ascending: false })
       .order("id", { ascending: true })
@@ -328,17 +328,6 @@ export async function GET(
     if (entity === "teachers") query = query.eq("is_teacher", "true");
     if (status && status !== "alle" && entity === "applications") {
       query = query.eq("status", status);
-    }
-    if (term) {
-      if (entity === "applications" || entity === "students") {
-        query = query.or(
-          `child_first_name.ilike.%${term}%,child_last_name.ilike.%${term}%,mother_first_name.ilike.%${term}%,mother_last_name.ilike.%${term}%,father_first_name.ilike.%${term}%,father_last_name.ilike.%${term}%,child_email.ilike.%${term}%`,
-        );
-      } else if (entity === "teachers") {
-        query = query.or(
-          `first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%`,
-        );
-      }
     }
     return query;
   });

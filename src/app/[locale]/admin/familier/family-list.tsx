@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch } from "@/lib/search";
 import { useState } from "react";
 import Link from "next/link";
 import {
@@ -77,7 +78,7 @@ export function FamilyList({
 
   const term = normalized(query);
   const searched = term
-    ? rows.filter((row) => row.searchText.includes(term))
+    ? rows.filter((row) => matchesSearch(query, row.searchText))
     : rows;
   const inQueue = (row: FamilyListRow, id: FamilyQueueId) =>
     !id || row.queues.includes(id);

@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch } from "@/lib/search";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -98,7 +99,7 @@ export function CommandPaletteDialog({
     const term = query.trim().toLocaleLowerCase("nb-NO");
     const navItems = destinations
       .filter((item) =>
-        term ? item.label.toLocaleLowerCase("nb-NO").includes(term) : true,
+        matchesSearch(query, item.label),
       )
       .slice(0, term ? 4 : destinations.length)
       .map((item) => ({

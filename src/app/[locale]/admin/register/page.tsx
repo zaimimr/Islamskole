@@ -127,7 +127,7 @@ async function getApplications(
   try {
     const supabase = await createClient();
     let query = supabase
-      .from("student_applications")
+      .rpc("admin_search_student_applications", { p_query: q })
       .select(
         "id, family_id, child_first_name, child_last_name, child_birth_date, child_gender, child_address, child_postal_code, child_city, child_email, child_phone, mother_first_name, mother_last_name, mother_phone, mother_email, father_first_name, father_last_name, father_phone, father_email, desired_class, child_level_quran, child_level_arabic, child_level_islam, message, status, created_at, payment_id, payments(status)",
       )
@@ -137,12 +137,6 @@ async function getApplications(
       query = query.in("status", OPEN_STATUSES);
     } else if (status !== "alle") {
       query = query.eq("status", status);
-    }
-    const term = q.replace(/[%,()]/g, " ").trim();
-    if (term) {
-      query = query.or(
-        `child_first_name.ilike.%${term}%,child_last_name.ilike.%${term}%,mother_first_name.ilike.%${term}%,mother_last_name.ilike.%${term}%,father_first_name.ilike.%${term}%,father_last_name.ilike.%${term}%,child_email.ilike.%${term}%`,
-      );
     }
 
     const { data, error } = await query;

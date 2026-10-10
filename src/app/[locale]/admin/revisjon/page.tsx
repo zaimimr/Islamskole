@@ -1,3 +1,4 @@
+import { matchesSearch } from "@/lib/search";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
@@ -443,16 +444,6 @@ function entityLink(
   }
 }
 
-const searchableMetadataKeys = [
-  "title_no",
-  "name_no",
-  "email",
-  "label",
-  "reason",
-  "note",
-  "status",
-  "slug",
-];
 
 function isDate(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -488,35 +479,16 @@ async function getEntries(
     const supabase = await createClient();
     const from = (page - 1) * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
+    const term = filters.query.trim().slice(0, 120);
+    const matchingActions = term ? Object.entries(actionLabels)
+      .filter(([, label]) => matchesSearch(term, label))
+      .map(([action]) => action) : [];
     let request = supabase
-      .from("audit_log")
-      .select(
-        "id, actor_email, action, entity_type, entity_id, metadata, created_at",
-        { count: "exact" },
-      )
+      .rpc("admin_search_audit_log", { p_query: term, p_actions: matchingActions }, { count: "exact" })
+      .select("id, actor_email, action, entity_type, entity_id, metadata, created_at")
       .order("created_at", { ascending: false })
       .range(from, to);
 
-    const term = filters.query.replace(/[%,()"\\*]/g, " ").trim();
-    if (term) {
-      const lower = term.toLocaleLowerCase("nb-NO");
-      const matchingActions = Object.entries(actionLabels)
-        .filter(([, label]) => label.toLocaleLowerCase("nb-NO").includes(lower))
-        .map(([action]) => `"${action}"`);
-      const conditions = [
-        `actor_email.ilike.%${term}%`,
-        `action.ilike.%${term}%`,
-        `entity_type.ilike.%${term}%`,
-        `entity_id.ilike.%${term}%`,
-        ...searchableMetadataKeys.map(
-          (key) => `metadata->>${key}.ilike.%${term}%`,
-        ),
-        ...(matchingActions.length > 0
-          ? [`action.in.(${matchingActions.join(",")})`]
-          : []),
-      ];
-      request = request.or(conditions.join(","));
-    }
     const filter = entityFilters.find((item) => item.key === filters.area);
     if (filter) request = request.in("entity_type", filter.types);
     if (filters.from) {

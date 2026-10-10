@@ -160,13 +160,6 @@ function nextDay(date: string) {
   return next.toISOString().slice(0, 10);
 }
 
-function matchesName(
-  record: { child_first_name: string | null; child_last_name: string | null },
-  words: string[],
-) {
-  const name = studentDisplayName(record).toLocaleLowerCase("nb");
-  return words.length > 0 && words.every((word) => name.includes(word));
-}
 
 function buildLogHref(
   basePath: string,
@@ -206,38 +199,7 @@ async function getData(
           }[]
         | null) ?? [];
 
-    const term = filters.query.replace(/[%,()]/g, " ").trim();
-    const matchedPaymentIds = new Set<string>();
-    if (term) {
-      const words = term.toLocaleLowerCase("nb").split(/\s+/).filter(Boolean);
-      const matchedStudentIds = allStudents
-        .filter((student) => matchesName(student, words))
-        .map((student) => student.id);
-      const [allocationMatches, applicationMatches] = await Promise.all([
-        matchedStudentIds.length > 0
-          ? supabase
-              .from("payment_allocations")
-              .select("payment_id")
-              .in("student_id", matchedStudentIds)
-          : Promise.resolve({ data: [], error: null }),
-        supabase
-          .from("student_applications")
-          .select("payment_id, child_first_name, child_last_name")
-          .not("payment_id", "is", null),
-      ]);
-      if (allocationMatches.error || applicationMatches.error) {
-        return { ok: false };
-      }
-      for (const row of (allocationMatches.data as { payment_id: string }[] | null) ?? []) {
-        matchedPaymentIds.add(row.payment_id);
-      }
-      for (const row of (applicationMatches.data as ApplicationRow[] | null) ?? []) {
-        if (row.payment_id && matchesName(row, words)) {
-          matchedPaymentIds.add(row.payment_id);
-        }
-      }
-    }
-
+    const term = filters.query.trim().slice(0, 120);
     function applyFilters<
       Q extends {
         in: (column: string, values: string[]) => Q;
@@ -246,7 +208,6 @@ async function getData(
         eq: (column: string, value: string) => Q;
         gte: (column: string, value: string) => Q;
         lt: (column: string, value: string) => Q;
-        or: (filters: string) => Q;
       },
     >(query: Q): Q {
       let next = query;
@@ -264,27 +225,14 @@ async function getData(
       if (filters.to) {
         next = next.lt("paid_at", osloLocalToIso(`${nextDay(filters.to)}T00:00`));
       }
-      if (term) {
-        const clauses = [
-          `reference.ilike.%${term}%`,
-          `description.ilike.%${term}%`,
-          `payer_name.ilike.%${term}%`,
-          `payer_phone.ilike.%${term}%`,
-        ];
-        if (matchedPaymentIds.size > 0) {
-          clauses.push(`id.in.(${[...matchedPaymentIds].join(",")})`);
-        }
-        next = next.or(clauses.join(","));
-      }
       return next;
     }
 
     const paymentQuery = applyFilters(
       supabase
-        .from("payments")
+        .rpc("admin_search_payments", { p_query: term }, { count: "exact" })
         .select(
           "id, reference, amount, status, method, description, paid_at, due_date, created_at, captured_amount, refunded_amount, payer_name, payer_phone, payer_email, vipps_payment_method, voided_at, last_synced_at, school_years(label)",
-          { count: "exact" },
         ),
     )
       .order("paid_at", { ascending: false, nullsFirst: false })
@@ -295,8 +243,8 @@ async function getData(
     for (let start = 0; ; start += SUM_PAGE_SIZE) {
       const { data: sumData, error: sumError } = await applyFilters(
         supabase
-          .from("payments")
-          .select("captured_amount, refunded_amount, voided_at"),
+          .rpc("admin_search_payments", { p_query: term })
+          .select("id, captured_amount, refunded_amount, voided_at"),
       )
         .order("id", { ascending: true })
         .range(start, start + SUM_PAGE_SIZE - 1);

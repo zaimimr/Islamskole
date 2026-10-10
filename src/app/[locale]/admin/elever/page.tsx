@@ -57,19 +57,12 @@ type BalanceRow = {
 
 async function getRegister(q: string) {
   const supabase = await createClient();
-  let studentQuery = supabase
-    .from("students")
+  const studentQuery = supabase
+    .rpc("admin_search_students", { p_query: q })
     .select(
-      "id, child_first_name, child_last_name, mother_first_name, mother_last_name, father_first_name, father_last_name, child_birth_date, enrollments(school_year_id, status, school_years(label), classes(id, name_no)), payments!payments_student_id_fkey(status, amount, school_year_id)",
+      "id, created_at, child_first_name, child_last_name, mother_first_name, mother_last_name, father_first_name, father_last_name, child_birth_date, enrollments(school_year_id, status, school_years(label), classes(id, name_no)), payments!payments_student_id_fkey(status, amount, school_year_id)",
     )
     .order("created_at", { ascending: false });
-
-  const term = q.replace(/[%,()]/g, " ").trim();
-  if (term) {
-    studentQuery = studentQuery.or(
-      `child_first_name.ilike.%${term}%,child_last_name.ilike.%${term}%,mother_first_name.ilike.%${term}%,mother_last_name.ilike.%${term}%,father_first_name.ilike.%${term}%,father_last_name.ilike.%${term}%,child_email.ilike.%${term}%`,
-    );
-  }
 
   const [students, classes, years, balances] = await Promise.all([
     studentQuery,

@@ -3284,6 +3284,252 @@ export type Database = {
       }
     }
     Functions: {
+      search_word_matches: {
+        Args: { p_term: string; p_word: string }
+        Returns: boolean
+      }
+      search_matches: {
+        Args: { p_query: string; p_text: string }
+        Returns: boolean
+      }
+      normalize_search: { Args: { p_text: string }; Returns: string }
+      admin_search_teacher_applications: {
+        Args: { p_query?: string }
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          message: string | null
+          phone: string | null
+          status: string
+          subjects: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "teacher_applications"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      admin_search_students: {
+        Args: { p_query?: string }
+        Returns: {
+          allergies: string | null
+          application_id: string | null
+          child_address: string | null
+          child_birth_date: string | null
+          child_city: string | null
+          child_email: string | null
+          child_first_name: string | null
+          child_gender: string | null
+          child_last_name: string | null
+          child_level_arabic: string | null
+          child_level_islam: string | null
+          child_level_quran: string | null
+          child_phone: string | null
+          child_postal_code: string | null
+          continues_answered_at: string | null
+          continues_next_year: boolean | null
+          created_at: string
+          family_id: string | null
+          father_email: string | null
+          father_first_name: string | null
+          father_last_name: string | null
+          father_phone: string | null
+          health_updated_at: string | null
+          id: string
+          medical_notes: string | null
+          mother_email: string | null
+          mother_first_name: string | null
+          mother_last_name: string | null
+          mother_phone: string | null
+          notes: string | null
+          photo_consent: boolean | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "students"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      admin_search_student_applications: {
+        Args: { p_query?: string }
+        Returns: {
+          child_address: string | null
+          child_birth_date: string | null
+          child_city: string | null
+          child_email: string | null
+          child_first_name: string | null
+          child_gender: string | null
+          child_last_name: string | null
+          child_level_arabic: string | null
+          child_level_islam: string | null
+          child_level_quran: string | null
+          child_phone: string | null
+          child_postal_code: string | null
+          created_at: string
+          desired_class: string | null
+          family_id: string | null
+          father_email: string | null
+          father_first_name: string | null
+          father_last_name: string | null
+          father_phone: string | null
+          id: string
+          merged_into_student_id: string | null
+          message: string | null
+          mother_email: string | null
+          mother_first_name: string | null
+          mother_last_name: string | null
+          mother_phone: string | null
+          payment_id: string | null
+          status: string
+          terms_accepted: boolean
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "student_applications"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      admin_search_payments: {
+        Args: { p_query?: string }
+        Returns: {
+          amount: number
+          authorized_amount: number
+          captured_amount: number
+          captured_at: string | null
+          created_at: string
+          currency: string
+          description: string | null
+          due_date: string | null
+          duplicate_of_payment_id: string | null
+          duplicate_reviewed_at: string | null
+          duplicate_reviewed_by: string | null
+          enrollment_id: string | null
+          id: string
+          last_synced_at: string | null
+          method: string
+          net_paid_amount: number | null
+          paid_at: string | null
+          payer_email: string | null
+          payer_name: string | null
+          payer_phone: string | null
+          psp_reference: string | null
+          redirect_url: string | null
+          reference: string
+          refunded_amount: number
+          school_year_id: string | null
+          status: string
+          student_id: string | null
+          updated_at: string
+          vipps_payment_method: string | null
+          vipps_state: string | null
+          void_reason: string | null
+          voided_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "payments"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      admin_search_guardians: {
+        Args: { p_query?: string }
+        Returns: {
+          created_at: string
+          email: string | null
+          first_name: string | null
+          id: string
+          is_teacher: boolean
+          is_volunteer: boolean
+          last_name: string | null
+          phone: string | null
+          source_application_id: string | null
+          teacher_note: string | null
+          teacher_suspended_at: string | null
+          teacher_suspended_by: string | null
+          teacher_suspended_reason: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "guardians"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      admin_search_families: {
+        Args: { p_query?: string }
+        Returns: {
+          address: string | null
+          city: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          origin: string
+          postal_code: string | null
+          preferred_language: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "families"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      admin_search_classes: {
+        Args: { p_query?: string }
+        Returns: {
+          age_max: number | null
+          age_min: number | null
+          capacity: number | null
+          created_at: string
+          curriculum_en: string | null
+          curriculum_no: string | null
+          description_en: string | null
+          description_no: string | null
+          id: string
+          image_url: string | null
+          name_en: string
+          name_no: string
+          price: number | null
+          published: boolean
+          slug: string
+          sort_order: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "classes"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      admin_search_audit_log: {
+        Args: { p_query?: string; p_actions?: string[] }
+        Returns: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          metadata: Json | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "audit_log"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       developer_can_impersonate: { Args: Record<PropertyKey, never>; Returns: boolean }
       create_learning_goal: {
         Args: {

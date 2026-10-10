@@ -1,5 +1,6 @@
 "use server";
 
+import { matchesSearch, normalizeSearch } from "@/lib/search";
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -1228,59 +1229,40 @@ export async function searchAdmin(query: string): Promise<AdminSearchResult> {
   const denied = await requireAdmin();
   if (denied) return denied;
 
-  const words = String(query ?? "")
-    .replace(/[%,()*\\]/g, " ")
-    .trim()
-    .toLocaleLowerCase("nb-NO")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 4);
-  if (words.length === 0 || words.join("").length < 2) {
-    return { ok: true, hits: [] };
-  }
-  const first = words[0];
-  const matchesAll = (text: string) => {
-    const haystack = text.toLocaleLowerCase("nb-NO");
-    return words.every((word) => haystack.includes(word));
-  };
+  const term = String(query ?? "").slice(0, 120);
+  if (normalizeSearch(term).length < 2) return { ok: true, hits: [] };
+  const matchesAll = (text: string) => matchesSearch(term, text);
 
   const supabase = await createClient();
   const [families, guardians, students, classes, payments] = await Promise.all([
     supabase
-      .from("families")
+      .rpc("admin_search_families", { p_query: term })
       .select("id, display_name, city")
-      .ilike("display_name", `%${first}%`)
       .limit(20),
     supabase
-      .from("guardians")
+      .rpc("admin_search_guardians", { p_query: term })
       .select(
         "first_name, last_name, email, phone, family_guardians(family_id, families(display_name, city))",
       )
-      .or(
-        `first_name.ilike.%${first}%,last_name.ilike.%${first}%,email.ilike.%${first}%,phone.ilike.%${first}%`,
-      )
       .limit(20),
     supabase
-      .from("students")
+      .rpc("admin_search_students", { p_query: term })
       .select("id, child_first_name, child_last_name, child_birth_date")
-      .or(`child_first_name.ilike.%${first}%,child_last_name.ilike.%${first}%`)
       .limit(30),
     supabase
-      .from("classes")
-      .select("id, name_no, age_min, age_max")
-      .ilike("name_no", `%${first}%`)
+      .rpc("admin_search_classes", { p_query: term })
+      .select("id, name_no, age_min, age_max, sort_order")
       .order("sort_order", { ascending: true })
       .limit(6),
     supabase
-      .from("payments")
-      .select("id, reference, psp_reference, payer_name, amount, status")
-      .or(
-        `reference.ilike.%${first}%,psp_reference.ilike.%${first}%,payer_name.ilike.%${first}%`,
-      )
+      .rpc("admin_search_payments", { p_query: term })
+      .select("id, reference, psp_reference, payer_name, amount, status, created_at")
       .order("created_at", { ascending: false })
       .limit(10),
   ]);
 
+  const failed = [families, guardians, students, classes, payments].find((result) => result.error);
+  if (failed?.error) return { ok: false, error: toUserError(failed.error) };
   const hits: AdminSearchHit[] = [];
   const familyIds = new Set<string>();
 
@@ -1290,7 +1272,7 @@ export async function searchAdmin(query: string): Promise<AdminSearchResult> {
     city: string | null;
   }[]) {
     const label = family.display_name ?? "Familie uten navn";
-    if (!matchesAll(label) || familyIds.has(family.id)) continue;
+    if (familyIds.has(family.id)) continue;
     familyIds.add(family.id);
     hits.push({
       group: "Familier",
@@ -1315,11 +1297,6 @@ export async function searchAdmin(query: string): Promise<AdminSearchResult> {
       | null;
   }[]) {
     const name = personName(guardian.first_name, guardian.last_name);
-    if (
-      !matchesAll([name, guardian.email ?? "", guardian.phone ?? ""].join(" "))
-    ) {
-      continue;
-    }
     const byName = matchesAll(name);
     for (const link of guardian.family_guardians ?? []) {
       if (familyIds.has(link.family_id)) continue;
@@ -1355,7 +1332,6 @@ export async function searchAdmin(query: string): Promise<AdminSearchResult> {
     child_birth_date: string | null;
   }[]) {
     const name = personName(student.child_first_name, student.child_last_name);
-    if (!matchesAll(name)) continue;
     hits.push({
       group: "Elever",
       id: student.id,
@@ -1374,7 +1350,6 @@ export async function searchAdmin(query: string): Promise<AdminSearchResult> {
     age_max: number | null;
   }[]) {
     const label = row.name_no ?? "Klasse uten navn";
-    if (!matchesAll(label)) continue;
     hits.push({
       group: "Klasser",
       id: row.id,
@@ -1395,17 +1370,6 @@ export async function searchAdmin(query: string): Promise<AdminSearchResult> {
     amount: number;
     status: string;
   }[]) {
-    if (
-      !matchesAll(
-        [
-          payment.reference,
-          payment.psp_reference ?? "",
-          payment.payer_name ?? "",
-        ].join(" "),
-      )
-    ) {
-      continue;
-    }
     hits.push({
       group: "Betalinger",
       id: payment.id,

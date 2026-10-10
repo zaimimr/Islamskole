@@ -78,18 +78,11 @@ async function getApplications(
     const supabase = await createClient();
     const from = (page - 1) * PAGE_SIZE;
     let query = supabase
-      .from("teacher_applications")
+      .rpc("admin_search_teacher_applications", { p_query: q }, { count: "exact" })
       .select(
         "id, full_name, email, phone, subjects, message, status, created_at",
-        { count: "exact" },
       )
       .order("created_at", { ascending: false });
-    const term = q.replace(/[%,()]/g, " ").trim();
-    if (term) {
-      query = query.or(
-        `full_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%,subjects.ilike.%${term}%`,
-      );
-    }
     if (status === "aktive") query = query.neq("status", "arkivert");
     else if (status !== "alle") query = query.eq("status", status);
     const { data, count } = await query.range(from, from + PAGE_SIZE - 1);

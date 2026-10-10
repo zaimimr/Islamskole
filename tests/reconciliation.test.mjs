@@ -4,6 +4,7 @@ import test from "node:test";
 import { deflateRawSync } from "node:zlib";
 import {
   decodeText,
+  detectStatementSource,
   detectDelimiter,
   parseAmount,
   parseDate,
@@ -199,6 +200,23 @@ test("mixed XLSX workbook and Windows-1252 kontoinfo export share transaction id
   assert.deepEqual(workbook.transactions.map((row) => row.amount), [250000, -7550, 20000]);
   assert.equal(text.transactions.length, 1);
   assert.equal(workbook.transactions[0].externalId, text.transactions[0].externalId);
+});
+
+test("statement detection prefers bank tables in mixed workbooks and detects Vipps exports", () => {
+  assert.equal(detectStatementSource(readXlsxSheets(fixture("dnb-workbook.xlsx"))), "dnb");
+  assert.equal(detectStatementSource([parseDelimited(decodeText(fixture("dnb-kontoinfo.txt")))]), "dnb");
+  assert.equal(detectStatementSource([parseDelimited(decodeText(fixture("vipps-portal-export.csv")))]), "vipps");
+  assert.equal(detectStatementSource([[["Dato", "Beløp"], ["01.09.2026", "200"]]]), "ambiguous");
+  assert.equal(detectStatementSource([[["Navn", "Telefon"]]]), null);
+});
+
+test("missing statement accounts are explicit and a fallback resolves them", () => {
+  const dnb = [["Dato", "Inn på konto"], ["01.09.2026", "200"]];
+  const vipps = [["Date", "Amount", "PSP Reference"], ["01.09.2026", "200", "123"]];
+  assert.equal(parseDnbRows(dnb, "").missingAccount, true);
+  assert.equal(parseVippsRows(vipps, null).missingAccount, true);
+  assert.equal(parseDnbRows(dnb, "12345678901").missingAccount, false);
+  assert.equal(parseVippsRows(vipps, "60206").missingAccount, false);
 });
 
 test("Vipps portal export keeps captures and refunds, skips failed and fees", () => {

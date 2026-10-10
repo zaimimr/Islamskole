@@ -17,11 +17,12 @@ import { vippsReportMsns } from "@/lib/vipps-report";
 import { cn } from "@/lib/utils";
 import { FinanceLoadError } from "../load-error";
 import {
-  ImportPanel,
   TransactionInbox,
   type InboxTransaction,
   type PickerFamily,
 } from "./reconciliation-client";
+
+import { ImportPanel } from "./statement-import-panel";
 
 export const metadata: Metadata = { title: "Avstemming" };
 
@@ -274,7 +275,6 @@ export default async function ReconciliationPage({
       label: accountLabel(entry.source, entry.account),
     }))
     .sort((a, b) => a.label.localeCompare(b.label, "nb-NO"));
-  const dnbAccount = [...knownAccounts.values()].find((entry) => entry.source === "dnb")?.account ?? "";
 
   const allRows = openResult.data ?? [];
   const openRows = allRows.filter((row) => row.status === "ny");
@@ -339,7 +339,6 @@ export default async function ReconciliationPage({
           </a>
           <ImportPanel
             vippsAccounts={vippsAccounts}
-            dnbAccount={dnbAccount}
             history={
               (batchResult.data ?? []).length === 0 ? (
                 <p className="text-sm text-admin-muted">Ingenting importert ennå.</p>

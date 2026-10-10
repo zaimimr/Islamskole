@@ -23,6 +23,7 @@ export type ParseResult = {
   transactions: ParsedTransaction[];
   skipped: number;
   errors: string[];
+  missingAccount?: boolean;
 };
 
 export function decodeText(bytes: Uint8Array): string {
@@ -274,6 +275,7 @@ export function parseDnbSheets(sheets: string[][][], account: string): ParseResu
     transactions: recognized.flatMap((result) => result.transactions),
     skipped: recognized.reduce((sum, result) => sum + result.skipped, 0),
     errors: recognized.flatMap((result) => result.errors),
+    missingAccount: recognized.some((result) => result.missingAccount),
   };
 }
 
@@ -305,6 +307,7 @@ export function parseDnbRows(rows: string[][], account: string): ParseResult {
   const transactions: ParsedTransaction[] = [];
   const errors: string[] = [];
   let skipped = 0;
+  let missingAccount = false;
 
   rows.slice(headerIndex + 1).forEach((row, offset) => {
     const line = headerIndex + offset + 2;
@@ -343,6 +346,7 @@ export function parseDnbRows(rows: string[][], account: string): ParseResult {
     }
     const rowAccount = cell(row, columns.account).replace(/[\s.]/g, "") || account;
     if (!/^\d{11}$/.test(rowAccount)) {
+      if (!rowAccount) missingAccount = true;
       errors.push(`Linje ${line}: mangler gyldig kontonummer med 11 siffer.`);
       return;
     }
@@ -369,7 +373,7 @@ export function parseDnbRows(rows: string[][], account: string): ParseResult {
     });
   });
 
-  return { transactions, skipped, errors };
+  return { transactions, skipped, errors, missingAccount };
 }
 
 const vippsAliases = {
@@ -441,6 +445,7 @@ const vippsAliases = {
   account: [
     "msn",
     "msnvippsnumber",
+    "msnvippsnummer",
     "vippsnumber",
     "vippsnummer",
     "salgsstednummer",
@@ -452,6 +457,22 @@ const vippsAliases = {
   status: ["status", "state"],
   currency: ["valuta", "currency"],
 };
+
+function locateVippsHeader(rows: string[][]) {
+  return locateHeader(rows, vippsAliases, (columns) =>
+    (columns.date != null || columns.settlementDate != null) && columns.amount != null,
+  );
+}
+
+export function detectStatementSource(sheets: string[][][]): TransactionSource | "ambiguous" | null {
+  const bankHeaders = sheets.map(locateDnbHeader).filter((header) => header != null);
+  if (bankHeaders.some(({ columns }) =>
+    columns.in != null || columns.out != null || columns.account != null || columns.archiveReference != null,
+  )) return "dnb";
+  const vippsHeaders = sheets.map(locateVippsHeader).filter((header) => header != null);
+  if (vippsHeaders.some(({ columns }) => columns.account != null || columns.psp != null)) return "vipps";
+  return bankHeaders.length > 0 || vippsHeaders.length > 0 ? "ambiguous" : null;
+}
 
 const skippedVippsTypes =
   /gebyr|fee|utbetal|payout|oppgjor|settlement|top-?up|credit-?note|korreksjon|correction/;
@@ -482,12 +503,7 @@ export function vippsExternalId(
 }
 
 export function parseVippsRows(rows: string[][], fallbackAccount: string | null): ParseResult {
-  const located = locateHeader(
-    rows,
-    vippsAliases,
-    (columns) =>
-      (columns.date != null || columns.settlementDate != null) && columns.amount != null,
-  );
+  const located = locateVippsHeader(rows);
   if (!located) {
     return {
       transactions: [],
@@ -503,6 +519,7 @@ export function parseVippsRows(rows: string[][], fallbackAccount: string | null)
   const transactions: ParsedTransaction[] = [];
   const errors: string[] = [];
   let skipped = 0;
+  let missingAccount = false;
 
   rows.slice(headerIndex + 1).forEach((row, offset) => {
     const line = headerIndex + offset + 2;
@@ -529,6 +546,7 @@ export function parseVippsRows(rows: string[][], fallbackAccount: string | null)
     }
     const account = msnFrom(cell(row, columns.account)) ?? fallbackAccount;
     if (!account) {
+      missingAccount = true;
       errors.push(`Linje ${line}: mangler Vippsnummer. Velg salgssted før du laster opp.`);
       return;
     }
@@ -557,7 +575,7 @@ export function parseVippsRows(rows: string[][], fallbackAccount: string | null)
     });
   });
 
-  return { transactions, skipped, errors };
+  return { transactions, skipped, errors, missingAccount };
 }
 
 export type VippsFundsItem = {

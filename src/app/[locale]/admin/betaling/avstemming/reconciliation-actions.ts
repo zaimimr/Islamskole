@@ -8,9 +8,12 @@ import { writeAudit } from "@/lib/audit";
 import { toUserError } from "@/lib/action-errors";
 import {
   decodeText,
+  detectStatementSource,
   parseDelimited,
   parseDnbSheets,
   parseVippsRows,
+  type ParseResult,
+  type TransactionSource,
 } from "@/lib/bank-statement";
 import { isZip, readXlsxSheets } from "@/lib/xlsx-rows";
 import { importFromVipps, importTransactions, type ImportSummary } from "@/lib/reconciliation";
@@ -21,7 +24,7 @@ import { voidPayment } from "../../students-actions";
 type Failure = { ok: false; error: string };
 type Done = { ok: true } | Failure;
 
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
 async function requireAdmin(): Promise<Failure | null> {
   if (await getIsAdmin()) return null;
@@ -110,27 +113,35 @@ async function schoolYearFor(client: Client, date: string): Promise<string | und
 
 export type ImportResult = { ok: true; summary: ImportSummary } | Failure;
 
-export async function importStatementFile(formData: FormData): Promise<ImportResult> {
-  const denied = await requireAdmin();
-  if (denied) return denied;
+export type StatementPreview = {
+  source: TransactionSource | null;
+  needsAccount: boolean;
+  transactions: number;
+  accounts: number;
+  from: string | null;
+  to: string | null;
+  errors: string[];
+};
 
+type ReadStatement = {
+  ok: true;
+  file: File;
+  source: TransactionSource | null;
+  parsed: ParseResult;
+};
+
+async function readStatementFile(formData: FormData): Promise<ReadStatement | Failure> {
   const file = formData.get("file");
-  const source = formData.get("source");
+  const requestedSource = formData.get("source") ?? "auto";
   const account = String(formData.get("account") ?? "").replace(/[\s.]/g, "");
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, error: "Velg en fil å laste opp." };
   }
   if (file.size > MAX_FILE_BYTES) {
-    return { ok: false, error: "Filen er for stor. Maks 5 MB." };
+    return { ok: false, error: "Filen er for stor. Maks 4 MB." };
   }
-  if (source !== "vipps" && source !== "dnb") {
+  if (requestedSource !== "auto" && requestedSource !== "vipps" && requestedSource !== "dnb") {
     return { ok: false, error: "Velg om filen er fra Vipps eller DNB." };
-  }
-  if (source === "dnb" && account && !/^\d{11}$/.test(account)) {
-    return { ok: false, error: "Skriv inn DNB-kontonummeret med 11 siffer." };
-  }
-  if (source === "vipps" && account && !/^\d{4,10}$/.test(account)) {
-    return { ok: false, error: "Ugyldig Vippsnummer." };
   }
 
   let sheets: string[][][];
@@ -144,16 +155,57 @@ export async function importStatementFile(formData: FormData): Promise<ImportRes
     };
   }
 
+  const detected = requestedSource === "auto" ? detectStatementSource(sheets) : requestedSource;
+  if (!detected) return { ok: false, error: "Fant ingen transaksjonstabell i filen. Velg en kontoutskrift fra DNB eller Vipps." };
+  if (detected === "ambiguous") {
+    return { ok: true, file, source: null, parsed: { transactions: [], skipped: 0, errors: [] } };
+  }
+  const source = detected;
+  if (account && !(source === "dnb" ? /^\d{11}$/ : /^\d{4,10}$/).test(account)) {
+    return { ok: false, error: source === "dnb" ? "Kontonummeret må ha 11 siffer." : "Ugyldig Vippsnummer." };
+  }
   const parsed = source === "dnb"
     ? parseDnbSheets(sheets, account)
-    : sheets
-      .map((rows) => parseVippsRows(rows, account || null))
+    : sheets.map((rows) => parseVippsRows(rows, account || null))
       .reduce((best, next) => next.transactions.length > best.transactions.length ? next : best);
+  return { ok: true, file, source, parsed };
+}
+
+export async function inspectStatementFile(formData: FormData): Promise<{ ok: true; preview: StatementPreview } | Failure> {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+  const result = await readStatementFile(formData);
+  if (!result.ok) return result;
+  const { source, parsed } = result;
+  if (source && !parsed.missingAccount && parsed.transactions.length === 0) {
+    return { ok: false, error: parsed.errors[0] ?? "Fant ingen transaksjoner i filen." };
+  }
+  const dates = parsed.transactions.map((row) => row.bookedOn).sort();
+  return {
+    ok: true,
+    preview: {
+      source,
+      needsAccount: parsed.missingAccount ?? false,
+      transactions: parsed.transactions.length,
+      accounts: new Set(parsed.transactions.map((row) => row.account)).size,
+      from: dates[0] ?? null,
+      to: dates.at(-1) ?? null,
+      errors: parsed.missingAccount ? [] : parsed.errors.slice(0, 50),
+    },
+  };
+}
+
+export async function importStatementFile(formData: FormData): Promise<ImportResult> {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+  const result = await readStatementFile(formData);
+  if (!result.ok) return result;
+  const { file, source, parsed } = result;
+  const account = String(formData.get("account") ?? "").replace(/[\s.]/g, "");
+  if (!source) return { ok: false, error: "Velg DNB eller Vipps for denne filen." };
+  if (parsed.missingAccount) return { ok: false, error: source === "dnb" ? "Filen mangler kontonummer. Skriv inn kontonummeret og prøv igjen." : "Filen mangler Vippsnummer. Velg salgssted og prøv igjen." };
   if (parsed.transactions.length === 0) {
-    return {
-      ok: false,
-      error: parsed.errors[0] ?? "Fant ingen transaksjoner i filen.",
-    };
+    return { ok: false, error: parsed.errors[0] ?? "Fant ingen transaksjoner i filen." };
   }
 
   const user = await getUser();

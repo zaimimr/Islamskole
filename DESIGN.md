@@ -58,3 +58,4 @@ Islamskole Bærum feels welcoming, trustworthy, and rooted in its local school c
 - Family editing keeps the primary contact, relationship labels, address, new guardians, and data-review resolution in one task-focused surface.
 - Public enrollment fails closed when no active fee exists and restores an unfinished family draft after refresh or accidental navigation.
 - Healthy, pending, informational, blocked, and neutral states pair color with labels and status marks. Captured payments, refunds, admission decisions, and placement are never collapsed into one status.
+- Statement imports start with file selection, detect the source and accounts, and show a read-only preview before confirmation. Missing details appear only when needed, and completion keeps the import counts visible.

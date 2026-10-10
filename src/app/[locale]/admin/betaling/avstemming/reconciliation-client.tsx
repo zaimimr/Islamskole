@@ -8,7 +8,6 @@ import {
   Ban,
   CheckCheck,
   ChevronDown,
-  CloudDownload,
   HandHeart,
   Link2,
   Loader2,
@@ -16,16 +15,13 @@ import {
   Search,
   Sparkles,
   Undo2,
-  Upload,
   Users,
 } from "lucide-react";
 import {
   acceptSuggestions,
   bulkMapToSadaqa,
-  fetchFromVipps,
   findPaymentCandidates,
   ignoreTransaction,
-  importStatementFile,
   linkToPayment,
   mapToFamily,
   mapToSadaqa,
@@ -97,8 +93,6 @@ export type PickerFamily = {
   children: PickerChild[];
 };
 
-export type AccountOption = { value: string; label: string };
-
 const footerClass =
   "[&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:rounded-xl [&_[data-slot=button]]:px-4";
 
@@ -134,240 +128,6 @@ const outcomeIcon: Record<string, typeof Link2> = {
   familie: Users,
   ignorert: Ban,
 };
-
-export function ImportPanel({
-  vippsAccounts,
-  dnbAccount,
-  history,
-}: {
-  vippsAccounts: AccountOption[];
-  dnbAccount: string;
-  history: ReactNode;
-}) {
-  const router = useRouter();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [fetching, startFetch] = useTransition();
-  const [uploading, startUpload] = useTransition();
-  const [fetchErrors, setFetchErrors] = useState<string[]>([]);
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [source, setSource] = useState("vipps");
-  const [vippsAccount, setVippsAccount] = useState("");
-  const [bankAccount, setBankAccount] = useState(dnbAccount);
-  const [file, setFile] = useState<File | null>(null);
-  const [inputKey, setInputKey] = useState(0);
-
-  function fetchVipps() {
-    startFetch(async () => {
-      const result = await fetchFromVipps({
-        from: from || undefined,
-        to: to || undefined,
-      });
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-      const inserted = result.accounts.reduce((sum, row) => sum + row.inserted, 0);
-      const matched = result.accounts.reduce((sum, row) => sum + row.matched, 0);
-      const errors = result.accounts.flatMap((row) => (row.error ? [row.error] : []));
-      setFetchErrors(errors);
-      if (errors.length === result.accounts.length) {
-        toast.error("Fikk ikke hentet fra Vipps", { description: errors[0] });
-      } else {
-        toast.success(`${inserted} nye transaksjoner fra Vipps`, {
-          description: matched > 0 ? `${matched} koblet automatisk til betalinger` : undefined,
-        });
-      }
-      router.refresh();
-    });
-  }
-
-  function upload() {
-    if (!file) return;
-    const data = new FormData();
-    data.set("file", file);
-    data.set("source", source);
-    data.set("account", source === "dnb" ? bankAccount : vippsAccount);
-    startUpload(async () => {
-      const result = await importStatementFile(data);
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-      const { summary } = result;
-      toast.success(`${summary.inserted} nye av ${summary.rows} transaksjoner`, {
-        description: [
-          summary.duplicates > 0 ? `${summary.duplicates} fantes fra før` : null,
-          summary.matched > 0 ? `${summary.matched} koblet automatisk` : null,
-          summary.errors.length > 0 ? `${summary.errors.length} linjer kunne ikke leses` : null,
-        ]
-          .filter(Boolean)
-          .join(" · ") || undefined,
-      });
-      setFile(null);
-      setInputKey((key) => key + 1);
-      router.refresh();
-    });
-  }
-
-  const fetchButton = (label: string) => (
-    <Button
-      type="button"
-      onClick={fetchVipps}
-      disabled={fetching}
-      className="min-h-11 rounded-xl px-4 font-bold"
-    >
-      {fetching ? (
-        <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-      ) : (
-        <CloudDownload aria-hidden="true" className="size-4" />
-      )}
-      {fetching ? "Henter …" : label}
-    </Button>
-  );
-
-  return (
-    <>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => setDialogOpen(true)}
-        className="min-h-11 rounded-xl px-3.5 font-bold"
-      >
-        <Upload aria-hidden="true" className="size-4" />
-        Importer
-      </Button>
-      {fetchButton("Hent fra Vipps")}
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className={cn(dialogShell, "sm:max-w-lg")}>
-          <DialogHeader className={dialogHead}>
-            <DialogTitle className="text-xl font-bold">Importer</DialogTitle>
-          </DialogHeader>
-          <div className={dialogBody}>
-            <section aria-labelledby="import-vipps" className="grid gap-3">
-              <h3 id="import-vipps" className="text-sm font-bold">
-                Hent fra Vipps for periode
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="vipps-from">Fra</Label>
-                  <Input
-                    id="vipps-from"
-                    type="date"
-                    value={from}
-                    onChange={(event) => setFrom(event.target.value)}
-                    className="h-11 rounded-xl"
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="vipps-to">Til</Label>
-                  <Input
-                    id="vipps-to"
-                    type="date"
-                    value={to}
-                    onChange={(event) => setTo(event.target.value)}
-                    className="h-11 rounded-xl"
-                  />
-                </div>
-              </div>
-              {fetchButton("Hent")}
-              {fetchErrors.length > 0 ? (
-                <ul className="grid gap-1.5 rounded-xl bg-[#FFF8E9] px-3 py-2 text-sm text-[#6B5524] ring-1 ring-[#E8D6AA]">
-                  {fetchErrors.map((error) => (
-                    <li key={error}>{error}</li>
-                  ))}
-                </ul>
-              ) : null}
-            </section>
-
-            <section aria-labelledby="import-file-heading" className="grid gap-3 border-t border-[#ECE8DF] pt-4">
-              <h3 id="import-file-heading" className="text-sm font-bold">
-                Last opp fil
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="import-source">Fra</Label>
-                  <SelectField
-                    id="import-source"
-                    value={source}
-                    onValueChange={setSource}
-                    options={[
-                      { value: "vipps", label: "Vipps" },
-                      { value: "dnb", label: "DNB" },
-                    ]}
-                  />
-                </div>
-                {source === "vipps" ? (
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="import-msn">Salgssted</Label>
-                    <SelectField
-                      id="import-msn"
-                      value={vippsAccount}
-                      onValueChange={setVippsAccount}
-                      options={[{ value: "", label: "Les fra filen" }, ...vippsAccounts]}
-                    />
-                  </div>
-                ) : (
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="import-account">
-                      Kontonummer
-                    </Label>
-                    <Input
-                      id="import-account"
-                      inputMode="numeric"
-                      value={bankAccount}
-                      onChange={(event) => setBankAccount(event.target.value)}
-                      placeholder="Les fra filen"
-                      className="h-11 rounded-xl"
-                    />
-                  </div>
-                )}
-              </div>
-              <label
-                htmlFor="import-file"
-                className={cn(
-                  "grid cursor-pointer justify-items-center gap-1 rounded-xl border border-dashed px-3 py-4 text-center text-sm transition-colors focus-within:ring-3 focus-within:ring-ring/50 hover:bg-[#FAF9F5]",
-                  file ? "border-[#9CC79F] bg-[#F2F8F2]" : "border-[#D5CFC2]",
-                )}
-              >
-                <Upload aria-hidden="true" className="size-5 text-[#3C8F44]" />
-                <span className="max-w-full font-bold break-all">
-                  {file ? file.name : "Velg CSV- eller Excel-fil"}
-                </span>
-                <input
-                  key={inputKey}
-                  id="import-file"
-                  type="file"
-                  accept=".csv,.txt,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-                  className="sr-only"
-                />
-              </label>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={upload}
-                disabled={uploading || !file}
-                className="min-h-11 rounded-xl px-3 font-bold"
-              >
-                {uploading ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : null}
-                {uploading ? "Laster opp …" : "Last opp"}
-              </Button>
-            </section>
-
-            <section aria-labelledby="import-history" className="grid gap-3 border-t border-[#ECE8DF] pt-4">
-              <h3 id="import-history" className="text-sm font-bold">
-                Siste importer
-              </h3>
-              {history}
-            </section>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
 
 type DialogState =
   | { kind: "sadaqa"; transaction: InboxTransaction }

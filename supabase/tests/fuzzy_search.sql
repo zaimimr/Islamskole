@@ -21,6 +21,7 @@ select ok(not public.search_matches('zzzzzzzz', 'Amira Solberg'), 'unrelated wor
 select ok(public.search_matches('', 'Amira Solberg'), 'empty query keeps all rows');
 select ok(public.search_matches('%,()', 'Amira Solberg'), 'punctuation is treated as whitespace');
 select ok(public.search_matches('amira("solberg")', 'Amira Solberg'), 'punctuation cannot alter the query');
+select ok(not public.search_word_matches(repeat('a', 121), repeat('a', 121)), 'direct word comparison has bounded input');
 
 select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 insert into auth.users (id, email, raw_app_meta_data) values
@@ -48,6 +49,7 @@ update public.student_applications set payment_id='f5000000-0000-0000-0000-00000
   where id='f5000000-0000-0000-0000-000000000071';
 
 set local role anon;
+select throws_ok($$select public.search_matches('Amira', 'Amira')$$, '42501', null, 'anonymous users cannot invoke search helpers');
 select throws_ok($$select public.admin_search_student_applications('Amira Solberg')$$, '42501', null, 'anonymous users cannot search applications');
 reset role;
 select set_config('request.jwt.claims', '{"sub":"f5000000-0000-0000-0000-0000000000a2","role":"authenticated"}', true);

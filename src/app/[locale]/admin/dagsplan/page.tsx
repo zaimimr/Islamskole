@@ -9,6 +9,7 @@ import { DayPicker } from "./day-picker";
 import { DayPlanGrid, type DayPlanClass, type DayPlanTeacher } from "./day-plan-grid";
 import { EnsureLessonsButton } from "./ensure-lessons-button";
 import { TeacherAbsences, type TeacherAbsenceRow } from "./teacher-absences";
+import { DayAttendance } from "./day-attendance";
 
 export const metadata: Metadata = { title: "Dagsplan" };
 
@@ -41,6 +42,7 @@ const linkClass =
 export default async function DagsplanPage({ params, searchParams }: PageProps<"/[locale]/admin/dagsplan">) {
   const [{ locale }, query] = await Promise.all([params, searchParams]);
   const basePath = adminBasePath(locale);
+  const attendanceView = query.visning === "oppmote";
   const supabase = await createClient();
   const { data: year } = await supabase
     .from("school_years")
@@ -53,10 +55,10 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
       <h1 className="text-balance font-heading text-[2rem] leading-tight font-bold tracking-[-0.02em] sm:text-4xl">
         Dagsplan
       </h1>
-      <p className="mt-1 max-w-2xl text-admin-muted">
+      {attendanceView ? null : <p className="mt-1 max-w-2xl text-admin-muted">
         Hvem underviser hvilken klasse i hver time. Bytt inn vikar, slå sammen eller avlys timer for én dag.
         Fast oppsett endres under hver klasse.
-      </p>
+      </p>}
     </header>
   );
 
@@ -118,7 +120,7 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
     );
   }
 
-  const [{ data: lessonData }, { data: attendanceData }, { data: noteData }, { data: absenceData }] = await Promise.all([
+  const [{ data: lessonData }, { data: attendanceData }, { data: noteData }, { data: absenceData }, enrollmentResult] = await Promise.all([
     supabase
       .from("lessons")
       .select(
@@ -133,9 +135,12 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
       .select("id, guardian_id, notified, source, reason, created_at")
       .eq("school_day_id", day.id)
       .order("created_at", { ascending: true }),
+    supabase.from("enrollments").select("class_id").eq("school_year_id", year.id).eq("status", "aktiv"),
   ]);
 
-  const lessons = (lessonData as LessonRow[] | null) ?? [];
+  if (enrollmentResult.error) throw new Error("Kunne ikke hente elever til dagsplanen.");
+  const occupiedClasses = new Set((enrollmentResult.data ?? []).map((row) => row.class_id));
+  const lessons = ((lessonData as LessonRow[] | null) ?? []).filter((row) => occupiedClasses.has(row.class_id));
   const knownIds = new Set((teacherData ?? []).map((row) => row.id));
   const missingIds = [
     ...new Set(
@@ -257,6 +262,22 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
         />
       </div>
 
+      <nav aria-label="Dagsplanvisning" className="flex gap-1 border-b border-[#E3DED3]">
+        {[
+          { label: "Timeplan", attendance: false },
+          { label: "Oppmøte", attendance: true },
+        ].map((view) => (
+          <Link
+            key={view.label}
+            href={`${basePath}/dagsplan?dag=${day.id}${view.attendance ? "&visning=oppmote" : ""}`}
+            aria-current={attendanceView === view.attendance ? "page" : undefined}
+            className={`-mb-px inline-flex min-h-11 items-center border-b-2 px-3 text-sm font-bold outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${attendanceView === view.attendance ? "border-[#2F7938] text-[#1D4E24]" : "border-transparent text-admin-muted hover:text-foreground"}`}
+          >
+            {view.label}
+          </Link>
+        ))}
+      </nav>
+
       {day.cancelled ? (
         <p role="status" className="flex gap-2 rounded-2xl bg-[#FFF8E9] p-4 text-sm ring-1 ring-[#ECDCB9]">
           <CalendarX aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
@@ -267,7 +288,7 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
         </p>
       ) : null}
 
-      {day.cancelled ? null : (
+      {day.cancelled || attendanceView ? null : (
         <TeacherAbsences
           dayId={day.id}
           dayLabel={dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1)}
@@ -277,7 +298,16 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
       )}
 
       {classes.length ? (
-        <>
+        attendanceView ? (
+          <DayAttendance
+            basePath={basePath}
+            day={day}
+            yearLabel={year.label}
+            slots={slots}
+            classes={classes}
+            query={query}
+          />
+        ) : <>
           <p className="text-sm text-admin-muted tabular-nums">
             {lessons.length} timer i {classes.length} {classes.length === 1 ? "klasse" : "klasser"}
             {uncovered.size ? ` · ${uncovered.size} mangler vikar` : ""}

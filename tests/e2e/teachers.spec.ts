@@ -7,6 +7,7 @@ import {
   ensureAuthUser,
   findAuthUser,
   loginAs,
+  pickOption,
   rowAction,
   rowWith,
   seedAdmin,
@@ -200,5 +201,42 @@ test.describe("/admin/laerere", () => {
         return (row as { status: string } | null)?.status;
       })
       .not.toBe("ny");
+  });
+
+  test("archived applications are hidden by default and remain searchable", async ({ page }) => {
+    const suffix = uid();
+    const activeEmail = zzEmail("active-application");
+    const archivedEmail = zzEmail("archived-application");
+    const { error } = await db().from("teacher_applications").insert([
+      { full_name: `ZZTEST Aktiv ${suffix}`, email: activeEmail, status: "ny" },
+      { full_name: `ZZTEST Arkivert ${suffix}`, email: archivedEmail, status: "arkivert" },
+    ]);
+    if (error) throw error;
+
+    await page.goto(`/admin/laerere?tab=soknader&q=${suffix}`);
+    await expect(rowWith(page, activeEmail)).toBeVisible();
+    await expect(rowWith(page, archivedEmail)).toHaveCount(0);
+    await pickOption(page, page.getByRole("search"), "Vis status", "Arkivert");
+    await page.getByRole("button", { name: "Finn", exact: true }).click();
+    await expect(rowWith(page, archivedEmail)).toBeVisible();
+    await expect(rowWith(page, activeEmail)).toHaveCount(0);
+    await page.screenshot({ path: "test-results/teacher-applications-archive.png", fullPage: true });
+
+    await pickOption(page, page.getByRole("search"), "Vis status", "Alle statuser");
+    await page.getByRole("button", { name: "Finn", exact: true }).click();
+    await expect(rowWith(page, activeEmail)).toBeVisible();
+    await expect(rowWith(page, archivedEmail)).toBeVisible();
+    await page.getByRole("link", { name: "Nullstill", exact: true }).click();
+    await expect(rowWith(page, archivedEmail)).toHaveCount(0);
+    await expect(page.getByRole("combobox", { name: "Vis status" })).toContainText("Aktive søknader");
+    await page.screenshot({ path: "test-results/teacher-applications-active.png", fullPage: true });
+    await pickOption(page, rowWith(page, activeEmail), "Søknadsstatus", "Arkivert");
+    await expect(rowWith(page, activeEmail)).toHaveCount(0);
+    await page.goto(`/admin/laerere?tab=soknader&q=${suffix}&status=arkivert`);
+    await expect(rowWith(page, activeEmail)).toBeVisible();
+    await pickOption(page, rowWith(page, activeEmail), "Søknadsstatus", "Ny");
+    await expect(rowWith(page, activeEmail)).toHaveCount(0);
+    await page.goto(`/admin/laerere?tab=soknader&q=${suffix}`);
+    await expect(rowWith(page, activeEmail)).toBeVisible();
   });
 });

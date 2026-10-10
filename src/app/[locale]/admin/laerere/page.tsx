@@ -49,6 +49,7 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = { title: "Lærere" };
 
 const statusItems = [
+  { value: "aktive", label: "Aktive søknader" },
   { value: "alle", label: "Alle statuser" },
   { value: "ny", label: "Ny" },
   { value: "kontaktet", label: "Kontaktet" },
@@ -89,7 +90,8 @@ async function getApplications(
         `full_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%,subjects.ilike.%${term}%`,
       );
     }
-    if (status) query = query.eq("status", status);
+    if (status === "aktive") query = query.neq("status", "arkivert");
+    else if (status !== "alle") query = query.eq("status", status);
     const { data, count } = await query.range(from, from + PAGE_SIZE - 1);
     return {
       rows: (data as TeacherApplicationRow[] | null) ?? [],
@@ -275,10 +277,10 @@ async function TeacherContent({
   const q = typeof sp.q === "string" ? sp.q : "";
   const rawStatus = typeof sp.status === "string" ? sp.status : "";
   const status = statusItems.some(
-    (item) => item.value === rawStatus && item.value !== "alle",
+    (item) => item.value === rawStatus,
   )
     ? rawStatus
-    : "";
+    : "aktive";
   const [registry, { rows: applications, total }] = await Promise.all([
     tab === "laerere"
       ? getRegisteredTeachers()
@@ -303,7 +305,7 @@ async function TeacherContent({
     (teacherPage - 1) * PAGE_SIZE,
     teacherPage * PAGE_SIZE,
   );
-  const filtered = Boolean(q || status);
+  const filtered = Boolean(q || status !== "aktive");
 
   return tab === "laerere" ? (
     <section
@@ -516,8 +518,9 @@ async function TeacherContent({
               Vis status
             </span>
             <Select
+              key={status}
               name="status"
-              defaultValue={status || "alle"}
+              defaultValue={status}
               items={statusItems}
             >
               <SelectTrigger
@@ -568,7 +571,7 @@ async function TeacherContent({
           <p className="mt-0.5 text-sm text-admin-muted" aria-live="polite">
             {filtered
               ? `${total} ${total === 1 ? "søknad passer" : "søknader passer"} valgte filtre`
-              : `${counts.fresh} nye · ${counts.contacted} kontaktet · ${counts.all} totalt`}
+              : `${counts.fresh} nye · ${counts.contacted} kontaktet · ${total} aktive`}
           </p>
         </div>
         {applications.length === 0 ? (
@@ -577,7 +580,7 @@ async function TeacherContent({
             title={
               filtered
                 ? "Ingen søknader passer filtrene"
-                : "Ingen søknader ennå"
+                : "Ingen aktive søknader"
             }
             description={
               filtered

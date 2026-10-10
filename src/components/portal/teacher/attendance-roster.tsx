@@ -200,6 +200,7 @@ export function AttendanceRoster({
                       <button
                         key={option.status}
                         type="button"
+                        disabled={pending}
                         aria-pressed={selected}
                         onClick={() => {
                           if (!selected) mark([row.student_id], option.status);

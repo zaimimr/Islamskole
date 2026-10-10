@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { SelectField } from "@/components/ui/select-field";
@@ -18,11 +18,16 @@ export function DayPicker({
   selectedId: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const index = days.findIndex((day) => day.id === selectedId);
   const previous = index > 0 ? days[index - 1] : null;
   const next = index >= 0 && index < days.length - 1 ? days[index + 1] : null;
-  const href = (id: string) => `${basePath}?dag=${id}`;
+  const href = (id: string) => {
+    const query = new URLSearchParams(searchParams.toString());
+    query.set("dag", id);
+    return `${basePath}?${query}`;
+  };
   const arrow = cn(buttonVariants({ variant: "outline", size: "icon" }), "size-11 shrink-0 rounded-xl bg-white");
 
   return (

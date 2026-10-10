@@ -260,6 +260,7 @@ select lives_ok(
   $$
     insert into public.attendance (student_id, lesson_id, status)
     values ('f1000000-0000-0000-0000-000000000051', (select id from f1_koran), 'til_stede')
+    on conflict (student_id, lesson_id) do update set status = excluded.status
   $$,
   'the co-teacher marks attendance for the lesson'
 );

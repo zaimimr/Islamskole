@@ -393,6 +393,7 @@ export type Database = {
       attendance: {
         Row: {
           id: string
+          inherited_from_lesson_id: string | null
           lesson_id: string | null
           marked_at: string
           marked_by: string | null
@@ -402,6 +403,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          inherited_from_lesson_id?: string | null
           lesson_id?: string | null
           marked_at?: string
           marked_by?: string | null
@@ -411,6 +413,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          inherited_from_lesson_id?: string | null
           lesson_id?: string | null
           marked_at?: string
           marked_by?: string | null
@@ -419,6 +422,13 @@ export type Database = {
           student_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "attendance_inherited_from_lesson_id_fkey"
+            columns: ["inherited_from_lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "attendance_lesson_id_fkey"
             columns: ["lesson_id"]

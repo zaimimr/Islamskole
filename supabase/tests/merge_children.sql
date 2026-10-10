@@ -101,6 +101,19 @@ insert into public.term_report_publications(id, report_id, student_id, school_ye
 ('f4000000-0000-0000-0000-0000000000f8','f4000000-0000-0000-0000-0000000000f7','f4000000-0000-0000-0000-000000000052','f4000000-0000-0000-0000-000000000001','autumn',1,gen_random_uuid(),'{"studentName":"Original child","summary":"Published assessment"}');
 insert into public.attendance_followups(id,student_id,student_name,class_id,school_year_id,streak_ended_on,action,note,recorded_by,recorded_by_name) values
 ('f4000000-0000-0000-0000-0000000000f9','f4000000-0000-0000-0000-000000000052','Original child','f4000000-0000-0000-0000-0000000000c1','f4000000-0000-0000-0000-000000000001',current_date,'contacted','Original contact history','f4000000-0000-0000-0000-0000000000a2','Original teacher');
+insert into public.school_activities(id,class_id,school_year_id,title,consent_text,event_date,respond_by,status) values
+('f4000000-0000-0000-0000-0000000000f6','f4000000-0000-0000-0000-0000000000c1','f4000000-0000-0000-0000-000000000001','ZZTEST Activity','Original consent',current_date,current_date,'published');
+insert into public.activity_students(activity_id,student_id,student_name,participation) values
+('f4000000-0000-0000-0000-0000000000f6','f4000000-0000-0000-0000-000000000051','Kept child','unrecorded'),
+('f4000000-0000-0000-0000-0000000000f6','f4000000-0000-0000-0000-000000000052','Original child','participated');
+insert into public.activity_responses(activity_id,student_id,consent,going,responded_by,guardian_name,responded_at) values
+('f4000000-0000-0000-0000-0000000000f6','f4000000-0000-0000-0000-000000000051','declined',false,'f4000000-0000-0000-0000-0000000000a2','Original guardian',now() - interval '1 day'),
+('f4000000-0000-0000-0000-0000000000f6','f4000000-0000-0000-0000-000000000052','granted',true,'f4000000-0000-0000-0000-0000000000a2','Original guardian',now());
+insert into public.activity_response_history(id,activity_id,student_id,consent,going,consent_text,responded_by,guardian_name) values
+(gen_random_uuid(),'f4000000-0000-0000-0000-0000000000f6','f4000000-0000-0000-0000-000000000051','declined',false,'Original consent','f4000000-0000-0000-0000-0000000000a2','Original guardian'),
+(gen_random_uuid(),'f4000000-0000-0000-0000-0000000000f6','f4000000-0000-0000-0000-000000000052','granted',true,'Original consent','f4000000-0000-0000-0000-0000000000a2','Original guardian');
+insert into public.activity_added_invitations(id,activity_id,student_id) values
+('f4000000-0000-0000-0000-0000000000fa','f4000000-0000-0000-0000-0000000000f6','f4000000-0000-0000-0000-000000000052');
 update public.student_fees set amount=600000 where student_id='f4000000-0000-0000-0000-000000000052';
 set local role authenticated;
 select ok(jsonb_array_length(public.admin_merge_children('f4000000-0000-0000-0000-000000000051', 'f4000000-0000-0000-0000-000000000052')->'conflicts') > 0, 'different tuition claims cannot be guessed');
@@ -150,6 +163,15 @@ select is((select student_id from public.attendance_followups where id='f4000000
 select is((select note from public.attendance_followups where id='f4000000-0000-0000-0000-0000000000f9'),'Original contact history','contact history is retained');
 select is((select recorded_by from public.attendance_followups where id='f4000000-0000-0000-0000-0000000000f9'),'f4000000-0000-0000-0000-0000000000a2'::uuid,'merge retains followup author');
 
+select is((select count(*) from public.activity_students where activity_id='f4000000-0000-0000-0000-0000000000f6'),1::bigint,'duplicate activity invitation consolidated');
+select is((select consent from public.activity_responses where activity_id='f4000000-0000-0000-0000-0000000000f6'),'granted','latest guardian consent retained');
+select is((select participation from public.activity_students where activity_id='f4000000-0000-0000-0000-0000000000f6'),'participated','actual activity participation retained');
+select is((select count(*) from public.activity_response_history where student_id='f4000000-0000-0000-0000-000000000051'),2::bigint,'all original guardian decisions survive merge');
+select ok(exists(select 1 from public.audit_log where action='student.merged' and metadata->'before'->'activity_responses' @> '[{"student_id":"f4000000-0000-0000-0000-000000000052","consent":"granted"}]'::jsonb),'merge audit retains original activity responses');
+
+reset role;
+select is((select student_id from public.activity_added_invitations where id='f4000000-0000-0000-0000-0000000000fa'),'f4000000-0000-0000-0000-000000000051'::uuid,'pending added activity invitation follows merged child');
+set local role authenticated;
 select is((select count(*) from public.student_fees where student_id='f4000000-0000-0000-0000-000000000051'), 1::bigint, 'duplicate tuition claim not doubled');
 select is((select paid from public.student_balances where student_id='f4000000-0000-0000-0000-000000000051'), 390000::bigint, 'both captured payments preserved with refund deducted');
 select is((select count(*) from public.enrollments where student_id='f4000000-0000-0000-0000-000000000051'), 1::bigint, 'duplicate class placement consolidated');

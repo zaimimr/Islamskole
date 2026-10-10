@@ -4,7 +4,7 @@ create extension if not exists pgtap with schema extensions;
 
 set local search_path = public, extensions;
 
-select plan(16);
+select plan(18);
 
 select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 
@@ -55,6 +55,9 @@ values ('d4000000-0000-0000-0000-0000000000b2', 'd4000000-0000-0000-0000-0000000
 insert into public.sadaqa_gifts (id, family_id, amount, method)
 values ('d4000000-0000-0000-0000-0000000000b3', 'd4000000-0000-0000-0000-0000000000e2', 10000, 'bank');
 
+insert into public.school_email_deliveries(id,kind,entity_id,family_id,email,status) values
+('d4000000-0000-0000-0000-0000000000b5','report_published',gen_random_uuid(),'d4000000-0000-0000-0000-0000000000e2','zz-d4-c@zztest.local','pending');
+
 insert into public.family_data_reviews (id, family_id, category, details)
 values (
   'd4000000-0000-0000-0000-0000000000b4',
@@ -88,6 +91,9 @@ select lives_ok(
 );
 
 reset role;
+
+select is((select family_id from public.school_email_deliveries where id='d4000000-0000-0000-0000-0000000000b5'),'d4000000-0000-0000-0000-0000000000e1'::uuid,'queued school email follows merged family');
+select is((select status from public.school_email_deliveries where id='d4000000-0000-0000-0000-0000000000b5'),'pending','family merge preserves pending delivery');
 
 select is(
   (select family_id from public.students where id = 'd4000000-0000-0000-0000-000000000052'),

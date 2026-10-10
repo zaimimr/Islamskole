@@ -1,3 +1,4 @@
+import { ClassActivities } from "@/components/school-activities/class-activities";
 import { LessonMaterials } from "@/components/portal/lesson-materials";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -660,6 +661,7 @@ export default async function KlassePage({
               admin
             />
           ) : null}
+          {activeYear ? <ClassActivities classId={classRecord.id} yearId={activeYear.id} locale={locale} /> : null}
           {activeYear ? <div className="rounded-2xl bg-white p-4 ring-1 ring-[#E3DED3] sm:p-5 print:hidden">
             <LessonMaterials classId={classRecord.id} schoolYearId={activeYear.id} locale={locale} editable />
           </div> : null}

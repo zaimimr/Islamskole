@@ -6,10 +6,11 @@ import { onboardingGuide, schoolEmailContent } from "../src/lib/school-emails/co
 test("parent onboarding explains passwordless access and family tasks in both languages", () => {
   for (const locale of ["no", "en"]) {
     const guide = onboardingGuide(locale, "parent");
-    assert.equal(guide.items.length, 5);
+    assert.equal(guide.items.length, 6);
     assert.match(guide.login, locale === "en" ? /do not need a password/ : /trenger ikke passord/);
     assert.ok(guide.items.some((item) => item.href === "/min-side/okonomi"));
     assert.ok(guide.items.some((item) => item.href === "/min-side/familie"));
+    assert.ok(guide.items.some((item) => /consent|samtykke/.test(item.text)));
   }
 });
 
@@ -40,7 +41,7 @@ test("parent and student welcome emails link to the passwordless login page", ()
     assert.equal(email.href, "/min-side/logg-inn");
     assert.match(email.intro, /Amina/);
     assert.match(email.intro, /trenger ikke passord/);
-    assert.equal(email.rows.length, kind === "welcome_parent" ? 5 : 3);
+    assert.equal(email.rows.length, kind === "welcome_parent" ? 6 : 3);
   }
 });
 

@@ -536,6 +536,7 @@ create temp table zz_payments on commit drop as
      or reference like 'ZZTEST%'
      or lower(coalesce(payer_email, '')) like '%@zztest.local'
      or id in (select payment_id from public.payment_allocations where student_id in (select id from zz_students));
+delete from public.school_activities where class_id in (select id from zz_classes) or school_year_id in (select id from zz_years) or title like 'ZZTEST%';
 delete from public.school_announcements where class_id in (select id from zz_classes) or school_year_id in (select id from zz_years) or created_by in (select id from auth.users where lower(email) like '%@zztest.local');
 delete from public.refunds where payment_id in (select id from zz_payments) or student_id in (select id from zz_students);
 delete from public.sadaqa_gifts where source_payment_id in (select id from zz_payments) or family_id in (select id from zz_families);

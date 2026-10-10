@@ -121,3 +121,28 @@ SERVICE_KEY=<service_role key> ANON_KEY=<anon key> node scripts/mint-local-sessi
 ```
 
 It creates `test-admin@islamskole.no` with the admin role and prints a cookie value. Set it as cookie `sb-127-auth-token` on `localhost` (path `/`, SameSite Lax), then open `http://localhost:3100/no/admin`.
+
+## Sunday teaching and family features
+
+Staff use the existing class page for shared weekly goals, covered topics, private teaching materials, substitute handover, homework responses, attendance follow-up and activities. The child learning page and admin student record contain term report drafts. Guardians and students read homework, materials and published reports on their existing child or student page. Guardians respond to activity consent separately for each invited child.
+
+Lesson files use the private `lesson-materials` bucket and signed download links. Uploads remain hidden from families until their stored size and MIME type have been verified. Substitute notes remain staff-only. Reusing a previous school year's weekly plan copies Sunday positions and materials without copying covered-topic markers.
+
+Homework responses refer to the assignment's current version. Editing the homework resets the displayed completion; editing the lesson summary does not. All response writes use the version-checked function. Teachers select an assignment to review its roster.
+
+Term reports contain separate staff-only drafts and immutable publication snapshots. Staff edit the assessment and next steps, review the full report, then publish. Attendance counts actual noncancelled school Sundays during enrollment, including a separate unrecorded count. Learning progress uses the latest dated update as of the report period. Later draft changes preserve previous publications. Reports and activity rosters have an authenticated print view.
+
+Attendance streaks require every scheduled lesson to be recorded absent on at least three consecutive eligible Sundays. Missing records, presence and lateness break a streak. Staff explicitly record contact, monitoring or resolution, or review and send a guardian email. Internal notes are never included in those emails. Published activity wording is fixed. Guardian responses retain identity, wording and decision history; participation requires consent and planned attendance. Staff can add newly enrolled children and notify their guardians, and cancellation retains responses while notifying guardians.
+
+School notifications use `school_email_deliveries`, retry claims and recipient rechecks. The daily `/api/cron/school-emails` job recovers pending deliveries and queues overdue payments. Admins inspect and retry deliveries under Beskjeder > E-postutsending. Configure `EMAILS_ENABLED=true`, `RESEND_API_KEY`, `RESEND_FROM`, `NEXT_PUBLIC_SITE_URL` and `CRON_SECRET` in production. The notification flag can still override the environment fallback. Local browser tests use a file outbox and never send through the provider.
+
+Child merges include homework, drafts/publications, attendance follow-up, activity invitations and consent histories in their locked audit snapshots and move logic. Family merges preserve notification delivery records. Original response and author identities are retained.
+
+```bash
+supabase test db
+npm test
+npm run test:e2e
+npm run typecheck
+npm run lint
+npm run build
+```

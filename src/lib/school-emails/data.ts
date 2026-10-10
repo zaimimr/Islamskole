@@ -124,6 +124,29 @@ async function followUpData(admin: Admin, delivery: SchoolDelivery) {
     ? { names: [studentDisplayName(data.students)], followUpMessage: data.message } : null;
 }
 
+async function activityData(admin: Admin, delivery: SchoolDelivery, locale: string) {
+  let activityId = delivery.entity_id;
+  let studentId: string | null = null;
+  if (delivery.kind === "activity_added") {
+    const { data: invitation, error } = await admin.from("activity_added_invitations").select("activity_id, student_id").eq("id", delivery.entity_id).maybeSingle();
+    if (error) throw error;
+    if (!invitation) return null;
+    activityId = invitation.activity_id;
+    studentId = invitation.student_id;
+  }
+  const { data: activity, error } = await admin.from("school_activities").select("title, event_date, respond_by, status").eq("id", activityId).maybeSingle();
+  if (error) throw error;
+  if (!activity || activity.status !== (delivery.kind === "activity_cancelled" ? "cancelled" : "published") ||
+    (delivery.kind !== "activity_cancelled" && activity.respond_by < osloToday())) return null;
+  let query = admin.from("activity_students").select("students!inner(id, child_first_name, child_last_name, family_id)")
+    .eq("activity_id", activityId).eq("students.family_id", delivery.family_id!);
+  if (studentId) query = query.eq("student_id", studentId);
+  const { data, error: studentError } = await query;
+  if (studentError) throw studentError;
+  return data.length ? { names: data.map((row) => studentDisplayName(row.students)), activityId,
+    activityTitle: activity.title, activityDate: dateLabel(activity.event_date, locale), activityDeadline: dateLabel(activity.respond_by, locale), activityStudentId: data[0].students.id } : null;
+}
+
 export async function schoolDeliveryContent(admin: Admin, delivery: SchoolDelivery) {
   const { data: family, error } = await admin.from("families").select("preferred_language")
     .eq("id", delivery.family_id!).maybeSingle();
@@ -134,6 +157,7 @@ export async function schoolDeliveryContent(admin: Admin, delivery: SchoolDelive
   if (!kind.endsWith("student") && !(await parentRecipient(admin, delivery))) return null;
   const content = kind.startsWith("signup") ? await signupData(admin, delivery)
     : kind.startsWith("welcome") ? await welcomeData(admin, delivery)
+    : kind.startsWith("activity") ? await activityData(admin, delivery, locale)
     : kind === "attendance_followup" ? await followUpData(admin, delivery)
     : kind === "report_published" ? await reportData(admin, delivery)
     : kind === "plan_confirmed" ? await planData(admin, delivery, locale)

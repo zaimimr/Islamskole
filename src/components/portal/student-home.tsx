@@ -1,3 +1,4 @@
+import { StudentActivities } from "@/components/school-activities/student-activities";
 import { StudentReports } from "@/components/term-reports/student-reports";
 import { StudentHomework } from "@/components/portal/student-homework";
 import { LessonMaterials } from "@/components/portal/lesson-materials";
@@ -63,6 +64,7 @@ export async function StudentHome({ locale }: { locale: string }) {
 
       {me ? <LearningProgressSection studentId={me.student_id} /> : null}
       {me ? <StudentReports studentId={me.student_id} locale={locale} /> : null}
+      {me ? <StudentActivities studentId={me.student_id} locale={locale} /> : null}
 
       {me && className ? (
         <>

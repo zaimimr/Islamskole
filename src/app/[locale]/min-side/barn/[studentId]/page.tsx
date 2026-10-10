@@ -1,3 +1,4 @@
+import { StudentActivities } from "@/components/school-activities/student-activities";
 import { StudentReports } from "@/components/term-reports/student-reports";
 import { StudentHomework } from "@/components/portal/student-homework";
 import { LessonMaterials } from "@/components/portal/lesson-materials";
@@ -96,6 +97,7 @@ export default async function ChildDetailPage({
       <StudentHomework studentId={child.student_id} locale={locale} />
       <LearningProgressSection studentId={child.student_id} />
       <StudentReports studentId={child.student_id} locale={locale} />
+      <StudentActivities studentId={child.student_id} locale={locale} guardian />
       <LessonMaterials classId={child.class_id} schoolYearId={child.school_year_id} locale={locale} />
 
       <WeekPlanView

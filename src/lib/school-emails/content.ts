@@ -1,5 +1,5 @@
 export type OnboardingRole = "parent" | "student";
-export type SchoolEmailKind = "signup_parent" | "signup_student" | "welcome_parent" | "welcome_student" | "plan_confirmed" | "payment_reminder" | "installment_due" | "installment_reminder" | "report_published" | "attendance_followup";
+export type SchoolEmailKind = "signup_parent" | "signup_student" | "welcome_parent" | "welcome_student" | "plan_confirmed" | "payment_reminder" | "installment_due" | "installment_reminder" | "report_published" | "attendance_followup" | "activity_consent" | "activity_cancelled" | "activity_added";
 
 const GUIDES = {
   no: {
@@ -10,6 +10,7 @@ const GUIDES = {
       { label: "Meld fravær", text: "Velg barnet og søndagen barnet ikke kommer, fra Min side.", href: "/min-side" },
       { label: "Familie", text: "Oppdater kontaktopplysninger, allergier og hvem som kan hente.", href: "/min-side/familie" },
       { label: "Økonomi", text: "Se betalinger og avdrag, betal med Vipps og hent kvitteringer.", href: "/min-side/okonomi" },
+      { label: "Aktiviteter og rapporter", text: "Velg barnet for å svare på aktivitetssamtykke, se deltakelse og lese publiserte semesterrapporter.", href: "/min-side" },
       { label: "Beskjeder", text: "Les beskjeder og bekreft viktige beskjeder for familien.", href: "/min-side/beskjeder" },
     ],
     student: [
@@ -28,6 +29,7 @@ const GUIDES = {
       { label: "Report absence", text: "Choose your child and the Sunday they will miss from Min side.", href: "/min-side" },
       { label: "Family", text: "Update contact details, allergies and authorised pickup contacts.", href: "/min-side/familie" },
       { label: "Payments", text: "See payments and installments, pay with Vipps and get receipts.", href: "/min-side/okonomi" },
+      { label: "Activities and reports", text: "Choose your child to respond to activity consent, see participation and read published term reports.", href: "/min-side" },
       { label: "Announcements", text: "Read messages and acknowledge important announcements for your family.", href: "/min-side/beskjeder" },
     ],
     student: [
@@ -55,6 +57,11 @@ export function schoolEmailContent(input: {
   paymentId?: string;
   publicationId?: string;
   followUpMessage?: string;
+  activityId?: string;
+  activityTitle?: string;
+  activityDate?: string;
+  activityDeadline?: string;
+  activityStudentId?: string;
 }) {
   const en = input.locale === "en";
   const names = input.names.join(", ");
@@ -82,6 +89,18 @@ export function schoolEmailContent(input: {
       rows: guide.items.map((item): [string, string] => [item.label, item.text]),
       href: "/min-side/logg-inn",
       ctaLabel: en ? "Open Min side" : "Åpne Min side",
+    };
+  }
+  if (input.kind.startsWith("activity")) {
+    const cancelled = input.kind === "activity_cancelled";
+    return {
+      subject: en ? (cancelled ? "School activity cancelled" : "Guardian consent requested for a school activity") : (cancelled ? "Skoleaktivitet avlyst" : "Samtykke til skoleaktivitet"),
+      title: input.activityTitle ?? "",
+      intro: cancelled ? (en ? `The activity for ${names} has been cancelled.` : `Aktiviteten for ${names} er avlyst.`)
+        : (en ? `Please read the activity details and consent statement on Min side and respond separately for ${names}.` : `Les om aktiviteten og samtykketeksten på Min side, og svar for hvert barn: ${names}.`),
+      rows: [[en ? "Date" : "Dato", input.activityDate ?? ""], ...(cancelled ? [] : [[en ? "Response deadline" : "Svarfrist", input.activityDeadline ?? ""]])] as [string, string][],
+      href: input.activityStudentId ? `/min-side/barn/${input.activityStudentId}#activities` : "/min-side",
+      ctaLabel: en ? "Open activity" : "Åpne aktivitet",
     };
   }
   if (input.kind === "attendance_followup") {

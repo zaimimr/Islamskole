@@ -34,6 +34,230 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_added_invitations: {
+        Row: {
+          activity_id: string
+          created_at: string
+          id: string
+          student_id: string
+        }
+        Insert: {
+          activity_id: string
+          created_at?: string
+          id?: string
+          student_id: string
+        }
+        Update: {
+          activity_id?: string
+          created_at?: string
+          id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_added_invitations_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "school_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_added_invitations_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_activities: {
+        Row: {
+          class_id: string
+          consent_text: string
+          description: string
+          event_date: string
+          id: string
+          respond_by: string
+          school_year_id: string
+          status: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          class_id: string
+          consent_text: string
+          description?: string
+          event_date: string
+          id?: string
+          respond_by: string
+          school_year_id: string
+          status?: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          class_id?: string
+          consent_text?: string
+          description?: string
+          event_date?: string
+          id?: string
+          respond_by?: string
+          school_year_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_activities_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_activities_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_students: {
+        Row: {
+          activity_id: string
+          participation: string
+          participation_at: string | null
+          participation_by: string | null
+          student_id: string
+          student_name: string
+        }
+        Insert: {
+          activity_id: string
+          participation?: string
+          participation_at?: string | null
+          participation_by?: string | null
+          student_id: string
+          student_name: string
+        }
+        Update: {
+          activity_id?: string
+          participation?: string
+          participation_at?: string | null
+          participation_by?: string | null
+          student_id?: string
+          student_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_students_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "school_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_students_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_responses: {
+        Row: {
+          activity_id: string
+          consent: string
+          going: boolean
+          guardian_name: string
+          responded_at: string
+          responded_by: string | null
+          student_id: string
+        }
+        Insert: {
+          activity_id: string
+          consent: string
+          going: boolean
+          guardian_name: string
+          responded_at?: string
+          responded_by?: string | null
+          student_id: string
+        }
+        Update: {
+          activity_id?: string
+          consent?: string
+          going?: boolean
+          guardian_name?: string
+          responded_at?: string
+          responded_by?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_responses_activity_id_student_id_fkey"
+            columns: ["activity_id", "student_id"]
+            isOneToOne: true
+            referencedRelation: "activity_students"
+            referencedColumns: ["activity_id", "student_id"]
+          },
+        ]
+      }
+      activity_response_history: {
+        Row: {
+          activity_id: string
+          consent: string
+          consent_text: string
+          going: boolean
+          guardian_name: string
+          id: string
+          responded_at: string
+          responded_by: string | null
+          student_id: string
+        }
+        Insert: {
+          activity_id: string
+          consent: string
+          consent_text: string
+          going: boolean
+          guardian_name: string
+          id: string
+          responded_at?: string
+          responded_by?: string | null
+          student_id: string
+        }
+        Update: {
+          activity_id?: string
+          consent?: string
+          consent_text?: string
+          going?: boolean
+          guardian_name?: string
+          id?: string
+          responded_at?: string
+          responded_by?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_response_history_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "school_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_response_history_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_followups: {
         Row: {
           student_name: string
@@ -3696,6 +3920,68 @@ export type Database = {
       }
     }
     Functions: {
+      activity_can_staff: { Args: { p_id: string }; Returns: boolean }
+      activity_owns_child: {
+        Args: { p_guardian_only?: boolean; p_student: string }
+        Returns: boolean
+      }
+      activity_can_read: { Args: { p_id: string }; Returns: boolean }
+      save_school_activity: {
+        Args: {
+          p_class_id: string
+          p_consent: string
+          p_date: string
+          p_description: string
+          p_expected: string | null
+          p_id: string
+          p_respond_by: string
+          p_title: string
+          p_year: string
+        }
+        Returns: {
+          class_id: string
+          consent_text: string
+          description: string
+          event_date: string
+          id: string
+          respond_by: string
+          school_year_id: string
+          status: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "school_activities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      publish_school_activity: {
+        Args: { p_expected: string; p_id: string }
+        Returns: string
+      }
+      add_activity_students: { Args: { p_id: string }; Returns: number }
+      cancel_school_activity: {
+        Args: { p_expected: string; p_id: string }
+        Returns: string
+      }
+      respond_school_activity: {
+        Args: {
+          p_consent: string
+          p_expected: string
+          p_going: boolean
+          p_id: string
+          p_request_id: string
+          p_student: string
+        }
+        Returns: string
+      }
+      record_activity_participation: {
+        Args: { p_id: string; p_participation: string; p_student: string }
+        Returns: undefined
+      }
       sunday_class_staff: {
         Args: { p_class_id: string; p_year: string }
         Returns: boolean

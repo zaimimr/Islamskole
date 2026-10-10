@@ -4,6 +4,7 @@ import { Link, redirect } from "@/i18n/navigation";
 import { ParentHome } from "@/components/portal/parent-home";
 import { StudentHome } from "@/components/portal/student-home";
 import { TeacherHome } from "@/components/portal/teacher-home";
+import { PortalOnboarding } from "@/components/portal/onboarding";
 import { PortalTabs } from "@/components/portal/parent/portal-tabs";
 import { buttonVariants } from "@/components/ui/button";
 import { getSiteSettings } from "@/lib/data";
@@ -31,6 +32,7 @@ export default async function PortalHomePage({
   return (
     <div className="grid gap-8">
       <h1 className="sr-only">{t("title")}</h1>
+      <PortalOnboarding locale={locale} context={context} />
       {suspended ? <TeacherSuspendedNotice /> : null}
       {isTeacher && context.isGuardian ? (
         <PortalTabs

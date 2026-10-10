@@ -66,6 +66,20 @@ npm run test:e2e -- --project=e2e tests/e2e/announcements.spec.ts
 
 The browser tests use test families and the local email outbox. The database tests cover role isolation, shared-email deduplication, sibling acknowledgement, opt-outs, retry permissions, and interrupted delivery.
 
+## School email and first-use guidance
+
+`src/lib/school-emails` handles signup confirmation, separate parent/student welcome, installment-plan confirmation, installment requests and overdue reminders. Database triggers enqueue new events. Server actions start processing after the response; `/api/cron/school-emails` and the existing installment cron recover pending deliveries. Both cron routes require `CRON_SECRET`. Delivery uses the existing email switch, provider and local outbox settings.
+
+Only service-role functions claim and complete email jobs. Claims expire after 15 minutes; failed messages retry up to five times. Provider requests carry a delivery ID as their idempotency key. `/admin/beskjeder/epost` shows delivery state and lets admins process the queue or retry failures. Recipients, current enrollment, outstanding balances and communication preferences are checked again before sending. Disabled email leaves jobs pending. Installment reminder timestamps are written only after accepted delivery.
+
+Signup confirms receipt of an application, without granting access or promising admission/payment. Parent onboarding begins with active-year placement, and student onboarding requires the actual student login address. Signup language follows the application locale; later messages use the family's current language. First-use Min side guidance is dismissed per account and role in `portal_onboarding`.
+
+```bash
+supabase test db supabase/tests/school_emails.sql
+node --conditions=react-server --test tests/school-emails.test.mjs
+npm run test:e2e -- --project=e2e tests/e2e/school-emails.spec.ts
+```
+
 ## Learning progress
 
 Learning progress lives in `src/lib/learning-progress` and `src/components/learning-progress`. Teachers open a child from the class's learning list. Administrators use the student record. Guardians read progress on the child page, and children read their own progress on Min side. Saved goals and updates are visible immediately, without email notifications or a separate publishing step.

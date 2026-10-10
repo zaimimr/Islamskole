@@ -1,5 +1,11 @@
 export const OSLO = "Europe/Oslo";
 
+export function addCalendarDays(date: string, days: number): string {
+  const value = new Date(`${date}T12:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
 export function osloToday(now: Date = new Date()): string {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: OSLO }).format(now);
 }

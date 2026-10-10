@@ -34,6 +34,74 @@ export type Database = {
   }
   public: {
     Tables: {
+      portal_onboarding: {
+        Row: {
+          completed_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      school_email_deliveries: {
+        Row: {
+          attempted_at: string | null
+          attempts: number
+          created_at: string
+          email: string
+          entity_id: string
+          family_id: string | null
+          id: string
+          kind: string
+          last_error: string | null
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          attempted_at?: string | null
+          attempts?: number
+          created_at?: string
+          email: string
+          entity_id: string
+          family_id?: string | null
+          id?: string
+          kind: string
+          last_error?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempted_at?: string | null
+          attempts?: number
+          created_at?: string
+          email?: string
+          entity_id?: string
+          family_id?: string | null
+          id?: string
+          kind?: string
+          last_error?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_email_deliveries_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       developer_impersonations: {
         Row: {
           developer_email: string
@@ -3284,6 +3352,38 @@ export type Database = {
       }
     }
     Functions: {
+      claim_school_emails: {
+        Args: { p_family_id?: string; p_limit?: number }
+        Returns: {
+          attempted_at: string | null
+          attempts: number
+          created_at: string
+          email: string
+          entity_id: string
+          family_id: string | null
+          id: string
+          kind: string
+          last_error: string | null
+          sent_at: string | null
+          status: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "school_email_deliveries"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      finish_school_email: {
+        Args: {
+          p_attempted_at: string
+          p_error?: string
+          p_id: string
+          p_status: string
+        }
+        Returns: boolean
+      }
+      queue_overdue_payment_emails: { Args: never; Returns: undefined }
       search_word_matches: {
         Args: { p_term: string; p_word: string }
         Returns: boolean

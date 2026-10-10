@@ -387,6 +387,7 @@ async function send(opts: {
   rows: Row[];
   note?: string;
   cta?: Cta;
+  idempotencyKey?: string;
 }) {
   const html = renderEmail({
     lang: opts.lang,
@@ -417,7 +418,7 @@ async function send(opts: {
       replyTo: opts.replyTo ?? undefined,
       html,
       text: renderText(opts),
-    });
+    }, opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : undefined);
     if (error) {
       console.error("Resend email failed", error);
       return false;
@@ -442,6 +443,20 @@ function formatDueDate(value: string | null | undefined, lang: EmailLang) {
 }
 
 export type EmailChild = { name: string; amount: number };
+
+export async function sendSchoolNotification(opts: {
+  to: string;
+  lang: EmailLang;
+  subject: string;
+  title: string;
+  intro: string;
+  rows: Row[];
+  note?: string;
+  cta?: Cta;
+  idempotencyKey: string;
+}) {
+  return send({ ...opts, badge: "Islamskole Bærum" });
+}
 
 function joinNames(children: { name: string }[]) {
   return children.map((child) => child.name).filter(Boolean).join(", ");

@@ -4,6 +4,10 @@
   ],
   "crons": [
     {
+      "path": "/api/cron/school-emails",
+      "schedule": "0 9 * * *"
+    },
+    {
       "path": "/api/cron/announcements",
       "schedule": "0 8 * * *"
     },

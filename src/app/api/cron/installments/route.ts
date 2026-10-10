@@ -1,23 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { findDueInstallmentBatches } from "@/lib/payment-plans";
-import {
-  familyLanguage,
-  familyRecipients,
-  remainingFor,
-  sendInstallmentBatch,
-  studentNames,
-} from "@/lib/installment-billing";
-import { osloToday } from "@/lib/dates";
-import { sendInstallmentEmail } from "@/lib/email";
-import { emailNotifications } from "@/flags";
+import { sendInstallmentBatch } from "@/lib/installment-billing";
+import { deliverSchoolEmails } from "@/lib/school-emails/delivery";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const LEAD_DAYS = 14;
 const MAX_BATCHES_PER_RUN = 20;
-const REMINDER_AFTER_DAYS = 7;
 
 function authorized(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
@@ -28,7 +19,7 @@ function authorized(request: NextRequest): boolean {
 
 type Admin = ReturnType<typeof createAdminClient>;
 
-async function sendBatches(admin: Admin, siteUrl: string) {
+async function sendBatches(admin: Admin) {
   const batches = await findDueInstallmentBatches(admin, {
     leadDays: LEAD_DAYS,
     limit: MAX_BATCHES_PER_RUN,
@@ -40,7 +31,7 @@ async function sendBatches(admin: Admin, siteUrl: string) {
 
   for (const batch of batches) {
     try {
-      const outcome = await sendInstallmentBatch(admin, batch, siteUrl);
+      const outcome = await sendInstallmentBatch(admin, batch);
       if (outcome === "sent") sent += 1;
       else skipped += 1;
     } catch (error) {
@@ -54,128 +45,6 @@ async function sendBatches(admin: Admin, siteUrl: string) {
   }
 
   return { sent, skipped, failed };
-}
-
-async function sendReminders(admin: Admin, siteUrl: string) {
-  const cutoff = new Date(`${osloToday()}T12:00:00Z`);
-  cutoff.setUTCDate(cutoff.getUTCDate() - REMINDER_AFTER_DAYS);
-  const cutoffDate = cutoff.toISOString().slice(0, 10);
-
-  const { data } = await admin
-    .from("installments")
-    .select(
-      "id, student_id, school_year_id, due_date, amount, payment_id, payment_plans!inner(family_id, status, paused_at)",
-    )
-    .eq("status", "sendt")
-    .is("reminder_sent_at", null)
-    .not("payment_id", "is", null)
-    .lte("due_date", cutoffDate)
-    .eq("payment_plans.status", "aktiv")
-    .is("payment_plans.paused_at", null)
-    .limit(50);
-
-  const byPayment = new Map<
-    string,
-    {
-      familyId: string;
-      schoolYearId: string;
-      dueDate: string;
-      rows: { id: string; studentId: string; amount: number }[];
-    }
-  >();
-  for (const row of data ?? []) {
-    const plan = row.payment_plans as unknown as { family_id: string };
-    const paymentId = row.payment_id as string;
-    let group = byPayment.get(paymentId);
-    if (!group) {
-      group = {
-        familyId: plan.family_id,
-        schoolYearId: row.school_year_id,
-        dueDate: row.due_date,
-        rows: [],
-      };
-      byPayment.set(paymentId, group);
-    }
-    group.rows.push({
-      id: row.id,
-      studentId: row.student_id,
-      amount: row.amount,
-    });
-  }
-
-  let reminded = 0;
-
-  for (const [paymentId, group] of byPayment) {
-    try {
-      const { data: payment } = await admin
-        .from("payments")
-        .select("status")
-        .eq("id", paymentId)
-        .maybeSingle();
-      if (!payment || payment.status !== "opprettet") continue;
-
-      const remaining = await remainingFor(
-        admin,
-        group.rows.map((row) => row.studentId),
-        group.schoolYearId,
-      );
-      if (remaining !== null && remaining <= 0) {
-        await admin
-          .from("installments")
-          .update({ status: "betalt" })
-          .in(
-            "id",
-            group.rows.map((row) => row.id),
-          );
-        continue;
-      }
-
-      if (await emailNotifications()) {
-        const [recipients, lang] = await Promise.all([
-          familyRecipients(admin, group.familyId),
-          familyLanguage(admin, group.familyId),
-        ]);
-        if (recipients.length > 0) {
-          const names = await studentNames(
-            admin,
-            group.rows.map((row) => row.studentId),
-          );
-          const { data: year } = await admin
-            .from("school_years")
-            .select("label")
-            .eq("id", group.schoolYearId)
-            .maybeSingle();
-
-          await sendInstallmentEmail({
-            lang,
-            remaining,
-            to: recipients,
-            children: group.rows.map((row) => ({
-              name: names.get(row.studentId) ?? "Elev",
-              amount: row.amount,
-            })),
-            totalAmount: group.rows.reduce((sum, row) => sum + row.amount, 0),
-            schoolYear: year?.label ?? null,
-            dueDate: group.dueDate,
-            url: `${siteUrl}/api/vipps/pay/${paymentId}`,
-          });
-        }
-      }
-
-      await admin
-        .from("installments")
-        .update({ reminder_sent_at: new Date().toISOString() })
-        .in(
-          "id",
-          group.rows.map((row) => row.id),
-        );
-      reminded += 1;
-    } catch (error) {
-      console.error("Installment reminder failed", { paymentId, error });
-    }
-  }
-
-  return { reminded };
 }
 
 export async function GET(request: NextRequest) {
@@ -192,12 +61,14 @@ export async function GET(request: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const batchResult = await sendBatches(admin, siteUrl);
-  const reminderResult = await sendReminders(admin, siteUrl);
+  const batchResult = await sendBatches(admin);
+  const { error } = await admin.rpc("queue_overdue_payment_emails");
+  if (error) throw new Error("Could not queue payment reminders", { cause: error });
+  const reminderResult = await deliverSchoolEmails();
 
   return NextResponse.json({
     ok: true,
     ...batchResult,
-    ...reminderResult,
+    email: reminderResult,
   });
 }

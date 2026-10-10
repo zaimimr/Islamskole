@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { scheduleSchoolEmails } from "@/lib/school-emails/delivery";
 import { createClient } from "@/lib/supabase/server";
 import { getIsAdmin, getUser } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
@@ -57,7 +58,7 @@ import {
 import { getSiteSettings } from "@/lib/data";
 import { toUserError } from "@/lib/action-errors";
 import { capAtLimit, formatNok } from "@/lib/money";
-import { osloToday } from "@/lib/dates";
+import { addCalendarDays, osloToday } from "@/lib/dates";
 import { ageInYear, schoolYearStart } from "@/lib/age";
 import { emailNotifications } from "@/flags";
 
@@ -123,6 +124,7 @@ function readNumber(formData: FormData, key: string) {
 
 function revalidate() {
   revalidatePath("/", "layout");
+  scheduleSchoolEmails();
 }
 
 const required = (message: string) =>
@@ -1172,7 +1174,7 @@ export async function createVippsPayment(
   await ensureStudentFee(supabase, studentId, schoolYearId);
 
   const amount = Math.round((amountNok as number) * 100);
-  const dueDate = readOptionalString(formData, "due_date");
+  const dueDate = readOptionalString(formData, "due_date") ?? addCalendarDays(osloToday(), 14);
 
   const { data: student } = await supabase
     .from("students")
@@ -1668,6 +1670,7 @@ export async function batchSendPaymentLinks(
     selectedKeys.has(family.familyKey),
   );
   const base = siteUrl();
+  const dueDate = addCalendarDays(osloToday(), 14);
 
   const outcomes = await mapInChunks(selected, 4, async (family) => {
     const single = family.children.length === 1 ? family.children[0] : null;
@@ -1689,6 +1692,7 @@ export async function batchSendPaymentLinks(
         description: `Skolepenger${plan.yearLabel ? ` ${plan.yearLabel}` : ""} - ${names.join(", ")}`,
         status: "opprettet",
         method: "vipps",
+        due_date: dueDate,
       })
       .select("id")
       .single();
@@ -1725,6 +1729,7 @@ export async function batchSendPaymentLinks(
       schoolYear: plan.yearLabel,
       className: single?.className ?? null,
       url: `${base}/api/vipps/pay/${inserted.id}`,
+      dueDate,
     });
     return ok ? ("sent" as const) : ("failed" as const);
   });

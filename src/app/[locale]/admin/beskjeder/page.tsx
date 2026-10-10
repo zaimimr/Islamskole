@@ -1,5 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
 import { z } from "zod";
+import Link from "next/link";
+import { getIsAdmin } from "@/lib/auth";
 import { adminBasePath } from "@/components/admin/paths";
 import { AnnouncementList } from "@/components/announcements/list";
 
@@ -10,5 +12,9 @@ export default async function AnnouncementsPage({ params, searchParams }: PagePr
   setRequestLocale(locale);
   const baseHref = `${adminBasePath(locale)}/beskjeder`;
   const page = z.coerce.number().int().min(1).max(10000).catch(1).parse(query.side);
-  return <AnnouncementList locale={locale} baseHref={baseHref} page={page} />;
+  const isAdmin = await getIsAdmin();
+  return <div className="grid gap-4">
+    {isAdmin ? <Link href={`${baseHref}/epost`} className="inline-flex min-h-11 items-center justify-self-end font-semibold text-admin-action">{locale === "en" ? "Email delivery" : "E-postutsending"}</Link> : null}
+    <AnnouncementList locale={locale} baseHref={baseHref} page={page} />
+  </div>;
 }

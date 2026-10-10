@@ -18,6 +18,7 @@ import {
 } from "@/lib/custom-payment-plan";
 import { sendLoginLink } from "@/lib/login-link";
 import { isPlaceholderEmail } from "@/lib/portal/emails";
+import { scheduleSchoolEmails } from "@/lib/school-emails/delivery";
 
 type FamilyActionResult = { ok: true } | { ok: false; error: string };
 
@@ -180,6 +181,7 @@ export async function assignPaymentPlanAction(
       entityId: familyId,
       metadata: { schoolYearId, planType, planId },
     });
+    scheduleSchoolEmails(familyId);
   } catch (error) {
     return {
       ok: false,
@@ -351,7 +353,6 @@ export async function sendInstallmentNow(
         })),
         totalAmount: rows.reduce((sum, row) => sum + row.amount, 0),
       },
-      siteUrl,
     );
     if (outcome === "skipped") {
       return { ok: false, error: "Beløpet er allerede dekket" };
@@ -368,6 +369,7 @@ export async function sendInstallmentNow(
     entityType: "installments",
     entityId: installmentId,
   });
+  scheduleSchoolEmails(plan.family_id);
   revalidatePath("/", "layout");
   return { ok: true };
 }

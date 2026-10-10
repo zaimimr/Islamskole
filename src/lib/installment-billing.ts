@@ -4,14 +4,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import type { InstallmentBatch } from "@/lib/payment-plans";
 import { buildReference } from "@/lib/payment-descriptor";
-import { sendInstallmentEmail, type EmailLang } from "@/lib/email";
+import type { EmailLang } from "@/lib/email";
 import {
   guardianEmails,
   studentDisplayName,
   type NamedRecord,
 } from "@/lib/student-name";
 import { osloToday } from "@/lib/dates";
-import { emailNotifications } from "@/flags";
 
 type Client = SupabaseClient<Database>;
 
@@ -221,7 +220,6 @@ async function withdrawnStudents(
 export async function sendInstallmentBatch(
   client: Client,
   batch: InstallmentBatch,
-  siteUrl: string,
 ): Promise<BatchSendOutcome> {
   const withdrawn = await withdrawnStudents(
     client,
@@ -339,32 +337,6 @@ export async function sendInstallmentBatch(
       collectible.map((row) => row.id),
     );
   if (linkError) throw new Error(toUserError(linkError), { cause: linkError });
-
-  if (await emailNotifications()) {
-    const [recipients, lang] = await Promise.all([
-      familyRecipients(client, batch.familyId),
-      familyLanguage(client, batch.familyId),
-    ]);
-    if (recipients.length > 0) {
-      const remaining = collectible.reduce(
-        (sum, row) => sum + (remainingByStudent.get(row.studentId) ?? 0),
-        0,
-      );
-      await sendInstallmentEmail({
-        lang,
-        remaining,
-        to: recipients,
-        children: collectible.map((row) => ({
-          name: names.get(row.studentId) ?? "Elev",
-          amount: row.amount,
-        })),
-        totalAmount,
-        schoolYear: year?.label ?? null,
-        dueDate: batch.dueDate,
-        url: `${siteUrl}/api/vipps/pay/${payment.id}`,
-      });
-    }
-  }
 
   return "sent";
 }

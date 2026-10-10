@@ -15,6 +15,7 @@ import { getSiteSettings } from "@/lib/data";
 import { writeAudit } from "@/lib/audit";
 import { findAuthUserId, sendLoginLink } from "@/lib/login-link";
 import { rateLimit } from "@/lib/rate-limit";
+import { scheduleSchoolEmails } from "@/lib/school-emails/delivery";
 import {
   sendTeacherApplicationEmail,
   sendTeacherApplicationConfirmationEmail,
@@ -808,6 +809,15 @@ export async function createStudentEnrollment(
       ok: false,
       error: copy.failed,
     };
+  }
+
+  const familyId = enrollment && typeof enrollment === "object" && !Array.isArray(enrollment)
+    && typeof enrollment.family_id === "string" ? enrollment.family_id : null;
+  if (familyId) {
+    const { error: languageError } = await admin.from("families")
+      .update({ preferred_language: english ? "en" : "no" }).eq("id", familyId);
+    if (languageError) console.error("Could not set signup email language", languageError);
+    scheduleSchoolEmails(familyId);
   }
 
   return {

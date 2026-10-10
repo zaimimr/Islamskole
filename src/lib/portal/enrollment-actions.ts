@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { scheduleSchoolEmails } from "@/lib/school-emails/delivery";
 import { ageInYear, schoolYearStart } from "@/lib/age";
 import { writeAudit } from "@/lib/audit";
 import { getUser } from "@/lib/auth";
@@ -157,5 +158,6 @@ export async function enrollSibling(formData: FormData): Promise<SiblingResult> 
   });
   refreshPortal();
   const locale = read(formData, "locale") === "en" ? "en" : "no";
+  scheduleSchoolEmails(input.familyId);
   return { ok: true, redirectUrl: `/api/vipps/pay/${paymentId}?locale=${locale}` };
 }

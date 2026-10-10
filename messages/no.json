@@ -1141,5 +1141,13 @@
       "conflict": "En annen lærer har registrert ny utvikling. Hent siste utvikling før du lagrer.",
       "unavailable": "Kunne ikke hente eller lagre læringsutvikling. Prøv igjen."
     }
+  },
+  "impersonation": {
+    "label": "Brukerbytte",
+    "actingAs": "Du bruker kontoen til {email}",
+    "ended": "Brukerbyttet er avsluttet",
+    "return": "Tilbake til min konto",
+    "returning": "Bytter tilbake…",
+    "error": "Kunne ikke bytte tilbake. Prøv igjen."
   }
 }

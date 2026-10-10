@@ -534,7 +534,7 @@ export async function confirmEmailChange(token: string, locale: string): Promise
   const user = await getUser();
   const previousEmail = previous?.email?.trim().toLowerCase();
   if (previousEmail && user?.email?.toLowerCase() === previousEmail) {
-    await (await createClient()).auth.signOut();
+    await (await createClient()).auth.signOut({ scope: "local" });
   }
   refreshPortal();
   redirect(`${localePrefix(locale === "en" ? "en" : "no")}/min-side/bekreft-epost?ferdig=1`);

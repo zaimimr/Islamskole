@@ -1,5 +1,7 @@
 "use server";
 
+import { hasAdminRole } from "@/lib/impersonation/constants";
+
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { after } from "next/server";
@@ -86,7 +88,7 @@ async function isKnownEmail(email: string) {
     .select("role")
     .eq("id", userId)
     .maybeSingle();
-  return profile?.role === "admin";
+  return hasAdminRole(profile?.role);
 }
 
 async function deliverLoginLink(email: string, locale: "no" | "en", next: string | undefined) {
@@ -128,7 +130,7 @@ export async function sendPortalLoginLink(formData: FormData): Promise<PortalAct
 
 export async function signOutPortal(): Promise<void> {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: "local" });
   revalidatePath("/", "layout");
 }
 

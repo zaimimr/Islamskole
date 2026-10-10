@@ -34,6 +34,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      developer_impersonations: {
+        Row: {
+          developer_email: string
+          developer_id: string
+          developer_session_id: string
+          ended_at: string | null
+          expires_at: string
+          id: string
+          started_at: string
+          target_email: string
+          target_id: string
+          target_session_id: string
+        }
+        Insert: {
+          developer_email: string
+          developer_id: string
+          developer_session_id: string
+          ended_at?: string | null
+          expires_at?: string
+          id?: string
+          started_at?: string
+          target_email: string
+          target_id: string
+          target_session_id: string
+        }
+        Update: {
+          developer_email?: string
+          developer_id?: string
+          developer_session_id?: string
+          ended_at?: string | null
+          expires_at?: string
+          id?: string
+          started_at?: string
+          target_email?: string
+          target_id?: string
+          target_session_id?: string
+        }
+        Relationships: []
+      }
       learning_goals: {
         Row: {
           ayah_from: number | null
@@ -3225,6 +3264,7 @@ export type Database = {
       }
     }
     Functions: {
+      developer_can_impersonate: { Args: Record<PropertyKey, never>; Returns: boolean }
       create_learning_goal: {
         Args: {
           p_ayah_from: number | null

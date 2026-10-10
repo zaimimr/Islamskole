@@ -9,6 +9,7 @@ import { PortalNav } from "@/components/portal/portal-nav";
 import { getIsAdmin, getUser } from "@/lib/auth";
 import { getPortalContext } from "@/lib/portal/data";
 import { cn } from "@/lib/utils";
+import { ImpersonationBanner } from "@/components/impersonation/banner";
 
 export async function generateMetadata({
   params,
@@ -37,6 +38,7 @@ export default async function PortalLayout({
   return (
     <div data-portal-shell className="flex min-h-dvh flex-col bg-background">
       <header className="sticky top-0 z-40 border-b border-foreground/8 bg-background/90 supports-backdrop-filter:backdrop-blur-md">
+        <ImpersonationBanner />
         <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-2 sm:px-6">
           <Logo priority className="mr-auto" />
           <LocaleSwitcher />

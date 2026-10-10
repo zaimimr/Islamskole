@@ -15,6 +15,7 @@ import {
   type NavCounts,
 } from "@/components/admin/sidebar-nav";
 import { SignOutButton } from "@/components/admin/sign-out-button";
+import { ImpersonationBanner } from "@/components/impersonation/banner";
 import { adminBasePath, localePrefix, loginPath } from "@/components/admin/paths";
 
 export const metadata: Metadata = {
@@ -156,8 +157,9 @@ export default async function AdminLayout({
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 border-b print:hidden border-[#E9E5DC] bg-[#FCFAF5]/95 px-4 py-2 supports-backdrop-filter:backdrop-blur-md sm:px-6 lg:px-8 lg:py-3">
-            <div className="mx-auto flex w-full max-w-[96rem] items-center gap-2 sm:gap-3">
+          <header className="sticky top-0 z-30 border-b print:hidden border-[#E9E5DC] bg-[#FCFAF5]/95 supports-backdrop-filter:backdrop-blur-md">
+            <ImpersonationBanner />
+            <div className="mx-auto flex w-full max-w-[96rem] items-center gap-2 px-4 py-2 sm:gap-3 sm:px-6 lg:px-8 lg:py-3">
               <AdminMobileNav
                 basePath={basePath}
                 loginHref={resolvedLoginPath}

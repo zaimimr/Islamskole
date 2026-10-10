@@ -1,5 +1,7 @@
 "use server";
 
+import { hasAdminRole } from "@/lib/impersonation/constants";
+
 import { revalidatePath } from "next/cache";
 import { getIsAdmin, getUser } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
@@ -37,7 +39,7 @@ async function loginToMove(guardianId: string, oldEmail: string, newEmail: strin
     .select("role")
     .eq("id", userId)
     .maybeSingle();
-  if (error || profile?.role === "admin") return null;
+  if (error || hasAdminRole(profile?.role)) return null;
   if (await findAuthUserId(newEmail)) return null;
   return userId;
 }

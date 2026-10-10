@@ -9,6 +9,7 @@ import { OptimisticRemovalList } from "@/components/admin/optimistic-removal-lis
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { hasAdminRole } from "@/lib/impersonation/constants";
 import { UserRowActions } from "./user-row-actions";
 
 export type AdminUser = {
@@ -25,7 +26,7 @@ export type AdminUser = {
 const PAGE_SIZE = 25;
 
 const roleFilters = [
-  { value: "admin", label: "Admin", match: (user: AdminUser) => user.role === "admin" },
+  { value: "admin", label: "Admin", match: (user: AdminUser) => hasAdminRole(user.role) },
   { value: "alle", label: "Alle", match: () => true },
   { value: "laerer", label: "Lærere", match: (user: AdminUser) => user.isTeacher },
   { value: "foresatt", label: "Foresatte", match: (user: AdminUser) => user.isGuardian },
@@ -35,12 +36,14 @@ const roleFilters = [
 export function UserList({
   allUsers,
   currentId,
+  canImpersonate,
   initialRole,
   initialQuery,
   initialPage,
 }: {
   allUsers: AdminUser[];
   currentId: string | null;
+  canImpersonate: boolean;
   initialRole: string;
   initialQuery: string;
   initialPage: number;
@@ -180,8 +183,8 @@ export function UserList({
                   </p>
                 </div>
                 <div className="hidden shrink-0 flex-wrap items-center justify-end gap-1.5 sm:flex">
-                  {user.role === "admin" ? (
-                    <StatusPill tone="ok">Admin</StatusPill>
+                  {hasAdminRole(user.role) ? (
+                    <StatusPill tone="ok">{user.role === "developer" ? "Utvikler" : "Admin"}</StatusPill>
                   ) : null}
                   {user.isTeacher ? (
                     <StatusPill tone="info">Lærer</StatusPill>
@@ -199,6 +202,8 @@ export function UserList({
                   isSelf={user.id === currentId}
                   isAdmin={user.role === "admin"}
                   isTeacher={user.isTeacher}
+                  canImpersonate={canImpersonate}
+                  isDeveloper={user.role === "developer"}
                 />
               </>
             ),

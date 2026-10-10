@@ -8,6 +8,7 @@ import {
   MoreHorizontal,
   ShieldMinus,
   Trash2,
+  UserRoundCog,
 } from "lucide-react";
 import {
   deleteUser,
@@ -15,6 +16,7 @@ import {
   removeAdminAccess,
 } from "@/app/[locale]/admin/actions";
 import { useRemoveRow } from "@/components/admin/optimistic-removal-list";
+import { startImpersonation } from "@/lib/impersonation/actions";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -45,12 +47,16 @@ export function UserRowActions({
   isSelf,
   isAdmin,
   isTeacher,
+  canImpersonate,
+  isDeveloper,
 }: {
   userId: string;
   email: string;
   isSelf: boolean;
   isAdmin: boolean;
   isTeacher: boolean;
+  canImpersonate: boolean;
+  isDeveloper: boolean;
 }) {
   const removeRow = useRemoveRow();
   const router = useRouter();
@@ -73,6 +79,18 @@ export function UserRowActions({
     removeRow(userId, () => deleteUser(userId), "Brukeren er slettet");
   }
 
+  function impersonate() {
+    startTransition(async () => {
+      try {
+        const result = await startImpersonation(userId);
+        if (result.ok) window.location.assign(result.href);
+        else toast.error(result.error);
+      } catch {
+        toast.error("Kunne ikke bytte bruker. Prøv igjen.");
+      }
+    });
+  }
+
   return (
     <>
       {isSelf && isTeacher ? null : (
@@ -92,6 +110,12 @@ export function UserRowActions({
             <MoreHorizontal aria-hidden="true" className="size-5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-auto min-w-56">
+            {canImpersonate && !isSelf ? (
+              <DropdownMenuItem onClick={impersonate}>
+                <UserRoundCog aria-hidden="true" />
+                Bruk som denne brukeren
+              </DropdownMenuItem>
+            ) : null}
             {isTeacher ? null : (
               <DropdownMenuItem
                 onClick={() =>
@@ -115,7 +139,7 @@ export function UserRowActions({
                 Fjern administratortilgang
               </DropdownMenuItem>
             ) : null}
-            {isSelf ? null : (
+            {isSelf || isDeveloper ? null : (
               <DropdownMenuItem
                 variant="destructive"
                 onClick={() => setDeleteOpen(true)}

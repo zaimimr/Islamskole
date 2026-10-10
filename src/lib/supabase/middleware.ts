@@ -1,4 +1,4 @@
-import { createServerClient } from "@supabase/ssr";
+import { resolveSession } from "@/lib/impersonation/session";
 import type { NextRequest, NextResponse } from "next/server";
 
 export async function updateSession(
@@ -12,24 +12,19 @@ export async function updateSession(
     return { response, user: null };
   }
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
-          );
-        },
-      },
+  const session = await resolveSession({
+    getAll() {
+      return request.cookies.getAll();
     },
-  );
+    setAll(cookiesToSet) {
+      cookiesToSet.forEach(({ name, value, options }) => {
+        request.cookies.set(name, value);
+        response.cookies.set(name, value, options);
+      });
+    },
+  });
 
-  const { data } = await supabase.auth.getClaims();
+  const { data } = await session.client.auth.getClaims();
 
   return { response, user: data?.claims?.sub ? data.claims : null };
 }

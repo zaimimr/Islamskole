@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getIsAdmin, getUser } from "@/lib/auth";
+import { getIsAdmin, getIsDeveloper, getUser } from "@/lib/auth";
+import { hasAdminRole } from "@/lib/impersonation/constants";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { adminBasePath } from "@/components/admin/paths";
 import { LoadError } from "@/components/admin/load-error";
@@ -71,7 +72,7 @@ async function getUsers(): Promise<
         })
         .sort(
           (a, b) =>
-            Number(b.role === "admin") - Number(a.role === "admin") ||
+            Number(hasAdminRole(b.role)) - Number(hasAdminRole(a.role)) ||
             (a.fullName ?? a.email).localeCompare(b.fullName ?? b.email, "nb"),
         ),
     };
@@ -88,7 +89,7 @@ export default async function BrukerePage({
   const sp = await searchParams;
   if (!(await getIsAdmin())) notFound();
 
-  const [result, currentUser] = await Promise.all([getUsers(), getUser()]);
+  const [result, currentUser, canImpersonate] = await Promise.all([getUsers(), getUser(), getIsDeveloper()]);
   if (!result.ok) {
     return (
       <LoadError
@@ -117,6 +118,7 @@ export default async function BrukerePage({
       <UserList
         allUsers={result.users}
         currentId={currentUser?.id ?? null}
+        canImpersonate={canImpersonate}
         initialRole={typeof sp.rolle === "string" ? sp.rolle : ""}
         initialQuery={typeof sp.q === "string" ? sp.q : ""}
         initialPage={Math.max(1, Number(sp.page) || 1)}

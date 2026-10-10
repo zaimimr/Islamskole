@@ -34,6 +34,20 @@ Never apply a migration straight to production.
 4. `npm run db:types` regenerates `src/lib/supabase/types.ts`.
 5. `npm run db:drift` compares `supabase/migrations` with the production history. It needs `SUPABASE_ACCESS_TOKEN` and skips without it.
 
+## Developer impersonation
+
+The verified owner account has the `developer` profile role, which includes administrative access. Only that account, with a live original Supabase session, can start impersonation from `/admin/brukere`. Ordinary admins cannot grant, remove or use this role.
+
+`src/lib/impersonation` creates a separate Supabase session for the selected verified account without sending an email. Its tokens stay in HttpOnly cookies; the original account cookies remain intact. `createClient()` resolves the selected identity for server reads and actions, so existing RLS and application permission checks apply. Media uploads use a signed upload URL authorized by the effective account.
+
+Impersonation lasts one hour and is bound to both the developer's original session and the selected account's session. Expired, ended or mismatched contexts resolve to an anonymous client, never silently to the developer. The marker remains until explicitly cleared, preserving this behavior after expiry. A return control stays in the portal and admin headers, including the signed-out portal. Signing out uses local session scope and preserves the selected user's other sessions.
+
+`developer_impersonations` is accessible only to the service role. The audit trigger attributes database writes to the developer and preserves `impersonated_user_id`, `impersonated_email` and `impersonation_id` in metadata. `writeAudit()` does the same for server actions. Start and end events appear in `/admin/revisjon`. Saved changes and emails are real actions under the selected user's permissions. Generating the login token updates the selected account's sign-in history and can replace a pending magic link.
+
+The local-only browser suite covers account switching, parent boundaries, writes and attribution, direct unauthorized action calls, copied-cookie rejection, expiry and session restoration. Database checks cover the owner-only role, original-session validity and audit attribution. No extra environment variables are required.
+
+The upload check needs Supabase Storage running. Restart a local stack that was previously started with Storage excluded. A reused local stack can retain an older `storage.idx_objects_current_version` definition; Storage then returns `42P10` on upload. Its current definition is a unique index on `(bucket_id, name COLLATE "C") WHERE archived_at IS NULL`. Check the installed Storage migration before repairing this local index.
+
 ## Announcements
 
 Announcements live in `src/lib/announcements` and `src/components/announcements`, with shared views at `/admin/beskjeder` and `/min-side/beskjeder`. Database functions enforce publishing scope, snapshot recipients, and record one acknowledgement per family. Published text is immutable. Recipient families come from active enrollments in the active school year; emails respect `receives_communication` and are deduplicated by normalized address.

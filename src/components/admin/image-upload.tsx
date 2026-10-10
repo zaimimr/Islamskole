@@ -7,6 +7,7 @@ import { ImagePlus, Loader2, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { createMediaUpload } from "@/lib/media-actions";
 
 type ImageUploadProps = {
   name: string;
@@ -32,13 +33,18 @@ export function ImageUpload({
       const supabase = createClient();
       const extension = file.name.split(".").pop() ?? "bin";
       const path = `${crypto.randomUUID()}.${extension}`;
+      const upload = await createMediaUpload(path);
+      if (!upload.ok) {
+        toast.error("Kunne ikke laste opp bilde. Prøv igjen.");
+        return;
+      }
 
       const { error } = await supabase.storage
         .from("media")
-        .upload(path, file, { upsert: false });
+        .uploadToSignedUrl(path, upload.token, file);
 
       if (error) {
-        toast.error(`Kunne ikke laste opp bilde: ${error.message}`);
+        toast.error("Kunne ikke laste opp bilde. Prøv igjen.");
         return;
       }
 
@@ -48,6 +54,8 @@ export function ImageUpload({
 
       setUrl(publicUrl);
       toast.success("Bilde lastet opp");
+    } catch {
+      toast.error("Kunne ikke laste opp bilde. Prøv igjen.");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";

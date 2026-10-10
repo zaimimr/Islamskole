@@ -1141,5 +1141,13 @@
       "conflict": "Another teacher has recorded new progress. Load the latest progress before saving.",
       "unavailable": "Could not load or save learning progress. Try again."
     }
+  },
+  "impersonation": {
+    "label": "Impersonation",
+    "actingAs": "You are using the account of {email}",
+    "ended": "Impersonation has ended",
+    "return": "Return to my account",
+    "returning": "Returning…",
+    "error": "Could not return to your account. Try again."
   }
 }

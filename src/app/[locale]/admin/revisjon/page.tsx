@@ -114,6 +114,8 @@ const entityLabelByType = new Map(
 );
 
 const actionLabels: Record<string, string> = {
+  "user.impersonation_started": "Startet brukerbytte",
+  "user.impersonation_ended": "Avsluttet brukerbytte",
   "event.create": "Opprettet aktivitet",
   "event.update": "Oppdaterte aktivitet",
   "event.delete": "Slettet en aktivitet",
@@ -833,6 +835,7 @@ export default async function RevisjonPage({
                           />
                           <span className="break-all">
                             {row.actor_email ?? "Systemet"}
+                            {typeof (row.metadata as Meta | null)?.impersonated_email === "string" ? ` som ${(row.metadata as Meta).impersonated_email}` : ""}
                           </span>
                         </span>
                         <span>

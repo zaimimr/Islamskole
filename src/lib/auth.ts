@@ -1,6 +1,8 @@
 import "server-only";
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getSessionContext } from "@/lib/supabase/server";
+import { hasAdminRole } from "@/lib/impersonation/constants";
+import { developerIdentity } from "@/lib/impersonation/session";
 
 export type SessionUser = { id: string; email: string | undefined };
 
@@ -21,5 +23,10 @@ export const getIsAdmin = cache(async () => {
     .select("role")
     .eq("id", user.id)
     .maybeSingle();
-  return (data as { role?: string } | null)?.role === "admin";
+  return hasAdminRole(data?.role);
+});
+
+export const getIsDeveloper = cache(async () => {
+  const context = await getSessionContext();
+  return !context.requested && Boolean(await developerIdentity(context.ownerClient));
 });

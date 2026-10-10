@@ -1,3 +1,4 @@
+import { hasAdminRole } from "@/lib/impersonation/constants";
 import { NextResponse, type NextRequest } from "next/server";
 import { localePrefix } from "@/components/admin/paths";
 import { resolvePostLoginPath } from "@/lib/auth-redirect";
@@ -28,7 +29,7 @@ export async function GET(
         .maybeSingle();
       const target = resolvePostLoginPath({
         next: request.nextUrl.searchParams.get("next"),
-        isAdmin: profile?.role === "admin",
+        isAdmin: hasAdminRole(profile?.role),
         locale,
       });
       return NextResponse.redirect(new URL(target, request.nextUrl.origin));

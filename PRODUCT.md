@@ -73,3 +73,7 @@ Preserve the Islamskole Bærum name, logo, public cream-and-green identity, frie
 ## Accessibility & Inclusion
 
 The responsive web interface must support keyboard navigation, visible focus, meaningful labels, at least 44-pixel touch targets on mobile, clear error recovery, and readable operational states. Access to child, guardian, moderation, and payment information must follow data minimization and role needs. Norwegian writing must use bokmål.
+
+## Developer account
+
+The verified owner has a developer role with administrative access and can use other verified accounts from Brukere og tilganger. Impersonation follows the selected account’s actual permissions, lasts one hour, and preserves the owner’s original session. Portal and admin headers identify the selected account and provide a return control. Audit history records the developer as the actual actor and retains the selected identity. Saved changes and outgoing messages are real. Ordinary administrators cannot use or grant developer access.

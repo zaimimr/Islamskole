@@ -929,6 +929,7 @@ export async function grantAdminAccess(
       .eq("id", userId)
       .maybeSingle();
     oldRole = profile?.role ?? "member";
+    if (oldRole === "developer") return { ok: false, error: "Utviklertilgangen kan ikke endres her." };
     const { error: metaError } = await admin.auth.admin.updateUserById(userId, {
       app_metadata: { ...existing.app_metadata, role: "admin" },
     });
@@ -994,6 +995,7 @@ export async function removeAdminAccess(
     .from("profiles")
     .update({ role: "member" })
     .eq("id", userId)
+    .eq("role", "admin")
     .select("id")
     .maybeSingle();
   if (error) {
@@ -1099,6 +1101,7 @@ export async function makeUserTeacher(
 export async function deleteUser(userId: string): Promise<ActionResult> {
   const denied = await requireAdmin();
   if (denied) return denied;
+  if (!z.string().uuid().safeParse(userId).success) return { ok: false, error: "Ugyldig bruker." };
   const supabase = await createClient();
   const {
     data: { user },
@@ -1107,6 +1110,8 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
     return { ok: false, error: "Du kan ikke slette din egen konto" };
   }
   const admin = createAdminClient();
+  const { data: profile, error: profileError } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
+  if (profileError || profile?.role === "developer") return { ok: false, error: "Utviklerkontoen kan ikke slettes her." };
   const { error } = await admin.auth.admin.deleteUser(userId);
   if (error) return { ok: false, error: toAuthUserError(error) };
   await writeAudit({
@@ -1417,6 +1422,6 @@ export async function searchAdmin(query: string): Promise<AdminSearchResult> {
 
 export async function signOut(): Promise<void> {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: "local" });
   revalidatePath("/", "layout");
 }

@@ -14,10 +14,12 @@ values
   ('db000000-0000-0000-0000-0000000000a2', 'zz-d11-admin2@zztest.local', '{"role":"admin"}'),
   ('db000000-0000-0000-0000-0000000000a3', 'zz-d11-member@zztest.local', '{"role":"member"}');
 
+alter table public.profiles disable trigger profiles_protect_developer;
 update public.profiles
 set role = 'member'
-where role = 'admin'
+where role in ('admin', 'developer')
   and id not in ('db000000-0000-0000-0000-0000000000a1', 'db000000-0000-0000-0000-0000000000a2');
+alter table public.profiles enable trigger profiles_protect_developer;
 
 select lives_ok(
   $$ update public.profiles set role = 'member' where id = 'db000000-0000-0000-0000-0000000000a2' $$,

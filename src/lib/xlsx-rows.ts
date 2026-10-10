@@ -110,7 +110,7 @@ function sheetRows(sheetXml: string, shared: string[]): string[][] {
       row[index] = value.trim();
       next = index + 1;
     }
-    if (row.some((value) => value !== "")) rows.push(row);
+    rows.push(row);
   }
   return rows;
 }

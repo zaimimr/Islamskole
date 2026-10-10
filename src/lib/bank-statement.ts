@@ -254,7 +254,7 @@ function occurrenceCounter() {
 
 const dnbAliases = {
   date: ["dato", "bokfortdato", "bokforingsdato", "transaksjonsdato", "date"],
-  text: ["forklaring", "beskrivelse", "tekst", "transaksjonstekst", "description"],
+  text: ["forklarendetekst", "forklaring", "beskrivelse", "tekst", "transaksjonstekst", "description"],
   out: ["utfrakonto", "uttak", "ut", "belopsut", "debet"],
   in: ["innpakonto", "innskudd", "inn", "belopinn", "kredit"],
   amount: ["belop", "amount", "sum"],
@@ -262,16 +262,34 @@ const dnbAliases = {
   counterparty: ["motpart", "avsendermottaker", "fratil", "navn", "avsender", "mottaker"],
   message: ["melding", "kid", "meldingkid", "referanse"],
   currency: ["valuta", "currency"],
+  account: ["kontonummer", "konto", "account", "accountnumber"],
+  archiveReference: ["arkivref", "arkivreferanse"],
+  vippsAccount: ["msnvippsnummer", "vippsnummer", "msn", "merchantserialnumber"],
 };
 
-export function parseDnbRows(rows: string[][], account: string): ParseResult {
-  const located = locateHeader(
+export function parseDnbSheets(sheets: string[][][], account: string): ParseResult {
+  const recognized = sheets.filter((rows) => locateDnbHeader(rows)).map((rows) => parseDnbRows(rows, account));
+  if (recognized.length === 0) return parseDnbRows(sheets[0] ?? [], account);
+  return {
+    transactions: recognized.flatMap((result) => result.transactions),
+    skipped: recognized.reduce((sum, result) => sum + result.skipped, 0),
+    errors: recognized.flatMap((result) => result.errors),
+  };
+}
+
+function locateDnbHeader(rows: string[][]) {
+  return locateHeader(
     rows,
     dnbAliases,
     (columns) =>
       columns.date != null &&
+      columns.vippsAccount == null &&
       (columns.in != null || columns.out != null || columns.amount != null),
   );
+}
+
+export function parseDnbRows(rows: string[][], account: string): ParseResult {
+  const located = locateDnbHeader(rows);
   if (!located) {
     return {
       transactions: [],
@@ -294,12 +312,23 @@ export function parseDnbRows(rows: string[][], account: string): ParseResult {
     const incoming = parseAmount(cell(row, columns.in));
     const outgoing = parseAmount(cell(row, columns.out));
     const single = parseAmount(cell(row, columns.amount));
+    const hasSeparateAmounts = columns.in != null || columns.out != null;
     const amount =
       incoming && incoming !== 0
         ? Math.abs(incoming)
         : outgoing && outgoing !== 0
           ? -Math.abs(outgoing)
-          : single ?? 0;
+          : hasSeparateAmounts ? 0 : single ?? 0;
+    const invalidAmount = [columns.in, columns.out, ...(hasSeparateAmounts ? [] : [columns.amount])]
+      .some((index) => cell(row, index) !== "" && parseAmount(cell(row, index)) == null);
+    if (invalidAmount) {
+      errors.push(`Linje ${line}: ugyldig beløp.`);
+      return;
+    }
+    if (incoming && outgoing) {
+      errors.push(`Linje ${line}: beløp i både «Inn» og «Ut».`);
+      return;
+    }
     if (!bookedOn) {
       if (row.some((value) => /\d/.test(value)) && amount !== 0) {
         errors.push(`Linje ${line}: ugyldig dato «${cell(row, columns.date)}»`);
@@ -312,12 +341,19 @@ export function parseDnbRows(rows: string[][], account: string): ParseResult {
       skipped++;
       return;
     }
+    const rowAccount = cell(row, columns.account).replace(/[\s.]/g, "") || account;
+    if (!/^\d{11}$/.test(rowAccount)) {
+      errors.push(`Linje ${line}: mangler gyldig kontonummer med 11 siffer.`);
+      return;
+    }
     const text = cell(row, columns.text).replace(/\s+/g, " ");
-    const key = `${bookedOn}|${amount}|${text.toLowerCase()}`;
-    const occurrence = nextOccurrence(key);
+    const archiveReference = cell(row, columns.archiveReference).replace(/\.0+$/, "");
+    const reference = cell(row, columns.message);
+    const key = `${bookedOn}|${amount}|${text.toLowerCase()}${archiveReference ? `|${archiveReference}|${reference}` : ""}`;
+    const occurrence = nextOccurrence(`${rowAccount}|${key}`);
     transactions.push({
       source: "dnb",
-      account,
+      account: rowAccount,
       externalId: `dnb:${shortHash(`${key}|${occurrence}`)}`,
       bookedOn,
       bookedAt: null,
@@ -326,7 +362,7 @@ export function parseDnbRows(rows: string[][], account: string): ParseResult {
       counterpartyName: cell(row, columns.counterparty) || null,
       counterpartyPhone: null,
       message: [text, cell(row, columns.message)].filter(Boolean).join(" · ") || null,
-      reference: null,
+      reference: reference || null,
       pspReference: null,
       entryType: amount > 0 ? "inn" : "ut",
       raw: rawRecord(header, row),

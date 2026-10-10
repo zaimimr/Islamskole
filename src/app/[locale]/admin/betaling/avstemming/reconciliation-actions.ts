@@ -9,7 +9,7 @@ import { toUserError } from "@/lib/action-errors";
 import {
   decodeText,
   parseDelimited,
-  parseDnbRows,
+  parseDnbSheets,
   parseVippsRows,
 } from "@/lib/bank-statement";
 import { isZip, readXlsxSheets } from "@/lib/xlsx-rows";
@@ -126,7 +126,7 @@ export async function importStatementFile(formData: FormData): Promise<ImportRes
   if (source !== "vipps" && source !== "dnb") {
     return { ok: false, error: "Velg om filen er fra Vipps eller DNB." };
   }
-  if (source === "dnb" && !/^\d{11}$/.test(account)) {
+  if (source === "dnb" && account && !/^\d{11}$/.test(account)) {
     return { ok: false, error: "Skriv inn DNB-kontonummeret med 11 siffer." };
   }
   if (source === "vipps" && account && !/^\d{4,10}$/.test(account)) {
@@ -144,13 +144,11 @@ export async function importStatementFile(formData: FormData): Promise<ImportRes
     };
   }
 
-  const parsed = sheets
-    .map((rows) =>
-      source === "dnb" ? parseDnbRows(rows, account) : parseVippsRows(rows, account || null),
-    )
-    .reduce((best, next) =>
-      next.transactions.length > best.transactions.length ? next : best,
-    );
+  const parsed = source === "dnb"
+    ? parseDnbSheets(sheets, account)
+    : sheets
+      .map((rows) => parseVippsRows(rows, account || null))
+      .reduce((best, next) => next.transactions.length > best.transactions.length ? next : best);
   if (parsed.transactions.length === 0) {
     return {
       ok: false,
@@ -164,7 +162,11 @@ export async function importStatementFile(formData: FormData): Promise<ImportRes
     const summary = await importTransactions(supabase, {
       source,
       kind: "fil",
-      account: account || null,
+      account: source === "dnb"
+        ? parsed.transactions.every((row) => row.account === parsed.transactions[0].account)
+          ? parsed.transactions[0].account
+          : null
+        : account || null,
       fileName: file.name.slice(0, 200),
       transactions: parsed.transactions,
       skipped: parsed.skipped,

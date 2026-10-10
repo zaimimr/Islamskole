@@ -9,10 +9,11 @@ import {
   parseDate,
   parseDelimited,
   parseDnbRows,
+  parseDnbSheets,
   parseVippsRows,
   vippsFundsItemToTransaction,
 } from "../src/lib/bank-statement.ts";
-import { isZip, readXlsxRows } from "../src/lib/xlsx-rows.ts";
+import { isZip, readXlsxRows, readXlsxSheets } from "../src/lib/xlsx-rows.ts";
 import {
   findPaymentMatch,
   matchAll,
@@ -101,6 +102,105 @@ test("DNB file without known columns gives a clear error", () => {
   assert.match(result.errors[0], /Fant ikke kolonnene/);
 });
 
+const dnbHeader = [
+  "Kontonummer", "Kontonavn", "Valuta", "Bokført-dato", "Forklarende tekst",
+  "Status", "Transaksjonstype", "Rentedato", "Ut", "Inn", "Arkivref.", "Referanse",
+];
+
+const dnbRow = (overrides = {}) => {
+  const row = ["1234.56.78901", "Skole", "NOK", "46266", "VIPPS MOBILEPAY AS", "B", "Overføring", "46266", "", "98.25", "123456789", ""];
+  for (const [index, value] of Object.entries(overrides)) row[index] = value;
+  return row;
+};
+
+test("DNB kontoinfo finds its header after the account list and keeps bank descriptions", () => {
+  const rows = [
+    ["Konto", "Kontonavn"],
+    ...Array.from({ length: 8 }, () => ["1234.56.78901", "Skole"]),
+    dnbHeader,
+    dnbRow(),
+    dnbRow({ 3: "46267.0", 4: "Husleie", 8: "-194.5", 9: "", 10: "123456790" }),
+  ];
+  const parsed = parseDnbRows(rows, "");
+  assert.equal(parsed.errors.length, 0);
+  assert.equal(parsed.transactions.length, 2);
+  assert.equal(parsed.transactions[0].account, "12345678901");
+  assert.equal(parsed.transactions[0].message, "VIPPS MOBILEPAY AS");
+  assert.equal(suggestStatus(parsed.transactions[0]).status, "ignorert");
+  assert.equal(parsed.transactions[1].amount, -19450);
+});
+
+test("DNB workbook uses bank amounts, skips manual rows and reports malformed bank rows", () => {
+  const rows = [
+    [...dnbHeader, "Beløp", "Beskrivelse"],
+    [...dnbRow(), "9999", "Manuell beskrivelse"],
+    [...dnbRow({ 0: "", 3: "", 4: "", 9: "", 10: "" }), "500", "Manuell Vipps-rad"],
+    dnbRow({ 3: "" }),
+    dnbRow({ 9: "ugyldig" }),
+    dnbRow({ 8: "100" }),
+  ];
+  const parsed = parseDnbRows(rows, "");
+  assert.equal(parsed.transactions.length, 1);
+  assert.equal(parsed.transactions[0].amount, 9825);
+  assert.equal(parsed.transactions[0].message, "VIPPS MOBILEPAY AS");
+  assert.equal(parsed.skipped, 1);
+  assert.equal(parsed.errors.length, 3);
+  assert.match(parsed.errors[0], /ugyldig dato/);
+  assert.match(parsed.errors[1], /ugyldig beløp/);
+  assert.match(parsed.errors[2], /både/);
+});
+
+test("DNB sheets exclude larger Vipps reports and include every bank sheet", () => {
+  const vipps = [
+    ["MSN/Vippsnummer", "Bokføringsdato", "Beløp", "PSP-referanse"],
+    ...Array.from({ length: 10 }, () => ["60206", "46266", "200", "123"]),
+  ];
+  const parsed = parseDnbSheets([
+    [["Navn", "Saldo"], ["Skole", "9999"]],
+    vipps,
+    [dnbHeader, dnbRow()],
+    [dnbHeader, dnbRow({ 0: "9876.54.32109" })],
+    [dnbHeader, dnbRow({ 9: "feil" })],
+  ], "11111111111");
+  assert.equal(parsed.transactions.length, 2);
+  assert.deepEqual(parsed.transactions.map((row) => row.account), ["12345678901", "98765432109"]);
+  assert.equal(parsed.errors.length, 1);
+  assert.match(parsed.errors[0], /ugyldig beløp/);
+  assert.equal(parseDnbSheets([vipps], "11111111111").transactions.length, 0);
+  assert.match(parseDnbSheets([], "").errors[0], /Fant ikke kolonnene/);
+});
+
+test("DNB archive references keep overlapping and reordered exports deduplicated", () => {
+  const first = dnbRow({ 4: "Giro skolepenger", 11: "1234" });
+  const second = dnbRow({ 4: "Giro skolepenger", 10: "123456790", 11: "1234" });
+  const parsed = parseDnbRows([dnbHeader, first, second], "");
+  const reordered = parseDnbRows([dnbHeader, second, first], "");
+  assert.notEqual(parsed.transactions[0].externalId, parsed.transactions[1].externalId);
+  assert.deepEqual(reordered.transactions.map((row) => row.externalId), parsed.transactions.map((row) => row.externalId).reverse());
+  assert.equal(parseDnbRows([dnbHeader, second], "").transactions[0].externalId, parsed.transactions[1].externalId);
+  assert.equal(parseDnbRows([dnbHeader, dnbRow({ 10: "123456789.0", 4: "Giro skolepenger", 11: "1234" })], "").transactions[0].externalId, parsed.transactions[0].externalId);
+  assert.equal(parsed.transactions[0].reference, "1234");
+});
+
+test("DNB accounts must be in the file or supplied as a fallback", () => {
+  const header = ["Dato", "Forklaring", "Beløp"];
+  const row = ["01.09.2026", "Giro", "200"];
+  assert.match(parseDnbRows([header, row], "").errors[0], /kontonummer/);
+  assert.equal(parseDnbRows([header, row], "12345678901").transactions[0].amount, 20000);
+  assert.match(parseDnbRows([dnbHeader, dnbRow({ 0: "ugyldig" })], "12345678901").errors[0], /kontonummer/);
+});
+
+test("mixed XLSX workbook and Windows-1252 kontoinfo export share transaction identities", () => {
+  const workbook = parseDnbSheets(readXlsxSheets(fixture("dnb-workbook.xlsx")), "");
+  const text = parseDnbRows(parseDelimited(decodeText(fixture("dnb-kontoinfo.txt"))), "");
+  assert.equal(workbook.transactions.length, 3);
+  assert.equal(workbook.skipped, 1);
+  assert.equal(workbook.errors.length, 1);
+  assert.deepEqual(workbook.transactions.map((row) => row.amount), [250000, -7550, 20000]);
+  assert.equal(text.transactions.length, 1);
+  assert.equal(workbook.transactions[0].externalId, text.transactions[0].externalId);
+});
+
 test("Vipps portal export keeps captures and refunds, skips failed and fees", () => {
   const rows = parseDelimited(decodeText(fixture("vipps-portal-export.csv")));
   const result = parseVippsRows(rows, null);
@@ -181,6 +281,16 @@ test("XLSX export is read with shared strings, inline strings and date serials",
   assert.equal(result.transactions.length, 2);
   assert.equal(result.transactions[0].bookedOn, "2026-09-01");
   assert.equal(result.transactions[0].amount, 75050);
+});
+
+test("XLSX keeps empty rows so DNB errors use the correct Excel row", () => {
+  const bytes = buildXlsx({
+    "xl/worksheets/sheet1.xml":
+      '<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>Dato</t></is></c><c r="B1" t="inlineStr"><is><t>Inn</t></is></c></row><row r="2"><c r="A2"/></row><row r="3"><c r="A3"><v>46266</v></c><c r="B3" t="inlineStr"><is><t>feil</t></is></c></row></sheetData></worksheet>',
+  });
+  const parsed = parseDnbRows(readXlsxRows(bytes), "12345678901");
+  assert.equal(parsed.skipped, 1);
+  assert.equal(parsed.errors[0], "Linje 3: ugyldig beløp.");
 });
 
 const tx = (overrides = {}) => ({

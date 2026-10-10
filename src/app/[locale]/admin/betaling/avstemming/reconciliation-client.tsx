@@ -310,7 +310,7 @@ export function ImportPanel({
                   </div>
                 ) : (
                   <div className="grid gap-1.5">
-                    <Label htmlFor="import-account" required>
+                    <Label htmlFor="import-account">
                       Kontonummer
                     </Label>
                     <Input
@@ -318,7 +318,7 @@ export function ImportPanel({
                       inputMode="numeric"
                       value={bankAccount}
                       onChange={(event) => setBankAccount(event.target.value)}
-                      placeholder="1234.56.78901"
+                      placeholder="Les fra filen"
                       className="h-11 rounded-xl"
                     />
                   </div>

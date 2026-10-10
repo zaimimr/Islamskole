@@ -59,3 +59,4 @@ Islamskole Bærum feels welcoming, trustworthy, and rooted in its local school c
 - Public enrollment fails closed when no active fee exists and restores an unfinished family draft after refresh or accidental navigation.
 - Healthy, pending, informational, blocked, and neutral states pair color with labels and status marks. Captured payments, refunds, admission decisions, and placement are never collapsed into one status.
 - Statement imports start with file selection, detect the source and accounts, and show a read-only preview before confirmation. Missing details appear only when needed, and completion keeps the import counts visible.
+- Child merges stay within the family workbench. Selected records show placement and payment context; confirmation follows a combined class and tuition preview. Conflicting identities, placements or claims block the merge with a precise correction step.

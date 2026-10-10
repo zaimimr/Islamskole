@@ -2651,6 +2651,7 @@ export type Database = {
           father_last_name: string | null
           father_phone: string | null
           id: string
+          merged_into_student_id: string | null
           message: string | null
           mother_email: string | null
           mother_first_name: string | null
@@ -2681,6 +2682,7 @@ export type Database = {
           father_last_name?: string | null
           father_phone?: string | null
           id?: string
+          merged_into_student_id?: string | null
           message?: string | null
           mother_email?: string | null
           mother_first_name?: string | null
@@ -2711,6 +2713,7 @@ export type Database = {
           father_last_name?: string | null
           father_phone?: string | null
           id?: string
+          merged_into_student_id?: string | null
           message?: string | null
           mother_email?: string | null
           mother_first_name?: string | null
@@ -2721,6 +2724,13 @@ export type Database = {
           terms_accepted?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: "student_applications_merged_into_student_id_fkey"
+            columns: ["merged_into_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "student_applications_family_id_fkey"
             columns: ["family_id"]
@@ -3403,6 +3413,16 @@ export type Database = {
         Returns: string
       }
       retry_announcement_emails: { Args: { p_id: string }; Returns: undefined }
+      admin_merge_children: {
+        Args: {
+          p_application?: string
+          p_confirm?: boolean
+          p_expected?: string
+          p_keep: string
+          p_student?: string
+        }
+        Returns: Json
+      }
       admin_merge_families: {
         Args: { p_keep: string; p_merge: string }
         Returns: undefined

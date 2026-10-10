@@ -553,6 +553,7 @@ delete from public.attendance where student_id in (select id from zz_students);
 delete from public.class_notes where class_id in (select id from zz_classes);
 delete from public.enrollments where student_id in (select id from zz_students) or class_id in (select id from zz_classes);
 delete from public.student_guardians where student_id in (select id from zz_students);
+update public.student_applications set merged_into_student_id = null where merged_into_student_id in (select id from zz_students);
 delete from public.students where id in (select id from zz_students);
 delete from public.student_applications
   where family_id in (select id from zz_families)

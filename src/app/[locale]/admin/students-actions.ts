@@ -275,13 +275,16 @@ export async function createStudentFromApplication(
   const { data: application, error: appError } = await supabase
     .from("student_applications")
     .select(
-      "id, family_id, child_first_name, child_last_name, child_birth_date, child_gender, child_address, child_postal_code, child_city, child_email, child_phone, mother_first_name, mother_last_name, mother_phone, mother_email, father_first_name, father_last_name, father_phone, father_email, child_level_quran, child_level_arabic, child_level_islam, message",
+      "id, family_id, merged_into_student_id, child_first_name, child_last_name, child_birth_date, child_gender, child_address, child_postal_code, child_city, child_email, child_phone, mother_first_name, mother_last_name, mother_phone, mother_email, father_first_name, father_last_name, father_phone, father_email, child_level_quran, child_level_arabic, child_level_islam, message",
     )
     .eq("id", applicationId)
     .maybeSingle();
 
   if (appError) return { ok: false, error: toUserError(appError) };
   if (!application) return { ok: false, error: "Fant ikke påmeldingen" };
+  if (application.merged_into_student_id) {
+    return { ok: false, error: "Denne innmeldingen er allerede slått sammen med en elev." };
+  }
 
   const { data: existingStudent } = await supabase
     .from("students")

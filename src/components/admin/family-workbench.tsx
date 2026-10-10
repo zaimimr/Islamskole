@@ -32,6 +32,7 @@ import {
   type FamilyOption,
 } from "@/app/[locale]/admin/familier/family-controls";
 import { mergeFamilies } from "@/app/[locale]/admin/familier/families-actions";
+import { ChildMergeDialog } from "@/app/[locale]/admin/familier/child-merge-dialog";
 
 export type FamilyStatusTone =
   "success" | "warning" | "danger" | "info" | "neutral";
@@ -663,12 +664,26 @@ export function FamilyWorkbench({
             aria-labelledby={`family-children-${family.id}`}
             className="border-t border-[#ECE8DF] pt-5"
           >
-            <h2
-              id={`family-children-${family.id}`}
-              className="font-heading text-lg font-bold"
-            >
-              Barn ({family.children.length})
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2
+                id={`family-children-${family.id}`}
+                className="font-heading text-lg font-bold"
+              >
+                Barn ({family.children.length})
+              </h2>
+              <ChildMergeDialog
+                options={family.children.map((child) => ({
+                  id: child.id.startsWith("application-")
+                    ? child.id.slice(12)
+                    : child.id,
+                  type: child.id.startsWith("application-")
+                    ? "application"
+                    : "student",
+                  name: child.name,
+                  description: `${child.description ?? ""} · ${child.placement.value} · ${child.payment.value}`,
+                }))}
+              />
+            </div>
             {family.children.length === 0 ? (
               <p className="mt-3 rounded-xl bg-[#F7F6F1] px-4 py-5 text-sm text-admin-muted">
                 Ingen barn er knyttet til familien.

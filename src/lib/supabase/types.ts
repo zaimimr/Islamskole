@@ -34,6 +34,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      homework_responses: {
+        Row: {
+          homework_version: number
+          note_id: string
+          responded_by: string | null
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          homework_version: number
+          note_id: string
+          responded_by?: string | null
+          status: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          homework_version?: number
+          note_id?: string
+          responded_by?: string | null
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_responses_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "class_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_responses_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lesson_handovers: {
         Row: {
           instructions: string
@@ -664,6 +706,7 @@ export type Database = {
           class_id: string
           created_at: string
           homework: string | null
+          homework_version: number
           id: string
           lesson_id: string
           school_day_id: string
@@ -675,6 +718,7 @@ export type Database = {
           class_id: string
           created_at?: string
           homework?: string | null
+          homework_version?: number
           id?: string
           lesson_id: string
           school_day_id: string
@@ -686,6 +730,7 @@ export type Database = {
           class_id?: string
           created_at?: string
           homework?: string | null
+          homework_version?: number
           id?: string
           lesson_id?: string
           school_day_id?: string
@@ -3466,6 +3511,35 @@ export type Database = {
       }
     }
     Functions: {
+      record_homework_response: {
+        Args: { p_note_id: string; p_student_id: string; p_homework_version: number; p_status: string }
+        Returns: undefined
+      }
+      homework_class_responses: {
+        Args: { p_note_id: string }
+        Returns: { student_id: string; student_name: string; status: string; updated_at: string | null }[]
+      }
+      homework_staff_can_read: { Args: { p_note_id: string }; Returns: boolean }
+      homework_can_respond: {
+        Args: { p_note_id: string; p_student_id: string }
+        Returns: boolean
+      }
+      homework_is_assigned: {
+        Args: { p_note_id: string; p_student_id: string }
+        Returns: boolean
+      }
+      student_homework: {
+        Args: { p_student_id: string }
+        Returns: {
+          date: string
+          homework: string
+          homework_version: number
+          note_id: string
+          status: string
+          subject: string
+          updated_at: string
+        }[]
+      }
       teaching_previous_years: {
         Args: { p_class_id: string; p_school_year_id: string }
         Returns: {

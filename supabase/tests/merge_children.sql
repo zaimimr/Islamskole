@@ -119,6 +119,11 @@ select public.materialize_lessons('f4000000-0000-0000-0000-0000000000d1', 'f4000
 insert into public.attendance (student_id, school_day_id, lesson_id, status, marked_by, marked_at)
   select 'f4000000-0000-0000-0000-000000000052', school_day_id, id, 'til_stede', 'f4000000-0000-0000-0000-0000000000a2', '2035-09-01 10:00+00'
   from public.lessons where school_day_id='f4000000-0000-0000-0000-0000000000d1';
+select set_config('request.jwt.claims', '{"sub":"f4000000-0000-0000-0000-0000000000a2","role":"service_role"}', true);
+insert into public.class_notes (id, class_id, school_day_id, homework) values
+  ('f4000000-0000-0000-0000-0000000000e2', 'f4000000-0000-0000-0000-0000000000c1', 'f4000000-0000-0000-0000-0000000000d1', 'ZZTEST homework');
+insert into public.homework_responses (note_id, student_id, status, homework_version) values
+  ('f4000000-0000-0000-0000-0000000000e2', 'f4000000-0000-0000-0000-000000000052', 'completed', 1);
 select set_config('request.jwt.claims', '{"sub":"f4000000-0000-0000-0000-0000000000a1","email":"zz-f4-admin@zztest.local","role":"authenticated"}', true);
 
 set local role authenticated;
@@ -126,6 +131,10 @@ update preview set result=public.admin_merge_children('f4000000-0000-0000-0000-0
 select lives_ok($$select public.admin_merge_children('f4000000-0000-0000-0000-000000000051', 'f4000000-0000-0000-0000-000000000052', null, true, (select result->>'token' from preview))$$,
   'admin merges duplicate students atomically');
 select is((select count(*) from public.students where id='f4000000-0000-0000-0000-000000000052'), 0::bigint, 'duplicate student removed');
+select is((select status from public.homework_responses where student_id = 'f4000000-0000-0000-0000-000000000051'), 'completed', 'homework completion survives child merge');
+select is((select responded_by from public.homework_responses where student_id = 'f4000000-0000-0000-0000-000000000051'), 'f4000000-0000-0000-0000-0000000000a2'::uuid, 'merge preserves original homework responder');
+select ok(exists (select 1 from public.audit_log where action = 'student.merged' and metadata->'before'->'homework_responses' @> '[{"student_id":"f4000000-0000-0000-0000-000000000052","status":"completed"}]'::jsonb), 'merge audit retains original homework responses');
+
 select is((select count(*) from public.student_fees where student_id='f4000000-0000-0000-0000-000000000051'), 1::bigint, 'duplicate tuition claim not doubled');
 select is((select paid from public.student_balances where student_id='f4000000-0000-0000-0000-000000000051'), 390000::bigint, 'both captured payments preserved with refund deducted');
 select is((select count(*) from public.enrollments where student_id='f4000000-0000-0000-0000-000000000051'), 1::bigint, 'duplicate class placement consolidated');

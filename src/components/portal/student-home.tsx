@@ -1,3 +1,4 @@
+import { StudentHomework } from "@/components/portal/student-homework";
 import { LessonMaterials } from "@/components/portal/lesson-materials";
 import { getTranslations } from "next-intl/server";
 import { joinNames, noteLessonLabel } from "@/components/portal/parent/child-card";
@@ -72,6 +73,7 @@ export async function StudentHome({ locale }: { locale: string }) {
             </section>
           ) : null}
           {me.class_id && me.school_year_id ? <LessonMaterials classId={me.class_id} schoolYearId={me.school_year_id} locale={locale} /> : null}
+          <StudentHomework studentId={me.student_id} locale={locale} />
           <WeekPlanView
             id="student-semester-plan"
             entries={weekPlans}

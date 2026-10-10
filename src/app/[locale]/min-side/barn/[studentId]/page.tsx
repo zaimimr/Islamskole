@@ -1,3 +1,4 @@
+import { StudentHomework } from "@/components/portal/student-homework";
 import { LessonMaterials } from "@/components/portal/lesson-materials";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -91,6 +92,7 @@ export default async function ChildDetailPage({
         </section>
       ) : null}
 
+      <StudentHomework studentId={child.student_id} locale={locale} />
       <LearningProgressSection studentId={child.student_id} />
       <LessonMaterials classId={child.class_id} schoolYearId={child.school_year_id} locale={locale} />
 

@@ -1,3 +1,4 @@
+import { ClassHomework } from "@/components/portal/teacher/class-homework";
 import { createClient } from "@/lib/supabase/server";
 import { HandoverEditor } from "@/components/portal/teacher/handover-editor";
 import { LessonPreparation } from "@/components/portal/teacher/lesson-preparation";
@@ -223,6 +224,8 @@ export default async function TeacherClassPage({
           ) : (
             <p className="rounded-2xl bg-card p-5 text-muted-foreground ring-1 ring-foreground/8">{t("noDays")}</p>
           )}
+          <ClassHomework classId={classId} schoolYearId={current.school_year_id}
+            selectedId={typeof query.lekse === "string" ? query.lekse : undefined} locale={locale} />
           <ClassProgress classId={classId} />
         </div>
 

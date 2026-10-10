@@ -34,6 +34,9 @@ update public.student_applications set payment_id = 'f4000000-0000-0000-0000-000
 insert into public.payment_allocations (payment_id, student_id, school_year_id, amount) values
   ('f4000000-0000-0000-0000-000000000092', 'f4000000-0000-0000-0000-000000000052', 'f4000000-0000-0000-0000-000000000001', 100000);
 
+update public.students set child_email='zz-f4-kept@zztest.local' where id='f4000000-0000-0000-0000-000000000051';
+update public.student_applications set child_email='zz-f4-proposed@zztest.local' where id='f4000000-0000-0000-0000-000000000072';
+
 select set_config('request.jwt.claims', '{"sub":"f4000000-0000-0000-0000-0000000000a2","role":"authenticated"}', true);
 set local role authenticated;
 select throws_ok($$select public.admin_merge_children('f4000000-0000-0000-0000-000000000051', null, 'f4000000-0000-0000-0000-000000000072')$$,
@@ -42,6 +45,8 @@ select set_config('request.jwt.claims', '{"sub":"f4000000-0000-0000-0000-0000000
 select throws_ok($$select public.admin_merge_children('f4000000-0000-0000-0000-000000000051', 'f4000000-0000-0000-0000-000000000053')$$,
   'P0001', null, 'children from different families cannot be merged');
 create temporary table preview as select public.admin_merge_children('f4000000-0000-0000-0000-000000000051', null, 'f4000000-0000-0000-0000-000000000072') result;
+select is(jsonb_array_length((select result->'conflicts' from preview)), 0, 'unprocessed application may propose a different email');
+select is((select result #>> '{fields,0,kept}' from preview), 'zz-f4-kept@zztest.local', 'preview retains enrolled student login email');
 select is((select result #>> '{finances,0,paid}' from preview), '200000', 'preview includes paid application');
 select is((select result #>> '{finances,0,remaining}' from preview), '300000', 'preview keeps remaining tuition due');
 select is((select count(*) from public.payment_allocations where payment_id='f4000000-0000-0000-0000-000000000091'), 0::bigint, 'preview never allocates payments');
@@ -55,6 +60,7 @@ select is((select remaining from public.student_balances where student_id='f4000
 select is((select count(*) from public.enrollments where student_id='f4000000-0000-0000-0000-000000000051'), 1::bigint, 'class placement is retained');
 select is((select merged_into_student_id from public.student_applications where id='f4000000-0000-0000-0000-000000000072'), 'f4000000-0000-0000-0000-000000000051'::uuid, 'application is linked to kept student');
 select is((select status from public.student_applications where id='f4000000-0000-0000-0000-000000000072'), 'arkivert', 'duplicate application archived without deleting payment');
+select is((select child_email from public.students where id='f4000000-0000-0000-0000-000000000051'), 'zz-f4-kept@zztest.local', 'application merge preserves actual student login');
 select ok(exists(select 1 from public.payment_allocation_locks where payment_id='f4000000-0000-0000-0000-000000000091'), 'future payment sync preserves allocation');
 select throws_ok($$select public.admin_merge_children('f4000000-0000-0000-0000-000000000051', null, 'f4000000-0000-0000-0000-000000000072')$$,
   'P0001', null, 'same application cannot be attached twice');
@@ -64,6 +70,11 @@ select throws_ok($$insert into public.students (family_id, application_id, child
   'P0001', null, 'archived merged application cannot create another student');
 
 reset role;
+update public.students set child_email='zz-f4-other-login@zztest.local' where id='f4000000-0000-0000-0000-000000000052';
+set local role authenticated;
+select ok(jsonb_array_length(public.admin_merge_children('f4000000-0000-0000-0000-000000000051', 'f4000000-0000-0000-0000-000000000052')->'conflicts') > 0, 'two actual student logins require resolution');
+reset role;
+update public.students set child_email=null where id='f4000000-0000-0000-0000-000000000052';
 update public.students set child_birth_date='2018-03-14' where id='f4000000-0000-0000-0000-000000000052';
 set local role authenticated;
 select ok(jsonb_array_length(public.admin_merge_children('f4000000-0000-0000-0000-000000000051', 'f4000000-0000-0000-0000-000000000052')->'conflicts') > 0, 'birth date conflict is visible');

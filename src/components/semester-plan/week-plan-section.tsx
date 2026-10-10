@@ -1,5 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { WeekPlanEditor } from "@/components/semester-plan/week-plan-editor";
+import { ReuseTeachingPlan } from "@/components/semester-plan/reuse-teaching-plan";
+import { createClient } from "@/lib/supabase/server";
 import { osloToday } from "@/lib/dates";
 import type { SlotRange, TimeSlot } from "@/lib/lessons";
 import { getSchoolDays } from "@/lib/portal/data";
@@ -28,6 +30,8 @@ export async function WeekPlanSection({
     getWeekPlans(classId, schoolYearId),
     getSchoolDays(schoolYearId),
   ]);
+  const supabase = await createClient();
+  const { data: previous } = await supabase.rpc("teaching_previous_years", { p_class_id: classId, p_school_year_id: schoolYearId });
 
   return (
     <section
@@ -45,6 +49,7 @@ export async function WeekPlanSection({
           {t("introEdit")}
         </p>
       </div>
+      <ReuseTeachingPlan classId={classId} schoolYearId={schoolYearId} years={previous ?? []} />
       <WeekPlanEditor
         classId={classId}
         schoolYearId={schoolYearId}

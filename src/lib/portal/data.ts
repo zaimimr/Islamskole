@@ -204,11 +204,7 @@ const getActiveYear = cache(
     const known = children[0] ?? classes[0];
     if (known) return { id: known.school_year_id, label: known.school_year_label };
     const supabase = await createClient();
-    const { data } = await supabase
-      .from("school_years")
-      .select("id, label")
-      .eq("is_active", true)
-      .maybeSingle();
+    const { data } = await supabase.rpc("portal_active_school_year").maybeSingle();
     return data ?? null;
   },
 );

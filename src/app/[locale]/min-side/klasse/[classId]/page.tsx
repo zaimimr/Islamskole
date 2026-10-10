@@ -1,3 +1,6 @@
+import { createClient } from "@/lib/supabase/server";
+import { HandoverEditor } from "@/components/portal/teacher/handover-editor";
+import { LessonPreparation } from "@/components/portal/teacher/lesson-preparation";
 import NextLink from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -93,8 +96,11 @@ export default async function TeacherClassPage({
     lesson ? getLessonNote(lesson.lesson_id) : Promise.resolve(null),
     getClassNotes(classId, 12, day?.date ?? today),
     lessonAccess ? Promise.resolve([]) : getClassBlocks(classId, current.school_year_id),
-    lessonAccess ? getWeekPlans(classId, current.school_year_id) : Promise.resolve([]),
+    getWeekPlans(classId, current.school_year_id),
   ]);
+  const { data: handover } = lesson
+    ? await (await createClient()).from("lesson_handovers").select("instructions").eq("lesson_id", lesson.lesson_id).maybeSingle()
+    : { data: null };
   const previousNotes = notes
     .filter((row) => !day || (row.date !== null && row.date < day.date))
     .slice(0, 5);
@@ -193,6 +199,10 @@ export default async function TeacherClassPage({
                 </p>
               ) : null}
 
+              {lesson ? <LessonPreparation classId={classId} schoolYearId={current.school_year_id}
+                lessonId={lesson.lesson_id} date={day.date} startPosition={lesson.start_position} endPosition={lesson.end_position}
+                entries={weekPlans} slots={slots} locale={locale} /> : null}
+
               {lesson ? (
                 <section aria-labelledby="attendance-title" className="grid gap-3">
                   <h2 id="attendance-title" className="text-2xl font-bold">
@@ -217,6 +227,10 @@ export default async function TeacherClassPage({
         </div>
 
         <aside className="grid gap-8 lg:sticky lg:top-24">
+          {lesson ? <section className="grid gap-3">
+            <h2 className="text-2xl font-bold">{locale === "en" ? "Substitute handover" : "Vikaroverlevering"}</h2>
+            <HandoverEditor key={lesson.lesson_id} lessonId={lesson.lesson_id} instructions={handover?.instructions ?? ""} />
+          </section> : null}
           {day && lesson ? (
             <section aria-labelledby="note-title" className="grid gap-3">
               <div className="grid gap-1">

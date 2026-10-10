@@ -34,6 +34,111 @@ export type Database = {
   }
   public: {
     Tables: {
+      lesson_handovers: {
+        Row: {
+          instructions: string
+          lesson_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          instructions: string
+          lesson_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          instructions?: string
+          lesson_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_handovers_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: true
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_materials: {
+        Row: {
+          class_id: string
+          created_at: string
+          created_by: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          id: string
+          kind: string
+          lesson_id: string | null
+          mime_type: string | null
+          school_year_id: string
+          status: string
+          title: string
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          kind: string
+          lesson_id?: string | null
+          mime_type?: string | null
+          school_year_id: string
+          status?: string
+          title: string
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          kind?: string
+          lesson_id?: string | null
+          mime_type?: string | null
+          school_year_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_materials_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_materials_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_materials_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_onboarding: {
         Row: {
           completed_at: string
@@ -816,10 +921,13 @@ export type Database = {
       class_week_plans: {
         Row: {
           class_id: string
+          completed_at: string | null
+          completed_by: string | null
           created_at: string
           created_by: string | null
           description: string | null
           end_position: number | null
+          goals: string | null
           id: string
           resource_url: string | null
           school_year_id: string
@@ -832,10 +940,13 @@ export type Database = {
         }
         Insert: {
           class_id: string
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           end_position?: number | null
+          goals?: string | null
           id?: string
           resource_url?: string | null
           school_year_id: string
@@ -848,10 +959,13 @@ export type Database = {
         }
         Update: {
           class_id?: string
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           end_position?: number | null
+          goals?: string | null
           id?: string
           resource_url?: string | null
           school_year_id?: string
@@ -3352,6 +3466,36 @@ export type Database = {
       }
     }
     Functions: {
+      teaching_previous_years: {
+        Args: { p_class_id: string; p_school_year_id: string }
+        Returns: {
+          id: string
+          label: string
+        }[]
+      }
+      portal_active_school_year: {
+        Args: never
+        Returns: {
+          id: string
+          label: string
+        }[]
+      }
+      can_manage_lesson_material: {
+        Args: {
+          p_class_id: string
+          p_lesson_id: string | null
+          p_school_year_id: string
+        }
+        Returns: boolean
+      }
+      copy_teaching_year: {
+        Args: {
+          p_class_id: string
+          p_source_year_id: string
+          p_target_year_id: string
+        }
+        Returns: number
+      }
       claim_school_emails: {
         Args: { p_family_id?: string; p_limit?: number }
         Returns: {

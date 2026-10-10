@@ -1,3 +1,4 @@
+import { LessonMaterials } from "@/components/portal/lesson-materials";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ChevronLeft, Pencil } from "lucide-react";
@@ -91,6 +92,7 @@ export default async function ChildDetailPage({
       ) : null}
 
       <LearningProgressSection studentId={child.student_id} />
+      <LessonMaterials classId={child.class_id} schoolYearId={child.school_year_id} locale={locale} />
 
       <WeekPlanView
         id="detail-semester-plan"

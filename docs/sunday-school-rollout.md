@@ -25,3 +25,5 @@ Build for a Sunday-only school with limited staff. Preserve the existing Norwegi
 ## Progress
 
 - Email and onboarding implemented locally. 126 unit checks, 50 focused email database checks and five email browser setup/flow/teardown checks passed. The previous full database run passed 619 checks. Production build passed. Shipping and the remaining stages are still outstanding.
+
+- Shared teaching goals, covered topics, school-year reuse, private lesson materials and substitute handover implemented locally. 32 focused database checks, 664 full database checks, 127 unit checks and 10 browser setup/flow/teardown checks passed. Typecheck, lint and production build passed. Shipping and the remaining stages are still outstanding.

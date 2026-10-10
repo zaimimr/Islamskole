@@ -27,6 +27,7 @@ const draftSchema = z
     subject: optional(120),
     title: z.string().trim().min(1).max(200),
     description: optional(4000),
+    goals: optional(2000),
     resource_url: optional(500).refine((value) => !value || /^https?:\/\//i.test(value)),
   })
   .refine(
@@ -59,7 +60,7 @@ async function weekRows(classId: string, schoolYearId: string, weeks: string[]) 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("class_week_plans")
-    .select("week_start, start_position, end_position, subject, title, description, resource_url, sort_order")
+    .select("week_start, start_position, end_position, subject, title, description, goals, completed_at, resource_url, sort_order")
     .eq("class_id", classId)
     .eq("school_year_id", schoolYearId)
     .in("week_start", weeks);
@@ -132,6 +133,28 @@ export async function deleteWeekPlanEntry(id: string): Promise<WeekPlanResult> {
   if (!data?.length) return { ok: false, error: "forbidden" };
   refresh();
   return { ok: true };
+}
+
+export async function completeWeekPlanEntry(id: string, completed: boolean): Promise<WeekPlanResult> {
+  if (!uuid.safeParse(id).success || typeof completed !== "boolean") return { ok: false, error: "invalid" };
+  if (!(await getUser())) return { ok: false, error: "unauthenticated" };
+  const { data, error } = await (await createClient()).from("class_week_plans")
+    .update({ completed_at: completed ? new Date().toISOString() : null }).eq("id", id).select("id");
+  if (error) return { ok: false, error: dbError(error) };
+  if (!data?.length) return { ok: false, error: "forbidden" };
+  refresh();
+  return { ok: true };
+}
+
+export async function copyTeachingYear(input: { classId: string; schoolYearId: string; sourceYearId: string }): Promise<WeekPlanResult> {
+  if (!scopeSchema.safeParse(input).success || !uuid.safeParse(input.sourceYearId).success) return { ok: false, error: "invalid" };
+  if (!(await getUser())) return { ok: false, error: "unauthenticated" };
+  const { data, error } = await (await createClient()).rpc("copy_teaching_year", {
+    p_class_id: input.classId, p_target_year_id: input.schoolYearId, p_source_year_id: input.sourceYearId,
+  });
+  if (error) return { ok: false, error: dbError(error) };
+  refresh();
+  return { ok: true, count: data };
 }
 
 export async function copyWeekPlan(input: {

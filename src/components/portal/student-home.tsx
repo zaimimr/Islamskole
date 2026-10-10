@@ -1,3 +1,4 @@
+import { LessonMaterials } from "@/components/portal/lesson-materials";
 import { getTranslations } from "next-intl/server";
 import { joinNames, noteLessonLabel } from "@/components/portal/parent/child-card";
 import { ChildLessons } from "@/components/portal/parent/child-lessons";
@@ -70,6 +71,7 @@ export async function StudentHome({ locale }: { locale: string }) {
               <ChildLessons lessons={lessons} slots={slots} locale={locale} />
             </section>
           ) : null}
+          {me.class_id && me.school_year_id ? <LessonMaterials classId={me.class_id} schoolYearId={me.school_year_id} locale={locale} /> : null}
           <WeekPlanView
             id="student-semester-plan"
             entries={weekPlans}

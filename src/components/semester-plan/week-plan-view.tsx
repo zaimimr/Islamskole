@@ -58,7 +58,7 @@ export async function WeekPlanView({
         <ul className="grid gap-3 sm:grid-cols-2">
           {rows.map((entry) => (
             <li key={entry.id} className="rounded-xl bg-muted/50 p-3">
-              <WeekEntryContent entry={entry} label={entryLabel(entry, slots, t("general"))} linkLabel={t("resource")} />
+              <WeekEntryContent entry={entry} label={entryLabel(entry, slots, t("general"))} linkLabel={t("resource")} locale={locale} />
             </li>
           ))}
         </ul>

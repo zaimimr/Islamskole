@@ -8,6 +8,8 @@ export type WeekPlanEntry = {
   subject: string | null;
   title: string;
   description: string | null;
+  goals?: string | null;
+  completed_at?: string | null;
   resource_url: string | null;
   sort_order: number;
   updated_at: string;
@@ -15,7 +17,7 @@ export type WeekPlanEntry = {
 
 export type WeekPlanDraft = Pick<
   WeekPlanEntry,
-  "start_position" | "end_position" | "subject" | "title" | "description" | "resource_url"
+  "start_position" | "end_position" | "subject" | "title" | "description" | "resource_url" | "goals"
 >;
 
 export type PlanWeek = {
@@ -115,6 +117,7 @@ export function copyableEntries<T extends WeekPlanDraft>(source: T[], target: We
       subject: row.subject,
       title: row.title,
       description: row.description,
+      ...(row.goals !== undefined ? { goals: row.goals } : {}),
       resource_url: row.resource_url,
     }));
 }

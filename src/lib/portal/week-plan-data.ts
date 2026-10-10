@@ -6,7 +6,7 @@ export async function getWeekPlans(classId: string, schoolYearId: string): Promi
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("class_week_plans")
-    .select("id, class_id, school_year_id, week_start, start_position, end_position, subject, title, description, resource_url, sort_order, updated_at")
+    .select("id, class_id, school_year_id, week_start, start_position, end_position, subject, title, description, goals, completed_at, resource_url, sort_order, updated_at")
     .eq("class_id", classId)
     .eq("school_year_id", schoolYearId)
     .order("week_start", { ascending: true });

@@ -29,15 +29,19 @@ export function WeekEntryContent({
   entry,
   label,
   linkLabel,
+  locale = "no",
 }: {
-  entry: Pick<WeekPlanEntry, "title" | "description" | "resource_url">;
+  entry: Pick<WeekPlanEntry, "title" | "description" | "resource_url" | "goals" | "completed_at">;
   label: string;
   linkLabel: string;
+  locale?: string;
 }) {
   return (
     <div className="grid min-w-0 gap-1">
       <p className="text-xs font-semibold tracking-wide text-brand-green-dark uppercase">{label}</p>
       <p className="font-semibold text-pretty">{entry.title}</p>
+      {entry.completed_at ? <p className="text-sm font-semibold text-brand-green-dark">{locale === "en" ? "Covered" : "Gjennomført"}</p> : null}
+      {entry.goals ? <p className="text-sm whitespace-pre-line"><span className="font-semibold">{locale === "en" ? "Goals" : "Læringsmål"}: </span>{entry.goals}</p> : null}
       {entry.description ? (
         <p className="text-sm whitespace-pre-line text-pretty text-foreground/80">{entry.description}</p>
       ) : null}

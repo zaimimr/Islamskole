@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { ChevronDown, Copy, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Copy, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { entryLabel, weekHeading, WeekEntryContent } from "@/components/semester-plan/week-entry";
 import {
   AlertDialog,
@@ -29,7 +29,7 @@ import {
   type PlanWeek,
   type WeekPlanEntry,
 } from "@/lib/semester-plan";
-import { copyWeekPlan, deleteWeekPlanEntry, saveWeekPlanEntry } from "@/lib/portal/week-plan-actions";
+import { completeWeekPlanEntry, copyWeekPlan, deleteWeekPlanEntry, saveWeekPlanEntry } from "@/lib/portal/week-plan-actions";
 import { cn } from "@/lib/utils";
 
 type Block = SlotRange & { subject: string | null };
@@ -131,8 +131,16 @@ export function WeekPlanEditor({
             {rows.map((entry) =>
               formHere && editing?.entry?.id === entry.id ? null : (
                 <li key={entry.id} className="flex items-start justify-between gap-2 rounded-xl bg-muted/50 p-3">
-                  <WeekEntryContent entry={entry} label={entryLabel(entry, slots, general)} linkLabel={t("resource")} />
-                  <div className="flex shrink-0">
+                  <WeekEntryContent entry={entry} label={entryLabel(entry, slots, general)} linkLabel={t("resource")} locale={locale} />
+                  <div className="flex shrink-0 flex-col sm:flex-row">
+                    <Button type="button" variant="ghost" size="icon" className="size-11" disabled={pending}
+                      aria-label={locale === "en" ? `${entry.completed_at ? "Mark unfinished" : "Mark covered"}: ${entry.title}` : `${entry.completed_at ? "Merk som ikke gjennomført" : "Merk som gjennomført"}: ${entry.title}`}
+                      onClick={() => startTransition(async () => {
+                        const result = await completeWeekPlanEntry(entry.id, !entry.completed_at);
+                        if (!result.ok) toast.error(tErrors(result.error));
+                      })}>
+                      <Check aria-hidden="true" className={cn("size-4", entry.completed_at ? "text-brand-green-dark" : "text-muted-foreground")} />
+                    </Button>
                     <Button
                       type="button"
                       variant="ghost"
@@ -285,6 +293,7 @@ function EntryForm({
       subject: string | null;
       title: string;
       description: string | null;
+      goals: string | null;
       resource_url: string | null;
     },
     alsoWeeks: string[],
@@ -293,6 +302,8 @@ function EntryForm({
   const t = useTranslations("portal.semesterPlan.form");
   const [block, setBlock] = useState(entry ? blockKey(entry) : GENERAL);
   const [title, setTitle] = useState(entry?.title ?? "");
+  const locale = useLocale();
+  const [goals, setGoals] = useState(entry?.goals ?? "");
   const [description, setDescription] = useState(entry?.description ?? "");
   const [link, setLink] = useState(entry?.resource_url ?? "");
   const [allWeeks, setAllWeeks] = useState(false);
@@ -309,6 +320,7 @@ function EntryForm({
         subject: chosen?.subject ?? (block === GENERAL && entry?.start_position === null ? entry.subject : null),
         title: title.trim(),
         description: description.trim() || null,
+        goals: goals.trim() || null,
         resource_url: link.trim() || null,
       },
       allWeeks ? laterWeeks : [],
@@ -344,6 +356,10 @@ function EntryForm({
           placeholder={t("titlePlaceholder")}
           className="bg-card"
         />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor={`plan-goals-${formId}`}>{locale === "en" ? "Learning goals" : "Læringsmål"}</Label>
+        <Textarea id={`plan-goals-${formId}`} value={goals} onChange={(event) => setGoals(event.target.value)} maxLength={2000} rows={2} disabled={pending} className="bg-card text-base" />
       </div>
       <div className="grid gap-2">
         <Label htmlFor={`plan-description-${formId}`}>{t("description")}</Label>

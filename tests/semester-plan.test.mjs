@@ -97,3 +97,10 @@ test("only http and https links are shown", () => {
   assert.equal(isSafeLink("not a url"), false);
   assert.equal(isSafeLink(null), false);
 });
+
+test("copied topics keep learning goals and reset coverage", () => {
+  const source = { ...entry("2026-10-05", "Reading"), goals: "Read confidently", completed_at: "2026-10-11" };
+  const [copy] = copyableEntries([source], []);
+  assert.equal(copy.goals, "Read confidently");
+  assert.equal(copy.completed_at, undefined);
+});

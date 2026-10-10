@@ -1,3 +1,4 @@
+import { LessonMaterials } from "@/components/portal/lesson-materials";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -659,6 +660,9 @@ export default async function KlassePage({
               admin
             />
           ) : null}
+          {activeYear ? <div className="rounded-2xl bg-white p-4 ring-1 ring-[#E3DED3] sm:p-5 print:hidden">
+            <LessonMaterials classId={classRecord.id} schoolYearId={activeYear.id} locale={locale} editable />
+          </div> : null}
           <section className="overflow-hidden rounded-2xl bg-white ring-1 ring-[#E3DED3] print:ring-0">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#ECE8DF] px-4 py-4 sm:px-5">
               <div className="grid min-w-48 gap-1.5">

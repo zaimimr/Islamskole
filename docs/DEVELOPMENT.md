@@ -80,6 +80,19 @@ node --conditions=react-server --test tests/school-emails.test.mjs
 npm run test:e2e -- --project=e2e tests/e2e/school-emails.spec.ts
 ```
 
+## Teaching resources
+
+Shared semester topics support goals, covered status and copying from an earlier school year into actual non-cancelled Sundays. Copying preserves goals and resources, resets completion, and skips existing matching topics. Class teachers and admins reuse plans; lesson-only substitutes read the class plan.
+
+`lesson_materials` supports links and private PDFs, images and audio up to 20 MB. Staff uploads go through authorised signed upload URLs. Files become visible only after storage size and content type match the pending material. Family and student access follows the existing active class permissions. Downloads require authentication and issue a 60-second signed URL. Staff can remove unfinished uploads.
+
+The teacher lesson page places the current plan and materials alongside staff-only `lesson_handovers` and previous class notes. Lesson-only substitutes can find the active school year and read class note history for their assigned year. Parents and students never read handover instructions.
+
+```bash
+supabase test db supabase/tests/teaching_resources.sql
+npm run test:e2e -- --project=e2e tests/e2e/teaching-resources.spec.ts
+```
+
 ## Learning progress
 
 Learning progress lives in `src/lib/learning-progress` and `src/components/learning-progress`. Teachers open a child from the class's learning list. Administrators use the student record. Guardians read progress on the child page, and children read their own progress on Min side. Saved goals and updates are visible immediately, without email notifications or a separate publishing step.

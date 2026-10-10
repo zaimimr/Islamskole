@@ -52,6 +52,25 @@ npm run test:e2e -- --project=e2e tests/e2e/announcements.spec.ts
 
 The browser tests use test families and the local email outbox. The database tests cover role isolation, shared-email deduplication, sibling acknowledgement, opt-outs, retry permissions, and interrupted delivery.
 
+## Learning progress
+
+Learning progress lives in `src/lib/learning-progress` and `src/components/learning-progress`. Teachers open a child from the class's learning list. Administrators use the student record. Guardians read progress on the child page, and children read their own progress on Min side. Saved goals and updates are visible immediately, without email notifications or a separate publishing step.
+
+`learning_goals` stores the current goal and latest progress. `learning_progress_updates` stores its dated history. Database functions create both atomically, preserve idempotency on retries, reject updates based on stale versions, and audit changes without duplicating feedback in the audit log. Published goal definitions are fixed; later updates change status, feedback and next target. Surah names are teacher-written, and ayah ranges require positive ordered integers and a surah. They are not checked against a Quran catalogue.
+
+Teacher access follows the child's current active enrollment and existing class/slot teacher permissions, including valid class substitutes. Administrators can manage any child, including those without an active enrollment. Suspended teachers have no teaching access. New class teachers can continue earlier goals; former class teachers lose access. Guardians and the child retain read access to earlier learning history. Portal users cannot directly insert, edit or delete learning records. Feedback and targets are corrected through a new dated update.
+
+Goals and history load in pages of 20. History is fetched only when opened. No extra configuration is required. Generated RPC argument types are widened where the database accepts nullable reference, feedback and target fields.
+
+```bash
+supabase migration up --local
+supabase test db supabase/tests/learning_progress.sql
+node --conditions=react-server --test tests/learning-progress.test.mjs
+npm run test:e2e -- --project=e2e tests/e2e/learning-progress.spec.ts
+```
+
+These checks cover validation, family and teacher isolation, immediate visibility, dated history, class transfers, previous school years, retries, concurrent updates, pagination, mobile layouts and English labels.
+
 ## Admin session for local testing
 
 With the local stack running:

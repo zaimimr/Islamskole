@@ -1095,5 +1095,51 @@
       "no_recipients": "Ingen familier er påmeldt for denne mottakergruppen i aktivt skoleår.",
       "email_unavailable": "E-post er ikke tilgjengelig. Velg kun publisering i portalen."
     }
+  },
+  "learningProgress": {
+    "title": "Læringsutvikling",
+    "subject": "Fag",
+    "subjects": {
+      "quran": "Koran",
+      "arabic": "Arabisk",
+      "islam": "Islamkunnskap"
+    },
+    "statuses": {
+      "practising": "Øver",
+      "achieved": "Mestret",
+      "needs_revision": "Trenger repetisjon"
+    },
+    "newGoal": "Nytt læringsmål",
+    "goal": "Læringsmål",
+    "referenceOptional": "Koranreferanse (valgfritt)",
+    "surah": "Surah",
+    "ayahFrom": "Ayah fra",
+    "ayahTo": "Ayah til",
+    "ayahRange": "Ayah {from}-{to}",
+    "status": "Status",
+    "feedback": "Tilbakemelding fra lærer",
+    "nextTarget": "Neste øvingsmål",
+    "recordUpdate": "Registrer utvikling",
+    "visibleToFamily": "Lagres og vises til eleven og foresatte med en gang.",
+    "save": "Lagre utvikling",
+    "saving": "Lagrer…",
+    "saved": "Læringsutvikling lagret",
+    "cancel": "Avbryt",
+    "refresh": "Hent siste utvikling",
+    "history": "Tidligere utvikling",
+    "loading": "Henter…",
+    "moreHistory": "Vis flere oppdateringer",
+    "moreGoals": "Vis flere læringsmål",
+    "retry": "Prøv igjen",
+    "emptyTeacher": "Legg til elevens første læringsmål.",
+    "emptyFamily": "Læreren har ikke registrert læringsmål ennå.",
+    "backToClass": "Tilbake til klassen",
+    "errors": {
+      "invalid": "Kontroller at læringsmålet og feltene er riktig utfylt.",
+      "invalid_reference": "Fyll inn surah og begge ayah-numrene. Ayah til må være minst like høy som ayah fra.",
+      "forbidden": "Du har ikke tilgang til å registrere utvikling for denne eleven.",
+      "conflict": "En annen lærer har registrert ny utvikling. Hent siste utvikling før du lagrer.",
+      "unavailable": "Kunne ikke hente eller lagre læringsutvikling. Prøv igjen."
+    }
   }
 }

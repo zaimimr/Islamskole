@@ -34,6 +34,112 @@ export type Database = {
   }
   public: {
     Tables: {
+      learning_goals: {
+        Row: {
+          ayah_from: number | null
+          ayah_to: number | null
+          created_at: string
+          created_by: string | null
+          feedback: string | null
+          id: string
+          latest_update_id: string | null
+          next_target: string | null
+          status: string
+          student_id: string
+          subject: string
+          surah: string | null
+          title: string
+          updated_at: string
+          updated_by_name: string
+        }
+        Insert: {
+          ayah_from?: number | null
+          ayah_to?: number | null
+          created_at?: string
+          created_by?: string | null
+          feedback?: string | null
+          id?: string
+          latest_update_id?: string | null
+          next_target?: string | null
+          status: string
+          student_id: string
+          subject: string
+          surah?: string | null
+          title: string
+          updated_at?: string
+          updated_by_name: string
+        }
+        Update: {
+          ayah_from?: number | null
+          ayah_to?: number | null
+          created_at?: string
+          created_by?: string | null
+          feedback?: string | null
+          id?: string
+          latest_update_id?: string | null
+          next_target?: string | null
+          status?: string
+          student_id?: string
+          subject?: string
+          surah?: string | null
+          title?: string
+          updated_at?: string
+          updated_by_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_goals_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_progress_updates: {
+        Row: {
+          created_at: string
+          feedback: string | null
+          goal_id: string
+          id: string
+          next_target: string | null
+          recorded_by: string | null
+          status: string
+          student_id: string
+          teacher_name: string
+        }
+        Insert: {
+          created_at?: string
+          feedback?: string | null
+          goal_id: string
+          id?: string
+          next_target?: string | null
+          recorded_by?: string | null
+          status: string
+          student_id: string
+          teacher_name: string
+        }
+        Update: {
+          created_at?: string
+          feedback?: string | null
+          goal_id?: string
+          id?: string
+          next_target?: string | null
+          recorded_by?: string | null
+          status?: string
+          student_id?: string
+          teacher_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_progress_updates_goal_id_student_id_fkey"
+            columns: ["goal_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "learning_goals"
+            referencedColumns: ["id", "student_id"]
+          },
+        ]
+      }
       announcement_deliveries: {
         Row: {
           announcement_id: string
@@ -3119,6 +3225,50 @@ export type Database = {
       }
     }
     Functions: {
+      create_learning_goal: {
+        Args: {
+          p_ayah_from: number | null
+          p_ayah_to: number | null
+          p_class_id: string | null
+          p_feedback: string | null
+          p_id: string
+          p_next_target: string | null
+          p_status: string
+          p_student_id: string
+          p_subject: string
+          p_surah: string | null
+          p_title: string
+        }
+        Returns: string
+      }
+      record_learning_progress: {
+        Args: {
+          p_expected_update_id: string
+          p_feedback: string | null
+          p_goal_id: string
+          p_id: string
+          p_next_target: string | null
+          p_status: string
+        }
+        Returns: string
+      }
+      learning_can_manage_student: {
+        Args: { p_student_id: string }
+        Returns: boolean
+      }
+      learning_can_read_student: {
+        Args: { p_student_id: string }
+        Returns: boolean
+      }
+      learning_class_students: {
+        Args: { p_class_id: string }
+        Returns: {
+          first_name: string
+          last_name: string
+          student_id: string
+        }[]
+      }
+      learning_teacher_name: { Args: never; Returns: string }
       acknowledge_announcement: {
         Args: { p_family_id: string; p_id: string }
         Returns: undefined

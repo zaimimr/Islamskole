@@ -1095,5 +1095,51 @@
       "no_recipients": "No families are enrolled for these recipients in the active school year.",
       "email_unavailable": "Email is unavailable. Choose portal-only publishing."
     }
+  },
+  "learningProgress": {
+    "title": "Learning progress",
+    "subject": "Subject",
+    "subjects": {
+      "quran": "Quran",
+      "arabic": "Arabic",
+      "islam": "Islamic knowledge"
+    },
+    "statuses": {
+      "practising": "Practising",
+      "achieved": "Achieved",
+      "needs_revision": "Needs revision"
+    },
+    "newGoal": "New learning goal",
+    "goal": "Learning goal",
+    "referenceOptional": "Quran reference (optional)",
+    "surah": "Surah",
+    "ayahFrom": "First ayah",
+    "ayahTo": "Last ayah",
+    "ayahRange": "Ayah {from}-{to}",
+    "status": "Status",
+    "feedback": "Teacher feedback",
+    "nextTarget": "Next practice target",
+    "recordUpdate": "Record progress",
+    "visibleToFamily": "Saved updates appear to the child and guardians immediately.",
+    "save": "Save progress",
+    "saving": "Saving…",
+    "saved": "Learning progress saved",
+    "cancel": "Cancel",
+    "refresh": "Load latest progress",
+    "history": "Earlier progress",
+    "loading": "Loading…",
+    "moreHistory": "Show more updates",
+    "moreGoals": "Show more learning goals",
+    "retry": "Try again",
+    "emptyTeacher": "Add this child's first learning goal.",
+    "emptyFamily": "The teacher has not recorded learning goals yet.",
+    "backToClass": "Back to class",
+    "errors": {
+      "invalid": "Check the learning goal and complete the fields correctly.",
+      "invalid_reference": "Enter the surah and both ayah numbers. The last ayah must be at least the first ayah.",
+      "forbidden": "You cannot record progress for this child.",
+      "conflict": "Another teacher has recorded new progress. Load the latest progress before saving.",
+      "unavailable": "Could not load or save learning progress. Try again."
+    }
   }
 }

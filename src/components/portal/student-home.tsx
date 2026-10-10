@@ -9,6 +9,7 @@ import { getLessons, getMySelf, getSchoolDays, getTimeSlots } from "@/lib/portal
 import { formatPortalDay } from "@/lib/portal/parent-format";
 import { allSchoolDays } from "@/lib/portal/teacher-days";
 import { getWeekPlans } from "@/lib/portal/week-plan-data";
+import { LearningProgressSection } from "@/components/learning-progress/progress-section";
 
 export async function StudentHome({ locale }: { locale: string }) {
   const [t, tParent, self] = await Promise.all([
@@ -56,6 +57,8 @@ export async function StudentHome({ locale }: { locale: string }) {
           </p>
         ) : null}
       </header>
+
+      {me ? <LearningProgressSection studentId={me.student_id} /> : null}
 
       {me && className ? (
         <>

@@ -547,6 +547,7 @@ update public.student_applications set payment_id = null where payment_id in (se
 delete from public.payments where id in (select id from zz_payments);
 delete from public.student_fee_adjustments where student_id in (select id from zz_students) or school_year_id in (select id from zz_years);
 delete from public.student_fees where student_id in (select id from zz_students) or school_year_id in (select id from zz_years);
+delete from public.learning_goals where student_id in (select id from zz_students);
 delete from public.absence_reports where student_id in (select id from zz_students);
 delete from public.attendance where student_id in (select id from zz_students);
 delete from public.class_notes where class_id in (select id from zz_classes);

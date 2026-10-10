@@ -34,6 +34,7 @@ import {
 } from "@/lib/portal/teacher-days";
 import { getLessonNote } from "@/lib/portal/teacher-notes";
 import { getClassBlocks, getWeekPlans } from "@/lib/portal/week-plan-data";
+import { ClassProgress } from "@/components/learning-progress/class-progress";
 
 const backLinkClass =
   "inline-flex min-h-11 w-fit items-center gap-1.5 rounded-lg pr-2 text-sm font-semibold text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50";
@@ -212,6 +213,7 @@ export default async function TeacherClassPage({
           ) : (
             <p className="rounded-2xl bg-card p-5 text-muted-foreground ring-1 ring-foreground/8">{t("noDays")}</p>
           )}
+          <ClassProgress classId={classId} />
         </div>
 
         <aside className="grid gap-8 lg:sticky lg:top-24">

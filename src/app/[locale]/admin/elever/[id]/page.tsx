@@ -37,6 +37,7 @@ import { getAdminFamilies } from "@/lib/families/service";
 import { FamilyPickerDialog } from "@/app/[locale]/admin/familier/family-controls";
 import { familyOptions } from "@/app/[locale]/admin/familier/family-options";
 import { moveStudentToFamily } from "@/app/[locale]/admin/familier/families-actions";
+import { LearningProgressSection } from "@/components/learning-progress/progress-section";
 
 export const metadata: Metadata = { title: "Elev" };
 
@@ -889,6 +890,11 @@ export default async function ElevDetailPage({
         payments={payments}
         adjustments={adjustments}
         teachers={teachers}
+      />
+
+      <LearningProgressSection
+        studentId={student.id}
+        classId={null}
       />
 
       <StudentExitPanel

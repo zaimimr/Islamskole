@@ -12,9 +12,11 @@ The primary users for this release are the principal and trusted school administ
 
 Families use the public enrollment flow without an account. After enrollment, guardians sign in with an emailed login link (no password) to "Mine barn": each child's class, teachers, weekly homework and class note, attendance, calendar, absence reporting, and a one-line payment status.
 
-Teachers sign in the same way to "Min klasse": their class roster on a phone, one-tap Sunday attendance, a weekly note with homework, and absences reported by parents. One person can be both a parent and a teacher.
+Teachers sign in the same way to "Min klasse": their class roster on a phone, one-tap Sunday attendance, a weekly note with homework, absences reported by parents, and each child's learning progress. One person can be both a parent and a teacher.
 
 Administrators publish announcements to the whole school or individual classes. Teachers publish to their own classes. Guardians read announcements in "Beskjeder" and one guardian acknowledges important notices for the family. Publishing defaults to email when delivery is configured, with a portal-only option.
+
+Teachers record written goals in Quran, Arabic and Islamic knowledge, with optional surah/ayah references. Each dated update records practising, achieved or needs revision, teacher feedback and the next practice target. Saving shares the update immediately with the child and guardians. Current class teachers can continue existing goals after a class transfer. Families retain the learning history across school years.
 
 ## Product Purpose
 
@@ -43,8 +45,8 @@ Parents enroll one or more children publicly and pay intentionally through Vipps
 - Financial history must be traceable and must not be silently or destructively lost.
 - Schema and payment changes require migration safety, automated coverage, and reconciliation checks.
 - The application remains a school operations system and does not replace bookkeeping software.
-- Student logins provide read access to the student's class, plans, notes, and attendance. Announcements are addressed to guardians.
-- The next stages add flexible teacher-written learning goals with optional surah/ayah ranges, statuses and next targets; class materials; activity consent and participation; and attendance follow-up after three consecutive missed school Sundays, with the teacher deciding whether to contact home.
+- Student logins provide read access to the student's class, plans, notes, attendance and learning progress. Announcements are addressed to guardians.
+- The next stages add class materials; activity consent and participation; and attendance follow-up after three consecutive missed school Sundays, with the teacher deciding whether to contact home.
 - Grading, full learning management, payroll, transport, inventory, general chat, and native mobile applications remain outside this release.
 
 ## Brand Commitments

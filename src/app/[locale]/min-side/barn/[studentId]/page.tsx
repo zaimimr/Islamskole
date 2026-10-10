@@ -14,6 +14,7 @@ import { absenceOptions, getParentData } from "@/lib/portal/parent-data";
 import { currentTerm, summarizeAttendance } from "@/lib/portal/parent-format";
 import { allSchoolDays } from "@/lib/portal/teacher-days";
 import { getWeekPlans } from "@/lib/portal/week-plan-data";
+import { LearningProgressSection } from "@/components/learning-progress/progress-section";
 
 export default async function ChildDetailPage({
   params,
@@ -88,6 +89,8 @@ export default async function ChildDetailPage({
           />
         </section>
       ) : null}
+
+      <LearningProgressSection studentId={child.student_id} />
 
       <WeekPlanView
         id="detail-semester-plan"

@@ -34,6 +34,73 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance_followups: {
+        Row: {
+          student_name: string
+          action: string
+          class_id: string
+          created_at: string
+          id: string
+          message: string
+          note: string
+          recorded_by: string | null
+          recorded_by_name: string
+          school_year_id: string
+          streak_ended_on: string
+          student_id: string
+        }
+        Insert: {
+          student_name?: string
+          action: string
+          class_id: string
+          created_at?: string
+          id?: string
+          message?: string
+          note?: string
+          recorded_by?: string | null
+          recorded_by_name: string
+          school_year_id: string
+          streak_ended_on: string
+          student_id: string
+        }
+        Update: {
+          student_name?: string
+          action?: string
+          class_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          note?: string
+          recorded_by?: string | null
+          recorded_by_name?: string
+          school_year_id?: string
+          streak_ended_on?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_followups_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_followups_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_followups_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       term_reports: {
         Row: {
           id: string
@@ -3629,6 +3696,33 @@ export type Database = {
       }
     }
     Functions: {
+      sunday_class_staff: {
+        Args: { p_class_id: string; p_year: string }
+        Returns: boolean
+      }
+      class_absence_streaks: {
+        Args: { p_class_id: string; p_year: string }
+        Returns: {
+          dates: string[]
+          ended_on: string
+          missed: number
+          student_id: string
+          student_name: string
+        }[]
+      }
+      record_attendance_followup: {
+        Args: {
+          p_action: string
+          p_class_id: string
+          p_ended_on: string
+          p_id: string
+          p_message: string
+          p_note: string
+          p_student_id: string
+          p_year: string
+        }
+        Returns: string
+      }
       term_report_can_manage: {
         Args: { p_school_year_id: string; p_student_id: string }
         Returns: boolean

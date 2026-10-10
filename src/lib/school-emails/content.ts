@@ -1,5 +1,5 @@
 export type OnboardingRole = "parent" | "student";
-export type SchoolEmailKind = "signup_parent" | "signup_student" | "welcome_parent" | "welcome_student" | "plan_confirmed" | "payment_reminder" | "installment_due" | "installment_reminder" | "report_published";
+export type SchoolEmailKind = "signup_parent" | "signup_student" | "welcome_parent" | "welcome_student" | "plan_confirmed" | "payment_reminder" | "installment_due" | "installment_reminder" | "report_published" | "attendance_followup";
 
 const GUIDES = {
   no: {
@@ -54,6 +54,7 @@ export function schoolEmailContent(input: {
   dueDate?: string;
   paymentId?: string;
   publicationId?: string;
+  followUpMessage?: string;
 }) {
   const en = input.locale === "en";
   const names = input.names.join(", ");
@@ -80,6 +81,14 @@ export function schoolEmailContent(input: {
       intro: `${en ? `Min side is ready for ${names}.` : `Min side er klar for ${names}.`}\n\n${guide.login}`,
       rows: guide.items.map((item): [string, string] => [item.label, item.text]),
       href: "/min-side/logg-inn",
+      ctaLabel: en ? "Open Min side" : "Åpne Min side",
+    };
+  }
+  if (input.kind === "attendance_followup") {
+    return {
+      subject: en ? "Attendance follow-up from Islamskole" : "Fraværsoppfølging fra Islamskole",
+      title: en ? "Attendance follow-up" : "Fraværsoppfølging",
+      intro: input.followUpMessage ?? "", rows, href: "/min-side",
       ctaLabel: en ? "Open Min side" : "Åpne Min side",
     };
   }

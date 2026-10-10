@@ -116,6 +116,14 @@ async function reportData(admin: Admin, delivery: SchoolDelivery) {
   return data?.students.family_id === delivery.family_id ? { names: [studentDisplayName(data.students)], publicationId: data.id } : null;
 }
 
+async function followUpData(admin: Admin, delivery: SchoolDelivery) {
+  const { data, error } = await admin.from("attendance_followups")
+    .select("message, action, students!inner(child_first_name, child_last_name, family_id)").eq("id", delivery.entity_id).maybeSingle();
+  if (error) throw error;
+  return data?.action === "email" && data.students.family_id === delivery.family_id
+    ? { names: [studentDisplayName(data.students)], followUpMessage: data.message } : null;
+}
+
 export async function schoolDeliveryContent(admin: Admin, delivery: SchoolDelivery) {
   const { data: family, error } = await admin.from("families").select("preferred_language")
     .eq("id", delivery.family_id!).maybeSingle();
@@ -126,6 +134,7 @@ export async function schoolDeliveryContent(admin: Admin, delivery: SchoolDelive
   if (!kind.endsWith("student") && !(await parentRecipient(admin, delivery))) return null;
   const content = kind.startsWith("signup") ? await signupData(admin, delivery)
     : kind.startsWith("welcome") ? await welcomeData(admin, delivery)
+    : kind === "attendance_followup" ? await followUpData(admin, delivery)
     : kind === "report_published" ? await reportData(admin, delivery)
     : kind === "plan_confirmed" ? await planData(admin, delivery, locale)
     : kind.startsWith("installment") ? await installmentData(admin, delivery, locale)

@@ -31,3 +31,5 @@ Build for a Sunday-only school with limited staff. Preserve the existing Norwegi
 - Homework completion, needs-help responses, version checks and assignment selection implemented locally. 70 focused homework and child-merge database checks and three browser checks passed. Typecheck passed. Report, attendance and activity work is ongoing.
 
 - Reviewed term reports implemented locally with separate private drafts, retained publications, printing, guardian notification and child-merge preservation. 720 full database checks, 127 unit checks and three report browser checks passed. Typecheck, lint and production build passed. Attendance follow-up and activity consent are ongoing, shipping is still outstanding.
+
+- Attendance follow-up implemented locally with whole-Sunday absence streaks, explicit staff decisions, reviewed guardian emails and retained private contact history. 76 focused attendance and child-merge database checks and three browser checks passed. Typecheck and lint passed. Activity consent and shipping remain outstanding.

@@ -296,3 +296,23 @@ html:has([data-admin-shell]) {
     animation: none !important;
   }
 }
+
+@media print {
+  body:has(.report-print) [data-portal-shell] > header,
+  body:has(.report-print) [data-portal-shell] > p,
+  body:has(.report-print) [data-portal-shell] > nav {
+    display: none;
+  }
+  body:has(.report-print) [data-portal-shell],
+  body:has(.report-print) [data-portal-shell] > div {
+    background: white;
+    color: black;
+    padding: 0;
+    max-width: none;
+    min-height: 0;
+  }
+  .report-print section,
+  .report-print li {
+    break-inside: avoid;
+  }
+}

@@ -34,6 +34,124 @@ export type Database = {
   }
   public: {
     Tables: {
+      term_reports: {
+        Row: {
+          id: string
+          next_steps: string
+          period_end: string
+          period_start: string
+          school_year_id: string
+          snapshot: Json
+          student_id: string
+          summary: string
+          term: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          next_steps?: string
+          period_end: string
+          period_start: string
+          school_year_id: string
+          snapshot: Json
+          student_id: string
+          summary?: string
+          term: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          next_steps?: string
+          period_end?: string
+          period_start?: string
+          school_year_id?: string
+          snapshot?: Json
+          student_id?: string
+          summary?: string
+          term?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "term_reports_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_reports_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      term_report_publications: {
+        Row: {
+          id: string
+          published_at: string
+          published_by: string | null
+          report_id: string
+          request_id: string
+          school_year_id: string
+          snapshot: Json
+          student_id: string
+          term: string
+          version: number
+        }
+        Insert: {
+          id?: string
+          published_at?: string
+          published_by?: string | null
+          report_id: string
+          request_id: string
+          school_year_id: string
+          snapshot: Json
+          student_id: string
+          term: string
+          version: number
+        }
+        Update: {
+          id?: string
+          published_at?: string
+          published_by?: string | null
+          report_id?: string
+          request_id?: string
+          school_year_id?: string
+          snapshot?: Json
+          student_id?: string
+          term?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "term_report_publications_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "term_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_report_publications_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_report_publications_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       homework_responses: {
         Row: {
           homework_version: number
@@ -3511,6 +3629,73 @@ export type Database = {
       }
     }
     Functions: {
+      term_report_can_manage: {
+        Args: { p_school_year_id: string; p_student_id: string }
+        Returns: boolean
+      }
+      term_report_years: {
+        Args: { p_student_id: string }
+        Returns: {
+          ends_on: string
+          id: string
+          label: string
+          starts_on: string
+        }[]
+      }
+      prepare_term_report: {
+        Args: { p_student_id: string; p_term: string; p_year: string }
+        Returns: {
+          id: string
+          next_steps: string
+          period_end: string
+          period_start: string
+          school_year_id: string
+          snapshot: Json
+          student_id: string
+          summary: string
+          term: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "term_reports"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      save_term_report: {
+        Args: {
+          p_expected: string
+          p_id: string
+          p_next_steps: string
+          p_refresh?: boolean
+          p_summary: string
+        }
+        Returns: {
+          id: string
+          next_steps: string
+          period_end: string
+          period_start: string
+          school_year_id: string
+          snapshot: Json
+          student_id: string
+          summary: string
+          term: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "term_reports"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      publish_term_report: {
+        Args: { p_expected: string; p_id: string; p_request_id: string }
+        Returns: string
+      }
       record_homework_response: {
         Args: { p_note_id: string; p_student_id: string; p_homework_version: number; p_status: string }
         Returns: undefined

@@ -1,5 +1,5 @@
 export type OnboardingRole = "parent" | "student";
-export type SchoolEmailKind = "signup_parent" | "signup_student" | "welcome_parent" | "welcome_student" | "plan_confirmed" | "payment_reminder" | "installment_due" | "installment_reminder";
+export type SchoolEmailKind = "signup_parent" | "signup_student" | "welcome_parent" | "welcome_student" | "plan_confirmed" | "payment_reminder" | "installment_due" | "installment_reminder" | "report_published";
 
 const GUIDES = {
   no: {
@@ -53,6 +53,7 @@ export function schoolEmailContent(input: {
   amount?: string;
   dueDate?: string;
   paymentId?: string;
+  publicationId?: string;
 }) {
   const en = input.locale === "en";
   const names = input.names.join(", ");
@@ -80,6 +81,16 @@ export function schoolEmailContent(input: {
       rows: guide.items.map((item): [string, string] => [item.label, item.text]),
       href: "/min-side/logg-inn",
       ctaLabel: en ? "Open Min side" : "Åpne Min side",
+    };
+  }
+  if (input.kind === "report_published") {
+    return {
+      subject: en ? "Your child's end-of-term report is ready" : "Semesterrapporten til barnet ditt er klar",
+      title: en ? "End-of-term report published" : "Semesterrapport publisert",
+      intro: en ? `A report for ${names} is available on Min side.` : `En rapport for ${names} er tilgjengelig på Min side.`,
+      rows,
+      href: `/min-side/rapporter/${input.publicationId}`,
+      ctaLabel: en ? "Read report" : "Les rapport",
     };
   }
   if (input.kind === "plan_confirmed") {

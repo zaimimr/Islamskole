@@ -95,6 +95,10 @@ insert into public.learning_goals (id, student_id, subject, title, status, updat
   ('f4000000-0000-0000-0000-0000000000e1', 'f4000000-0000-0000-0000-000000000052', 'arabic', 'ZZTEST mål', 'practising', 'ZZTEST lærer');
 insert into public.learning_progress_updates (goal_id, student_id, status, teacher_name) values
   ('f4000000-0000-0000-0000-0000000000e1', 'f4000000-0000-0000-0000-000000000052', 'practising', 'ZZTEST lærer');
+insert into public.term_reports(id, student_id, school_year_id, term, period_start, period_end, snapshot, summary) values
+('f4000000-0000-0000-0000-0000000000f7','f4000000-0000-0000-0000-000000000052','f4000000-0000-0000-0000-000000000001','autumn',current_date - 30,current_date,'{"studentName":"Original child"}','Draft');
+insert into public.term_report_publications(id, report_id, student_id, school_year_id, term, version, request_id, snapshot) values
+('f4000000-0000-0000-0000-0000000000f8','f4000000-0000-0000-0000-0000000000f7','f4000000-0000-0000-0000-000000000052','f4000000-0000-0000-0000-000000000001','autumn',1,gen_random_uuid(),'{"studentName":"Original child","summary":"Published assessment"}');
 update public.student_fees set amount=600000 where student_id='f4000000-0000-0000-0000-000000000052';
 set local role authenticated;
 select ok(jsonb_array_length(public.admin_merge_children('f4000000-0000-0000-0000-000000000051', 'f4000000-0000-0000-0000-000000000052')->'conflicts') > 0, 'different tuition claims cannot be guessed');
@@ -134,6 +138,11 @@ select is((select count(*) from public.students where id='f4000000-0000-0000-000
 select is((select status from public.homework_responses where student_id = 'f4000000-0000-0000-0000-000000000051'), 'completed', 'homework completion survives child merge');
 select is((select responded_by from public.homework_responses where student_id = 'f4000000-0000-0000-0000-000000000051'), 'f4000000-0000-0000-0000-0000000000a2'::uuid, 'merge preserves original homework responder');
 select ok(exists (select 1 from public.audit_log where action = 'student.merged' and metadata->'before'->'homework_responses' @> '[{"student_id":"f4000000-0000-0000-0000-000000000052","status":"completed"}]'::jsonb), 'merge audit retains original homework responses');
+
+select is((select student_id from public.term_reports where id='f4000000-0000-0000-0000-0000000000f7'),'f4000000-0000-0000-0000-000000000051'::uuid,'report draft survives child merge');
+select is((select student_id from public.term_report_publications where id='f4000000-0000-0000-0000-0000000000f8'),'f4000000-0000-0000-0000-000000000051'::uuid,'published report follows kept child');
+select is((select snapshot->>'summary' from public.term_report_publications where id='f4000000-0000-0000-0000-0000000000f8'),'Published assessment','merge retains published snapshot');
+select ok(exists(select 1 from public.audit_log where action='student.merged' and metadata->'before'->'term_report_publications' @> '[{"student_id":"f4000000-0000-0000-0000-000000000052"}]'::jsonb),'merge audit retains original report ownership');
 
 select is((select count(*) from public.student_fees where student_id='f4000000-0000-0000-0000-000000000051'), 1::bigint, 'duplicate tuition claim not doubled');
 select is((select paid from public.student_balances where student_id='f4000000-0000-0000-0000-000000000051'), 390000::bigint, 'both captured payments preserved with refund deducted');

@@ -1,3 +1,4 @@
+import { StudentReports } from "@/components/term-reports/student-reports";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ChevronLeft } from "lucide-react";
@@ -25,6 +26,7 @@ export default async function StudentProgressPage({ params }: PageProps<"/[local
         {current ? <p className="font-semibold text-brand-green-dark">{locale === "en" ? current.name_en : current.name_no}</p> : null}
       </header>
       <LearningProgressSection studentId={studentId} classId={classId} />
+      <StudentReports studentId={studentId} locale={locale} staff />
     </div>
   );
 }

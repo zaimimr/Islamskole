@@ -8,8 +8,8 @@ import { createClient } from "@/lib/supabase/server";
 export const maxDuration = 60;
 
 const KINDS = {
-  no: { signup_parent: "Påmelding, foresatt", signup_student: "Påmelding, elev", welcome_parent: "Min side, foresatt", welcome_student: "Min side, elev", plan_confirmed: "Betalingsplan", payment_reminder: "Betalingspåminnelse", installment_due: "Neste avdrag", installment_reminder: "Påminnelse om avdrag" },
-  en: { signup_parent: "Application, parent", signup_student: "Application, student", welcome_parent: "Min side, parent", welcome_student: "Min side, student", plan_confirmed: "Installment plan", payment_reminder: "Payment reminder", installment_due: "Next installment", installment_reminder: "Installment reminder" },
+  no: { signup_parent: "Påmelding, foresatt", signup_student: "Påmelding, elev", welcome_parent: "Min side, foresatt", welcome_student: "Min side, elev", plan_confirmed: "Betalingsplan", payment_reminder: "Betalingspåminnelse", installment_due: "Neste avdrag", installment_reminder: "Påminnelse om avdrag", report_published: "Semesterrapport" },
+  en: { signup_parent: "Application, parent", signup_student: "Application, student", welcome_parent: "Min side, parent", welcome_student: "Min side, student", plan_confirmed: "Installment plan", payment_reminder: "Payment reminder", installment_due: "Next installment", installment_reminder: "Installment reminder", report_published: "End-of-term report" },
 };
 const STATUSES = {
   no: { pending: "Venter", sending: "Sender", sent: "Sendt", failed: "Feilet", skipped: "Ikke aktuelt" },

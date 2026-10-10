@@ -1,3 +1,4 @@
+import { StudentReports } from "@/components/term-reports/student-reports";
 import type { Metadata } from "next";
 import { relationshipLabel } from "@/lib/relationship";
 import { notFound } from "next/navigation";
@@ -896,6 +897,8 @@ export default async function ElevDetailPage({
         studentId={student.id}
         classId={null}
       />
+
+      <StudentReports studentId={student.id} locale="no" staff />
 
       <StudentExitPanel
         studentId={student.id}

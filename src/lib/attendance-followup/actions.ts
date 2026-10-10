@@ -19,7 +19,7 @@ export async function recordAbsenceFollowUp(input: z.infer<typeof schema>) {
   });
   if (error) {
     console.error("Attendance follow-up failed", { code: error.code });
-    return { ok: false as const, changed: error.code === "40001" };
+    return { ok: false as const, changed: error.code === "PT409" };
   }
   if (value.action === "email") scheduleSchoolEmails();
   revalidatePath("/", "layout");

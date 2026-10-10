@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { expect, test } from "playwright/test";
 import { OUTBOX_DIR } from "./env";
 import { activeYear, assignTeacher, db, enroll, loginAs, seedClass, seedFamily, seedSchoolDays, seedStudent, seedTeacher, zzEmail } from "./fixtures";
@@ -44,6 +45,9 @@ test("activity invitations require per-child guardian consent and produce a priv
   const savedEditor = page.getByRole("region", { name: "Rediger aktivitet ZZTEST Reading activity", exact: true });
   await savedEditor.getByRole("button", { name: "Se gjennom invitasjon", exact: true }).click();
   await expect(savedEditor.getByRole("button", { name: "Publiser invitasjon", exact: true })).toBeVisible();
+  const backlog = Array.from({ length: 25 }, () => ({ kind: "signup_parent", entity_id: randomUUID(), family_id: family.id, email: family.guardians[0].email }));
+  const { error: backlogError } = await db().from("school_email_deliveries").insert(backlog);
+  if (backlogError) throw backlogError;
   await savedEditor.getByRole("button", { name: "Publiser invitasjon", exact: true }).click();
   await expect(activities.getByRole("link", { name: "Samtykke og deltakerliste", exact: true })).toBeVisible();
   const { data: activity, error: activityError } = await db().from("school_activities").select("id").eq("class_id", schoolClass.id).single();

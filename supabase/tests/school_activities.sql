@@ -85,7 +85,7 @@ select is((select count(*) from public.school_activities),0::bigint,'guardian ca
 reset role;
 select set_config('request.jwt.claims','{"sub":"f8000000-0000-0000-0000-0000000000a2","email":"zz-f8-teacher@zztest.local","role":"authenticated"}',true);
 set local role authenticated;
-select throws_ok($$ select public.publish_school_activity(id,null) from public.school_activities $$,'40001',null,'publication requires current draft version');
+select throws_ok($$ select public.publish_school_activity(id,null) from public.school_activities $$,'PT409',null,'publication requires current draft version');
 select lives_ok($$ select public.publish_school_activity(id,updated_at) from public.school_activities $$,'staff publishes reviewed invitation');
 select lives_ok($$ select public.publish_school_activity(id,updated_at) from public.school_activities $$,'publication retry is idempotent');
 select is((select count(*) from public.activity_students),1::bigint,'publication freezes invited children');
@@ -133,7 +133,7 @@ reset role;
 update public.school_activities set event_date=current_date - 7,respond_by=current_date - 8 where id='f8000000-0000-0000-0000-0000000000e1';
 select set_config('request.jwt.claims','{"sub":"f8000000-0000-0000-0000-0000000000a4","email":"zz-f8-parent@zztest.local","role":"authenticated"}',true);
 set local role authenticated;
-select throws_ok($$ select public.respond_school_activity(gen_random_uuid(),id,'f8000000-0000-0000-0000-000000000051',updated_at,'granted',true) from public.school_activities $$,'40001',null,'deadline closes new guardian responses');
+select throws_ok($$ select public.respond_school_activity(gen_random_uuid(),id,'f8000000-0000-0000-0000-000000000051',updated_at,'granted',true) from public.school_activities $$,'PT409',null,'deadline closes new guardian responses');
 reset role;
 select set_config('request.jwt.claims','{"sub":"f8000000-0000-0000-0000-0000000000a2","email":"zz-f8-teacher@zztest.local","role":"authenticated"}',true);
 set local role authenticated;

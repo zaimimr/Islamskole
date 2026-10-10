@@ -98,9 +98,9 @@ select is((select snapshot->'goals'->0->>'status' from public.term_reports),'pra
 select is((select next_steps from public.term_reports),'Current target','draft targets use progress as of report period');
 select throws_ok($$ select public.prepare_term_report('f6000000-0000-0000-0000-000000000052','f6000000-0000-0000-0000-000000000001','autumn') $$,'42501',null,'another class is forbidden');
 select throws_ok($$ select public.publish_term_report(id, updated_at, gen_random_uuid()) from public.term_reports $$,'22023',null,'unreviewed blank assessment cannot publish');
-select throws_ok($$ select public.save_term_report(id, null, 'Assessment', 'Practice', false) from public.term_reports $$,'40001',null,'null version cannot bypass review');
+select throws_ok($$ select public.save_term_report(id, null, 'Assessment', 'Practice', false) from public.term_reports $$,'PT409',null,'null version cannot bypass review');
 select lives_ok($$ select public.save_term_report(id, updated_at, 'ZZTEST Reviewed assessment', 'ZZTEST Practice reading', false) from public.term_reports $$,'staff saves editable assessment');
-select throws_ok($$ select public.save_term_report(id, '2000-01-01'::timestamptz, 'Stale', '', false) from public.term_reports $$,'40001',null,'stale draft cannot overwrite another teacher');
+select throws_ok($$ select public.save_term_report(id, '2000-01-01'::timestamptz, 'Stale', '', false) from public.term_reports $$,'PT409',null,'stale draft cannot overwrite another teacher');
 select lives_ok($$ select public.publish_term_report(id, updated_at, 'f6000000-0000-0000-0000-000000000071') from public.term_reports $$,'staff publishes reviewed report');
 select lives_ok($$ select public.publish_term_report(id, updated_at, 'f6000000-0000-0000-0000-000000000071') from public.term_reports $$,'publish retry is idempotent');
 select is((select count(*) from public.term_report_publications),1::bigint,'retry creates only one published copy');

@@ -72,6 +72,8 @@ The browser tests use test families and the local email outbox. The database tes
 
 Only service-role functions claim and complete email jobs. Claims expire after 15 minutes; failed messages retry up to five times. Provider requests carry a delivery ID as their idempotency key. `/admin/beskjeder/epost` shows delivery state and lets admins process the queue or retry failures. Recipients, current enrollment, outstanding balances and communication preferences are checked again before sending. Disabled email leaves jobs pending. Installment reminder timestamps are written only after accepted delivery.
 
+Processing continues until the queue is empty or the caller's deadline is reached. Live delivery claims one recipient at a time; cron deadlines include time spent preparing payments and reminders. Remaining jobs stay queued for the next run.
+
 Signup confirms receipt of an application, without granting access or promising admission/payment. Parent onboarding begins with active-year placement, and student onboarding requires the actual student login address. Signup language follows the application locale; later messages use the family's current language. First-use Min side guidance is dismissed per account and role in `portal_onboarding`.
 
 ```bash
@@ -135,6 +137,8 @@ Term reports contain separate staff-only drafts and immutable publication snapsh
 Attendance streaks require every scheduled lesson to be recorded absent on at least three consecutive eligible Sundays. Missing records, presence and lateness break a streak. Staff explicitly record contact, monitoring or resolution, or review and send a guardian email. Internal notes are never included in those emails. Published activity wording is fixed. Guardian responses retain identity, wording and decision history; participation requires consent and planned attendance. Staff can add newly enrolled children and notify their guardians, and cancellation retains responses while notifying guardians.
 
 School notifications use `school_email_deliveries`, retry claims and recipient rechecks. The daily `/api/cron/school-emails` job recovers pending deliveries and queues overdue payments. Admins inspect and retry deliveries under Beskjeder > E-postutsending. Configure `EMAILS_ENABLED=true`, `RESEND_API_KEY`, `RESEND_FROM`, `NEXT_PUBLIC_SITE_URL` and `CRON_SECRET` in production. The notification flag can still override the environment fallback. Local browser tests use a file outbox and never send through the provider.
+
+Portal version conflicts use `PT409`, so stale edits return HTTP 409 and let the user reload. Do not raise SQLSTATE `40001` for an application conflict: PostgREST 14 retries it indefinitely. The database's genuine serialization errors retain their normal handling.
 
 Child merges include homework, drafts/publications, attendance follow-up, activity invitations and consent histories in their locked audit snapshots and move logic. Family merges preserve notification delivery records. Original response and author identities are retained.
 

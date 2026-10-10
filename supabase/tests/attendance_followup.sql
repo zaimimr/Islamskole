@@ -92,7 +92,7 @@ select lives_ok($$ select public.record_attendance_followup('f7000000-0000-0000-
 select is((select recorded_by from public.attendance_followups),auth.uid(),'actual staff identity retained');
 select lives_ok($$ select public.record_attendance_followup('f7000000-0000-0000-0000-000000000071','f7000000-0000-0000-0000-000000000051','f7000000-0000-0000-0000-0000000000c1','f7000000-0000-0000-0000-000000000001',(select ended_on from public.class_absence_streaks('f7000000-0000-0000-0000-0000000000c1','f7000000-0000-0000-0000-000000000001')),'contacted','ZZTEST Called guardian','') $$,'contact retry is idempotent');
 select is((select count(*) from public.attendance_followups),1::bigint,'retry creates no duplicate');
-select throws_ok($$ select public.record_attendance_followup(gen_random_uuid(),'f7000000-0000-0000-0000-000000000051','f7000000-0000-0000-0000-0000000000c1','f7000000-0000-0000-0000-000000000001',current_date + 20,'contacted','','') $$,'40001',null,'stale streak cannot be recorded');
+select throws_ok($$ select public.record_attendance_followup(gen_random_uuid(),'f7000000-0000-0000-0000-000000000051','f7000000-0000-0000-0000-0000000000c1','f7000000-0000-0000-0000-000000000001',current_date + 20,'contacted','','') $$,'PT409',null,'stale streak cannot be recorded');
 select throws_ok($$ update public.attendance_followups set note='Changed' $$,'42501',null,'history cannot be rewritten directly');
 reset role;
 select is((select count(*) from public.school_email_deliveries where kind='attendance_followup'),0::bigint,'contact record alone sends no email');

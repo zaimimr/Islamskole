@@ -42,18 +42,22 @@ async function deliverOne(delivery: SchoolDelivery, siteUrl: string) {
   return status;
 }
 
-export async function deliverSchoolEmails(familyId?: string) {
+export async function deliverSchoolEmails(familyId?: string, deadline = Date.now() + 40_000) {
   const siteUrl = configuredSiteUrl();
   if (!siteUrl || !(process.env.EMAIL_OUTBOX_DIR || process.env.RESEND_API_KEY) || !(await emailNotifications())) {
     return { sent: 0, failed: 0, skipped: 0, disabled: true };
   }
   const admin = createAdminClient();
-  const { data, error } = await admin.rpc("claim_school_emails", { p_limit: 20, ...(familyId ? { p_family_id: familyId } : {}) });
-  if (error) throw new Error("Could not claim school email delivery", { cause: error });
   const counts = { sent: 0, failed: 0, skipped: 0, disabled: false };
-  for (const delivery of data) {
-    counts[await deliverOne(delivery, siteUrl)] += 1;
-    if (!process.env.EMAIL_OUTBOX_DIR) await new Promise((resolve) => setTimeout(resolve, 550));
+  const batchSize = process.env.EMAIL_OUTBOX_DIR ? 20 : 1;
+  while (Date.now() < deadline) {
+    const { data, error } = await admin.rpc("claim_school_emails", { p_limit: batchSize, ...(familyId ? { p_family_id: familyId } : {}) });
+    if (error) throw new Error("Could not claim school email delivery", { cause: error });
+    for (const delivery of data) {
+      counts[await deliverOne(delivery, siteUrl)] += 1;
+      if (!process.env.EMAIL_OUTBOX_DIR) await new Promise((resolve) => setTimeout(resolve, 550));
+    }
+    if (data.length < batchSize) break;
   }
   return counts;
 }

@@ -74,7 +74,7 @@ test.describe("substitutes and admin in class portal", () => {
 
     const homework = `ZZTEST vikarlekse ${uid()}`;
     await page.getByLabel("Lekse").fill(homework);
-    await page.getByRole("button", { name: "Lagre" }).click();
+    await page.getByRole("button", { name: "Lagre notat", exact: true }).click();
     await expect(page.getByText(/Lagret/)).toBeVisible();
 
     await page.getByRole("button", { name: "Avslutt vikartilgang" }).click();

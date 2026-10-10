@@ -48,6 +48,7 @@ async function sendBatches(admin: Admin) {
 }
 
 export async function GET(request: NextRequest) {
+  const deadline = Date.now() + 40_000;
   if (!authorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
   const batchResult = await sendBatches(admin);
   const { error } = await admin.rpc("queue_overdue_payment_emails");
   if (error) throw new Error("Could not queue payment reminders", { cause: error });
-  const reminderResult = await deliverSchoolEmails();
+  const reminderResult = await deliverSchoolEmails(undefined, deadline);
 
   return NextResponse.json({
     ok: true,

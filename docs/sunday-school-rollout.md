@@ -37,3 +37,7 @@ Build for a Sunday-only school with limited staff. Preserve the existing Norwegi
 - Activity consent and participation implemented locally with reviewed invitations, guardian identity and decision history per child, response deadlines, printable rosters, actual participation, cancellation notices and fresh notices for newly added children. All 791 database checks and 127 unit checks passed. Focused browser flow passed, and the full browser suite is running. Production configuration and deployment are being verified.
 
 - Finish review passed for all stages. Production email settings are configured with the existing provider and sender. Production migrations are being applied through the recorded migration workflow; the full browser suite and deployment are in progress.
+
+- All chosen features are implemented. The final regression run passed all 90 browser-suite checks, 791 database checks and 127 unit checks, plus lint, typecheck and production build. The 21 new production migrations are applied and migration history matches. Email sending is enabled with the existing sender, provider and daily recovery jobs. Production read-only checks confirmed anonymous access is denied and lesson storage is private. Browser email checks used the local outbox, without live test sends.
+
+- Regression fixes prevent older queued messages from delaying new activity notices and return stale-edit conflicts promptly through HTTP 409. Live queue processing claims one recipient at a time and shares the cron caller's deadline.

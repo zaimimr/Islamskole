@@ -9,7 +9,7 @@ import type { LearningGoalDraft, LearningResult, ProgressUpdateDraft } from "./s
 
 function failed(error: { code?: string }): LearningResult {
   if (error.code === "42501") return { ok: false, error: "forbidden" };
-  if (error.code === "40001") return { ok: false, error: "conflict" };
+  if (error.code === "PT409") return { ok: false, error: "conflict" };
   if (["23514", "23502", "22P02", "22003"].includes(error.code ?? "")) return { ok: false, error: "invalid" };
   console.error("Learning progress save failed", { code: error.code });
   return { ok: false, error: "unavailable" };

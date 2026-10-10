@@ -32,7 +32,7 @@ export async function saveReport(input: z.infer<typeof draft>) {
   });
   if (error) {
     console.error("Save report failed", { code: error.code });
-    return { ok: false as const, changed: error.code === "40001" };
+    return { ok: false as const, changed: error.code === "PT409" };
   }
   revalidatePath("/", "layout");
   return { ok: true as const, report: data };
@@ -46,7 +46,7 @@ export async function publishReport(input: { id: string; expected: string; reque
   });
   if (error) {
     console.error("Publish report failed", { code: error.code });
-    return { ok: false as const, changed: error.code === "40001" };
+    return { ok: false as const, changed: error.code === "PT409" };
   }
   scheduleSchoolEmails();
   revalidatePath("/", "layout");

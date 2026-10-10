@@ -14,7 +14,7 @@ export async function respondToHomework(input: { noteId: string; studentId: stri
   });
   if (error) {
     console.error("Homework response failed", { code: error.code });
-    return { ok: false as const, changed: error.code === "40001" };
+    return { ok: false as const, changed: error.code === "PT409" };
   }
   revalidatePath("/", "layout");
   return { ok: true as const };

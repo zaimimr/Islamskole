@@ -105,7 +105,7 @@ select is((select status from public.homework_class_responses('f2000000-0000-000
 reset role;
 select set_config('request.jwt.claims', '{"sub":"f2000000-0000-0000-0000-0000000000a4","email":"zz-f2-parent@zztest.local","role":"authenticated"}', true);
 set local role authenticated;
-select throws_ok($$ select public.record_homework_response('f2000000-0000-0000-0000-0000000000e1', 'f2000000-0000-0000-0000-000000000051', 1, 'completed') $$, '40001', null, 'stale screen cannot complete an edited assignment');
+select throws_ok($$ select public.record_homework_response('f2000000-0000-0000-0000-0000000000e1', 'f2000000-0000-0000-0000-000000000051', 1, 'completed') $$, 'PT409', null, 'stale screen cannot complete an edited assignment');
 select lives_ok($$ select public.record_homework_response('f2000000-0000-0000-0000-0000000000e1', 'f2000000-0000-0000-0000-000000000051', 2, 'completed') $$, 'current homework version can be completed');
 reset role;
 select set_config('request.jwt.claims', '{"sub":"f2000000-0000-0000-0000-0000000000a5","email":"zz-f2-other-parent@zztest.local","role":"authenticated"}', true);

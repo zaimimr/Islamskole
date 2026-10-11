@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Resend } from "resend";
+import { finishEmailLog, startEmailLogs } from "@/lib/email-log";
 import { formatNok } from "@/lib/money";
 
 const FROM =
@@ -399,19 +400,24 @@ async function send(opts: {
     cta: opts.cta,
   });
   const outbox = process.env.EMAIL_OUTBOX_DIR;
+  const logs = await startEmailLogs([opts]);
+  if (!logs) return false;
+  const logId = logs[0];
   if (outbox) {
-    return await writeOutbox(outbox, {
+    const sent = await writeOutbox(outbox, {
       to: opts.to,
       subject: opts.subject,
       html,
       text: renderText(opts),
       links: opts.cta ? [opts.cta.url] : [],
     });
+    await finishEmailLog(logId, sent ? "sent" : "failed");
+    return sent;
   }
   const resend = getClient();
-  if (!resend) return false;
+  if (!resend) { await finishEmailLog(logId, "disabled"); return false; }
   try {
-    const { error } = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: FROM,
       to: opts.to,
       subject: opts.subject,
@@ -419,13 +425,16 @@ async function send(opts: {
       html,
       text: renderText(opts),
     }, opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : undefined);
-    if (error) {
+    if (error || !data) {
       console.error("Resend email failed", error);
+      await finishEmailLog(logId, "failed");
       return false;
     }
+    await finishEmailLog(logId, "sent", data?.id);
     return true;
   } catch (error) {
     console.error("Resend email failed", error);
+    await finishEmailLog(logId, "failed");
     return false;
   }
 }
@@ -776,26 +785,38 @@ function announcementEmailContent(opts: AnnouncementEmail) {
 }
 
 export async function sendAnnouncementEmails(emails: AnnouncementEmail[], batchId: string): Promise<boolean[]> {
+  if (!emails.length) return [];
   const messages = emails.map((email) => {
     const content = announcementEmailContent(email);
     return { to: email.to, subject: email.title, html: renderEmail(content), text: renderText(content), links: [email.url] };
   });
   const outbox = process.env.EMAIL_OUTBOX_DIR;
-  if (outbox) return Promise.all(messages.map((message) => writeOutbox(outbox, message)));
+  const logs = await startEmailLogs(emails.map((email) => ({ ...email, subject: email.title })));
+  if (!logs) return messages.map(() => false);
+  if (outbox) return Promise.all(messages.map(async (message, index) => {
+    const sent = await writeOutbox(outbox, message);
+    await finishEmailLog(logs[index], sent ? "sent" : "failed");
+    return sent;
+  }));
   const resend = getClient();
-  if (!resend) return messages.map(() => false);
-  const { data, error } = await resend.batch.send(
-    messages.map(({ to, subject, html, text }) => ({ from: FROM, to, subject, html, text })),
-    { batchValidation: "permissive", idempotencyKey: `announcement-batch-${batchId}` },
-  );
-  if (error || !data) {
+  if (!resend) {
+    await Promise.all(logs.map((id) => finishEmailLog(id, "disabled")));
+    return messages.map(() => false);
+  }
+  try {
+    const { data, error } = await resend.batch.send(
+      messages.map(({ to, subject, html, text }) => ({ from: FROM, to, subject, html, text })),
+      { batchValidation: "permissive", idempotencyKey: `announcement-batch-${batchId}` },
+    );
+    if (error || !data) throw new Error("Announcement email batch unavailable");
+    const failures = new Set(data.errors?.map((failure) => failure.index));
+    if (data.data.length + failures.size !== messages.length) throw new Error("Announcement email batch incomplete");
+    const results = messages.map((_, index) => !failures.has(index));
+    await Promise.all(results.map((sent, index) => finishEmailLog(logs[index], sent ? "sent" : "failed")));
+    return results;
+  } catch (error) {
     console.error("Announcement email batch failed", { batchId, error });
+    await Promise.all(logs.map((id) => finishEmailLog(id, "failed")));
     return messages.map(() => false);
   }
-  const failures = new Set(data.errors?.map((failure) => failure.index));
-  if (data.data.length + failures.size !== messages.length) {
-    console.error("Announcement email batch returned incomplete results", { batchId });
-    return messages.map(() => false);
-  }
-  return messages.map((_, index) => !failures.has(index));
 }

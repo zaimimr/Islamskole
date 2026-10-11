@@ -34,6 +34,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      email_send_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          locale: string
+          provider_id: string | null
+          recipients: string[]
+          status: string
+          subject: string
+          transport: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id: string
+          locale: string
+          provider_id?: string | null
+          recipients: string[]
+          status?: string
+          subject: string
+          transport: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          locale?: string
+          provider_id?: string | null
+          recipients?: string[]
+          status?: string
+          subject?: string
+          transport?: string
+        }
+        Relationships: []
+      }
       activity_added_invitations: {
         Row: {
           activity_id: string

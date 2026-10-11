@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { adminBasePath, localePrefix } from "@/components/admin/paths";
 import { buttonVariants } from "@/components/ui/button";
 import { ClassForm, type ClassRecord } from "@/components/admin/class-form";
+import { SectionNavigation } from "@/components/admin/section-navigation";
 import { ageInYear, schoolYearStart } from "@/lib/age";
 import { formatNok } from "@/lib/money";
 import { osloToday } from "@/lib/dates";
@@ -381,7 +382,7 @@ export default async function KlassePage({
   const basePath = adminBasePath(locale);
   const listHref = `${basePath}/klasser`;
   const classHref = `${listHref}/${id}`;
-  const tab = query.fane === "nettside" ? "nettside" : "elever";
+  const tab = typeof query.fane === "string" && ["undervisning", "semesterplan", "materiell", "aktiviteter", "nettside"].includes(query.fane) ? query.fane : "elever";
   const data = await getClassPage(id);
   const { classRecord, activeYear } = data;
 
@@ -581,7 +582,7 @@ export default async function KlassePage({
         </h1>
         <p className="mt-1 max-w-2xl text-admin-muted">
           {activeYear
-            ? `Elevliste for ${activeYear.label}`
+            ? activeYear.label
             : "Velg et aktivt skoleår for å se elevlisten."}
         </p>
         {activeYear ? (
@@ -595,24 +596,14 @@ export default async function KlassePage({
         ) : null}
       </header>
 
-      <nav
-        aria-label="Klassevisning"
-        className="flex gap-1 border-b border-[#E3DED3] print:hidden"
-      >
-        {[
-          { id: "elever", label: "Elever i år", href: classHref },
-          { id: "nettside", label: "Nettside", href: `${classHref}?fane=nettside` },
-        ].map((item) => (
-          <Link
-            key={item.id}
-            href={item.href}
-            aria-current={tab === item.id ? "page" : undefined}
-            className="relative inline-flex min-h-11 items-center px-3 text-sm font-bold text-admin-muted outline-none transition-colors hover:text-foreground focus-visible:rounded-lg focus-visible:ring-3 focus-visible:ring-ring/50 aria-[current=page]:text-[#277A31] aria-[current=page]:after:absolute aria-[current=page]:after:right-3 aria-[current=page]:after:bottom-0 aria-[current=page]:after:left-3 aria-[current=page]:after:h-0.5 aria-[current=page]:after:bg-[#3C8F44]"
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+      <SectionNavigation label={locale === "en" ? "Class views" : "Klassevisning"} current={tab} items={[
+        { id: "elever", label: locale === "en" ? "Students" : "Elever i år", href: classHref },
+        { id: "undervisning", label: locale === "en" ? "Teaching" : "Undervisning", href: `${classHref}?fane=undervisning` },
+        { id: "semesterplan", label: locale === "en" ? "Semester plan" : "Semesterplan", href: `${classHref}?fane=semesterplan` },
+        { id: "materiell", label: locale === "en" ? "Materials" : "Materiell", href: `${classHref}?fane=materiell` },
+        { id: "aktiviteter", label: locale === "en" ? "Activities" : "Aktiviteter", href: `${classHref}?fane=aktiviteter` },
+        { id: "nettside", label: locale === "en" ? "Website" : "Nettside", href: `${classHref}?fane=nettside` },
+      ]} />
 
       {tab === "nettside" ? (
         <ClassForm classRecord={classRecord} listHref={listHref} />
@@ -627,7 +618,7 @@ export default async function KlassePage({
         </section>
       ) : (
         <>
-          {activeYear ? (
+          {activeYear && tab === "undervisning" ? (
             <SlotPlanEditor
               key={JSON.stringify(data.plans)}
               classId={classRecord.id}
@@ -642,7 +633,7 @@ export default async function KlassePage({
               dayPlanHref={`${basePath}/dagsplan`}
             />
           ) : null}
-          {activeYear ? (
+          {activeYear && tab === "undervisning" ? (
             <ClassTeachers
               classId={classRecord.id}
               yearLabel={activeYear.label}
@@ -651,7 +642,7 @@ export default async function KlassePage({
               teachersHref={`${basePath}/laerere`}
             />
           ) : null}
-          {activeYear ? (
+          {activeYear && tab === "semesterplan" ? (
             <WeekPlanSection
               classId={classRecord.id}
               schoolYearId={activeYear.id}
@@ -661,11 +652,11 @@ export default async function KlassePage({
               admin
             />
           ) : null}
-          {activeYear ? <ClassActivities classId={classRecord.id} yearId={activeYear.id} locale={locale} /> : null}
-          {activeYear ? <div className="rounded-2xl bg-white p-4 ring-1 ring-[#E3DED3] sm:p-5 print:hidden">
+          {activeYear && tab === "aktiviteter" ? <ClassActivities classId={classRecord.id} yearId={activeYear.id} locale={locale} /> : null}
+          {activeYear && tab === "materiell" ? <div className="rounded-2xl bg-white p-4 ring-1 ring-[#E3DED3] sm:p-5 print:hidden">
             <LessonMaterials classId={classRecord.id} schoolYearId={activeYear.id} locale={locale} editable />
           </div> : null}
-          <section className="overflow-hidden rounded-2xl bg-white ring-1 ring-[#E3DED3] print:ring-0">
+          {tab === "elever" ? <section className="overflow-hidden rounded-2xl bg-white ring-1 ring-[#E3DED3] print:ring-0">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#ECE8DF] px-4 py-4 sm:px-5">
               <div className="grid min-w-48 gap-1.5">
                 <p className="text-sm tabular-nums">
@@ -825,8 +816,8 @@ export default async function KlassePage({
                 </ul>
               </>
             )}
-          </section>
-          {dayOverview.length ? (
+          </section> : null}
+          {tab === "elever" && dayOverview.length ? (
             <ClassDayOverview
               days={dayOverview}
               studentCount={roster.length}

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { adminBasePath } from "@/components/admin/paths";
 import { EmailQueueButton } from "@/components/announcements/email-queue-buttons";
+import { EmailSendLog } from "@/components/admin/email-send-log";
+import { SectionNavigation } from "@/components/admin/section-navigation";
 import { getIsAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,20 +18,30 @@ const STATUSES = {
   en: { pending: "Pending", sending: "Sending", sent: "Sent", failed: "Failed", skipped: "No longer applicable" },
 };
 
-export default async function SchoolEmailPage({ params }: PageProps<"/[locale]/admin/beskjeder/epost">) {
+export default async function SchoolEmailPage({ params, searchParams }: PageProps<"/[locale]/admin/beskjeder/epost">) {
   if (!(await getIsAdmin())) notFound();
   const { locale } = await params;
   const language = locale === "en" ? "en" : "no";
   const en = language === "en";
-  const { data, error } = await (await createClient()).from("school_email_deliveries")
-    .select("id, kind, email, status, created_at").order("status").order("created_at", { ascending: false }).limit(100);
+  const query = await searchParams;
+  const queue = query.fane === "ko";
+  const requestedPage = Number(query.side);
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 && requestedPage <= 100000 ? requestedPage : 1;
+  const href = `${adminBasePath(locale)}/beskjeder/epost`;
+  const { data, error } = queue ? await (await createClient()).from("school_email_deliveries")
+    .select("id, kind, email, status, created_at").order("status").order("created_at", { ascending: false }).limit(100)
+    : { data: null, error: null };
   return <div className="grid gap-6">
     <Link href={`${adminBasePath(locale)}/beskjeder`} className="inline-flex min-h-11 items-center font-semibold text-admin-action">{en ? "Announcements" : "Beskjeder"}</Link>
     <header className="flex flex-wrap items-center justify-between gap-4">
       <h1 className="font-heading text-3xl font-semibold">{en ? "Email delivery" : "E-postutsending"}</h1>
-      <EmailQueueButton locale={locale} />
+      {queue ? <EmailQueueButton locale={locale} /> : null}
     </header>
-    {error ? <p role="alert">{en ? "Could not load email delivery. Reload the page." : "Kunne ikke laste e-postutsending. Last siden på nytt."}</p> :
+    <SectionNavigation label={en ? "Email views" : "E-postvisning"} current={queue ? "ko" : "logg"} items={[
+      { id: "logg", label: en ? "Send log" : "Sendelog", href },
+      { id: "ko", label: en ? "Queue and failures" : "Kø og feil", href: `${href}?fane=ko` },
+    ]} />
+    {!queue ? <EmailSendLog locale={locale} page={page} href={href} /> : error ? <p role="alert">{en ? "Could not load email delivery. Reload the page." : "Kunne ikke laste e-postutsending. Last siden på nytt."}</p> :
       data?.length ? <ul className="divide-y divide-foreground/10 rounded-2xl bg-white px-5">
         {data.map((row) => <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
           <div className="grid min-w-0 gap-1">

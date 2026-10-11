@@ -117,7 +117,7 @@ test("installment schedule, payment link and overdue reminder reach parents with
 
   const admin = await seedAdmin();
   await loginAs(context, admin.email);
-  await page.goto("/admin/beskjeder/epost");
+  await page.goto("/admin/beskjeder/epost?fane=ko");
   await expect(page.getByRole("heading", { name: "E-postutsending" })).toBeVisible();
   await expect(page.getByText(guardian.email, { exact: true }).first()).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
@@ -133,7 +133,7 @@ test("installment schedule, payment link and overdue reminder reach parents with
   await expect.poll(async () => (await db().from("school_email_deliveries").select("status").eq("id", delivery.id).single()).data?.status).toBe("sent");
 
   await loginAs(context, guardian.email);
-  await page.goto("/admin/beskjeder/epost");
+  await page.goto("/admin/beskjeder/epost?fane=ko");
   await expect(page.getByRole("heading", { name: /Email delivery|E-postutsending/ })).toHaveCount(0);
 });
 

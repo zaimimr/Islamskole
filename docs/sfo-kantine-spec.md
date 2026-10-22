@@ -1,137 +1,130 @@
 # SFO / Kantine: spec
 
-Status: draft, 2026-10-22. Nothing built yet.
+Status: draft v2, 2026-10-22. Nothing built yet.
 
 ## Goal
 
-The SFO/Kantine team plans activities and trips, collects sign-ups and consent, sees the health info they need to keep children safe, and takes payment for trips and kiosk sales. They get their own role, separate from admin and teacher.
+The SFO/Kantine team plans activities and trips, shows them on the website, collects sign-ups and consent, sees allergies and medical notes for children who are signed up, and takes payment for trips. They work in `/admin`, filtered to what their role allows. SFO staff can be parents or people from outside.
 
 ## What exists today (build on it, don't duplicate)
 
 - `school_activities` + `activity_students` + `activity_responses` + `activity_response_history`: per-class activity with consent text, respond-by date, draft/published/cancelled, going/consent per child, consent history, participation marking. Admin UI `admin/aktiviteter`, parent UI `min-side/aktiviteter`.
-- Staff access is `is_admin()` or `sunday_class_staff(class, year)` via `activity_can_staff()`.
 - Health on `students`: `allergies`, `medical_notes`, `photo_consent`, `health_updated_at`. Parents edit via `portal_update_child_health`. Pickup persons in `family_pickup_persons`.
-- Payments: `payments` (øre) + `payment_targets` (per child) + Vipps ePayment. Sales units: 1111805 web, 60206 donasjon (API), 24279 sadaqah and 610090 elevbetaling (settlement upload only).
-- Roles: `profiles.role` is `admin | member`. Teachers/volunteers are flags on `guardians` (`is_teacher`, `is_volunteer`). Login is magic link only.
+- `sadaqa_gifts`: amount, method, family, `source_payment_id` (Vipps), school year, void.
+- Roles: `profiles.role` is `admin | member`, checked by `is_admin()` in about 120 RLS policies and by `requireAdmin()`/`getIsAdmin()` in about 28 files. Teachers/volunteers are flags on `guardians`. Login is magic link only.
 
-## 1. New role: SFO
+## 1. Roles and permissions
 
-| | Admin | SFO | Teacher | Parent |
-|---|---|---|---|---|
-| Create, edit, publish, cancel SFO activities | Y | Y | N | N |
-| Edit Sunday-school class activities | Y | N | own class | N |
-| See sign-ups and consent for SFO activities | Y | Y | N | own child |
-| See allergies, medical notes, photo consent, pickup persons | Y | only for children signed up to an SFO activity, read-only | own class | own child |
-| See guardian name + phone for signed-up children | Y | Y | own class | N |
-| Mark participation / check-in on the day | Y | Y | own class | N |
-| Create trip prices, see who has paid | Y | Y | N | own child |
-| Register cash/manual trip payment | Y | Y | N | N |
-| Kiosk: sell, see own sales | Y | Y | N | N |
-| Kiosk: products, prices, reports | Y | Y | N | N |
-| Refunds | Y | N (request only) | N | N |
-| Tuition, sadaqa, families, students, school setup | Y | N | N | N |
-| Edit health info | N (parent owns it) | N | N | own child |
+Replace the `profiles.role` flag with lookup tables, so new roles are rows, not columns.
 
-Model:
+```
+roles            (key text pk, name text)                       seed: admin, sfo
+permissions      (key text pk, name text)                       seed: see below
+role_permissions (role_key -> roles, permission_key -> permissions, pk both)
+user_roles       (user_id -> auth.users, role_key -> roles, granted_by, granted_at, pk both)
+```
 
-- `guardians.is_sfo boolean` (same pattern as `is_teacher`/`is_volunteer`), so SFO staff log in through the existing portal magic link and land on `/min-side/sfo`. No new admin accounts.
-- SQL helper `is_sfo_staff()` (SECURITY DEFINER, like `portal_guardian_ids()`), used in RLS and RPCs.
-- Admin toggles the flag on the guardian/teacher page. Audit-logged.
-- SFO staff never enter `/admin`.
+Permissions in v1:
+
+| Key | Gives |
+|---|---|
+| `activities.sfo.manage` | Create, edit, publish, cancel SFO activities |
+| `activities.sfo.roster` | Roster of signed-up children with allergies, medical notes, photo consent, pickup persons, guardian name + phone. Check-in and participation |
+| `activities.sfo.payments` | See who has paid for SFO activities, register cash payment |
+
+- `admin` role has every permission implicitly. `sfo` role gets the three above.
+- SQL: `has_permission(p text)` (SECURITY DEFINER, `search_path=public`) returns true if the user has `admin` or a role with `p`. `is_admin()` is rewritten to read `user_roles`, so the 120 existing policies keep working unchanged.
+- Migration: every `profiles.role = 'admin'` becomes a `user_roles` row. `handle_new_user` stops writing role. `profiles.role` is dropped in a later migration once nothing reads it.
+- Only admins can read or change `roles`, `role_permissions`, `user_roles`. Every grant and removal is audit-logged.
+- Teachers stay on `guardians.is_teacher` + `class_teachers` for now. Their access is per class, so a role alone does not cover it. Moving them to roles is a follow-up.
+
+App side:
+
+- `getPermissions()` loads the user's permission set once per request. `requirePermission(p)` next to `requireAdmin()`.
+- Admin layout lets in anyone with at least one permission. The sidebar, mobile nav and command palette only show sections the user has access to. Every page and server action checks its own permission; nav filtering is not the guard.
+- A user with only SFO permissions sees one section: Aktiviteter, showing SFO activities only.
+- `/api/export` stays admin-only.
+
+Users:
+
+- `admin/brukere` gets a role picker per user (one or more roles) and "Legg til bruker" with email + role.
+- Outsider: admin adds email + `sfo` role, they get a login link.
+- Parent: same email as their guardian record means same login. They see `/min-side` as a parent and `/admin` filtered to SFO.
 
 ## 2. SFO activities
 
-Extend `school_activities` instead of a new table:
+Extend `school_activities`:
 
 - `owner text not null default 'class' check (owner in ('class','sfo'))`.
-- `class_id` nullable when `owner = 'sfo'`. Audience in new table `activity_audience(activity_id, class_id)`: one or more classes, or all classes.
-- New columns: `location`, `starts_at`/`ends_at` (time, not only date), `capacity int null`, `min_age`/`max_age` (calendar-year age via `src/lib/age.ts`), `price_ore int null`, `payment_due date null`, `show_on_website boolean`, `needs_consent boolean` (today consent is always required), `registration_mode` (`invite` = invited children answer, like now; `open` = parents sign children up).
-- Optional per-activity questions to parents: free text "Annet vi bør vite" only. No form builder in v1.
+- `class_id` nullable when `owner = 'sfo'`. Audience in `activity_audience(activity_id, class_id)`: one or more classes, or all.
+- New columns: `location`, `starts_at`/`ends_at`, `capacity int null`, `min_age`/`max_age` (calendar-year age via `src/lib/age.ts`), `price_ore int null`, `payment_due date null`, `show_on_website boolean`, `needs_consent boolean`.
+- RLS: `activity_can_staff()` becomes `is_admin()` or class staff for `owner = 'class'`, or `has_permission('activities.sfo.manage')` for `owner = 'sfo'`. SFO cannot see or edit class activities.
 
 Flow:
 
-1. SFO creates draft, picks audience, price, capacity, consent text.
-2. Publish: invites parents of matching children (existing `activity_added_notifications` email path). If `show_on_website`, it appears on the public site.
-3. Parent answers in `min-side/aktiviteter`: going / not going, consent, sees allergies on file with a "Stemmer dette?" confirm or edit link, pays if priced.
-4. Full: new answers go to a simple "Venteliste" status on the response. Only for SFO activities with capacity. (Note: class wait lists were rejected; this is per-activity capacity, confirm with owner.)
-5. On the day: SFO opens the roster, checks children in/out, sees allergies inline.
-6. Cancel: existing cancellation notice, and paid trips become refund requests for admin.
+1. SFO creates a draft, picks audience, time, place, price, capacity, consent text.
+2. Publish: parents of matching children are invited (existing `activity_added_notifications` email). If `show_on_website`, it appears on the public site.
+3. Parent answers in `min-side/aktiviteter`: going / not going, consent, sees the allergies and medical notes on file with "Stemmer dette?" and an edit link, pays if priced.
+4. Capacity reached: sign-up closes and the activity shows "Fullt". No waiting list.
+5. On the day: SFO opens the roster, checks children in, sees health info inline.
+6. Cancel: existing cancellation notice to everyone going. Paid trips are listed for admin to refund.
 
 ## 3. Public website
 
-- New "Aktiviteter" section on the public site, listing published SFO activities with `show_on_website = true`: title, date/time, place, age, price, spots left.
-- "Meld på" sends the visitor to `/min-side/logg-inn` and back to the activity. No anonymous sign-up, since consent and health info need a known guardian.
-- Uses the existing `events` look on the public site; `events` stays for non-registration items.
+- "Aktiviteter" section listing published SFO activities with `show_on_website = true`: title, date/time, place, age, price, spots left or "Fullt".
+- "Meld på" goes to `/min-side/logg-inn` and back to the activity. No anonymous sign-up, consent needs a known guardian.
 
-## 4. Health and needs view
+## 4. Roster and health
 
-- RPC `sfo_activity_roster(activity_id)` returns per child: name, age, class, allergies, medical notes, photo consent, pickup persons, guardian name + phone, going/consent/paid status.
-- Only for children with a response on that activity, only while the activity is not older than 30 days. No browse-all-students view for SFO.
-- Allergy summary at the top of the roster ("3 nøtteallergi, 1 gluten").
-- Printable roster (existing print pattern) for trips without signal.
+- RPC `sfo_activity_roster(activity_id)`, needs `activities.sfo.roster`. Per child: name, age, class, allergies, medical notes, photo consent, pickup persons, guardian name + phone, going, consent, paid.
+- Only children with a response on that activity, and only until 30 days after the activity. No browse-all-students view.
+- Allergy summary at the top.
+- Printable roster for trips.
 - Every roster read is audit-logged (health data, GDPR art. 9).
-- Stale info: if `health_updated_at` is older than the current school year, the parent is asked to confirm when they sign up.
+- Health info older than the current school year: parent must confirm it when signing up.
 
-## 5. Trip payments
+## 5. Trip payments as sadaqa
 
-- Each priced SFO activity creates a `student_fees` row per signed-up child (category `activity`, linked to `activity_id`), so the existing ledger, balances, allocations and "Økonomi" page show it.
-- Parent pays with Vipps from the activity card or "Økonomi". Group pay for siblings uses `payment_targets` like today.
-- SFO can register cash payment on the roster (amount, date, method), same shape as admin manual payments.
-- Sibling discount: not applied to activities.
-- Not paid by `payment_due`: shown in red on the roster, child still allowed unless SFO removes them. No automatic removal.
-- Which Vipps sales unit: open question (see below). Payments must carry `kind = 'activity'` so they never mix with tuition in reports.
+Trip payments are recorded in `sadaqa_gifts`, marked with the activity they came from.
 
-## 6. Kiosk
+- New columns on `sadaqa_gifts`: `activity_id uuid null references school_activities`, `student_id uuid null references students`. A gift with `activity_id` set is an activity payment.
+- Vipps: parent pays from the activity card. On capture, one `sadaqa_gifts` row per child with `source_payment_id`, `activity_id`, `student_id`, `family_id`. Siblings in one payment become one row each.
+- Cash: SFO registers it on the roster (amount, date, method `kontant`), written as a `sadaqa_gifts` row with `created_by`.
+- Paid status per child = active gifts for that activity and child >= `price_ore`. Not paid by `payment_due` is shown red on the roster. The child is not removed automatically.
+- No `student_fees` row, so trips never show as tuition debt or affect balances.
+- Sadaqa page in admin: new "Kilde" column and filter (Direkte / activity title). Totals include activity gifts, with a split per source.
+- SFO with `activities.sfo.payments` sees only gifts with an `activity_id` for SFO activities, through an RPC. They do not see other sadaqa.
+- Void and refund stay admin-only.
 
-Smallest useful version:
+## 6. Notifications (email only, existing queue)
 
-- `kiosk_products(id, name, price_ore, active, sort_order)`.
-- `kiosk_sales(id, sold_at, sold_by, total_ore, method in ('vipps','cash','card'), school_day_id null)` + `kiosk_sale_lines(sale_id, product_id, name, unit_ore, qty)`.
-- `/min-side/sfo/kiosk`: phone-first till. Tap products, see total, pick method. Vipps = show the shop's Vipps number/QR for the amount, SFO taps "Betalt". Cash = tap "Betalt".
-- Day close: totals per method, cash count entered, difference shown.
-- Report: per day / per month, per product, CSV export (existing `/api/export` pattern, SFO allowed for kiosk only).
-- Not tied to children or families. No tabs, no credit, no stock tracking in v1.
-
-## 7. SFO home `/min-side/sfo`
-
-- Tabs: Aktiviteter, Kiosk, Rapport.
-- Aktiviteter: upcoming first, each card shows date, signed up / capacity, consent missing, unpaid.
-- Activity detail: Påmeldte (roster with health), Betaling, Rediger.
-- Follows admin UI conventions: cards over tables, essentials + Detaljer, wide on desktop, labels and values only.
-
-## 8. Notifications (email only, existing queue)
-
-- Published: invite to parents in audience.
-- Reminder before `respond_by` to parents without an answer.
+- Published: invite to parents in the audience.
+- Reminder before `respond_by` to parents who have not answered.
 - Reminder before `payment_due` if unpaid.
-- Changed time/place or cancelled: notice to everyone going.
+- Time or place changed, or cancelled: notice to everyone going.
 
-## 9. Out of scope v1
+## 7. Later
 
-- Daily SFO attendance / opening hours (school is Sunday only).
-- Recurring activities (weekly club). Create each date for now.
-- Card terminal integration, stock counting, child prepaid kiosk balance.
-- SMS. Spond. Custom form builder.
+- Kiosk (products, till, day close, reports).
+- Waiting list for full activities.
+- Teachers moved to roles.
+- More admin sections behind permissions (for example a read-only economy role).
+- Recurring activities.
 
-## 10. Open questions for the owner
+## 8. Open questions
 
-1. Who is SFO/Kantine: a few named volunteers who already are guardians, or outside people? (Decides `guardians.is_sfo` vs. a new staff table.)
-2. Should SFO see medical notes, or only allergies? Medical notes can be sensitive.
-3. Trip money and kiosk money: same bank account and Vipps sales unit as tuition, or separate? Does SFO need its own accounting?
-4. Kiosk payment: Vipps number + "Betalt" button is enough, or do they want Vipps to confirm payment automatically (needs a Vipps QR/ePayment per sale, slower at the till)?
-5. Can SFO activities be open to children who are not enrolled (siblings, friends)? v1 assumes enrolled only.
-6. Capacity and "Venteliste" per activity: wanted?
-7. Refunds for cancelled trips: always full, or SFO decides?
-8. Does a teacher ever need to run an SFO activity too, or is it fully separate?
+1. Trip payments as sadaqa: if the school reports gifts to Skatteetaten for skattefradrag, payment for a trip is not a gift. Should activity gifts be left out of any such report?
+2. Refunds for cancelled trips: always full, or decided per trip?
+3. Can children who are not enrolled (siblings, friends) join SFO activities? v1 assumes enrolled children only.
+4. Should SFO see Sunday-school class activities read-only, or nothing?
 
-## 11. Build order
+## 9. Build order
 
-1. Role: `is_sfo`, `is_sfo_staff()`, admin toggle, `/min-side/sfo` shell.
-2. SFO activities: schema extension, audience, create/publish, parent sign-up reuse.
-3. Roster with health + check-in + print + audit.
-4. Trip payments via `student_fees` + Vipps + cash.
+1. Roles: tables, seed, `has_permission`, `is_admin()` rewrite, admin migration, `requirePermission`, filtered admin nav, role picker on Brukere.
+2. SFO activities: schema, audience, RLS, create/publish, reuse parent sign-up.
+3. Roster with health, check-in, print, audit.
+4. Trip payments via `sadaqa_gifts` (Vipps + cash), Kilde on the sadaqa page.
 5. Public website listing.
-6. Kiosk till + day close + report.
-7. Reminders.
+6. Reminders.
 
-Each step ships on its own. Tests: DB checks for every RLS rule in the matrix (SFO cannot read students outside a roster, cannot read tuition), e2e for publish, sign-up, pay, kiosk sale.
+Each step ships on its own. Tests: DB checks for every permission (SFO cannot read students outside a roster, cannot read tuition or other sadaqa, cannot touch class activities, existing admin still passes every current check after the `is_admin()` rewrite), e2e for SFO login, publish, parent sign-up, Vipps pay, cash pay.

@@ -14,7 +14,7 @@ export default async function NewSfoActivityPage({ params }: PageProps<"/[locale
   if (!(await hasPermission("activities.sfo.manage"))) redirect(`${basePath}/sfo`);
   const { data } = await (await createClient()).from("classes").select("id, name_no").eq("published", true).order("sort_order");
   return <div className="grid gap-6">
-    <PageHeader title="Ny aktivitet" />
+    <PageHeader title="Ny SFO-aktivitet" />
     <SfoActivityForm audience={[]} classes={(data ?? []).map((row) => ({ id: row.id, name: row.name_no }))} basePath={basePath} />
   </div>;
 }

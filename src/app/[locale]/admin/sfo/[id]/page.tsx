@@ -57,7 +57,7 @@ export default async function SfoActivityPage({ params }: PageProps<"/[locale]/a
   const unpaid = (payments.data ?? []).filter((row) => row.going && row.paid_ore < (activity.price_ore ?? 0));
 
   return <div className="grid gap-6">
-    <Link href={`${basePath}/sfo`} className="-ml-2 inline-flex min-h-11 w-fit items-center gap-1 rounded-lg px-2 text-sm font-bold print:hidden"><ChevronLeft aria-hidden="true" className="size-4" />SFO</Link>
+    <Link href={`${basePath}/${access.admin ? "aktiviteter" : "sfo"}`} className="-ml-2 inline-flex min-h-11 w-fit items-center gap-1 rounded-lg px-2 text-sm font-bold print:hidden"><ChevronLeft aria-hidden="true" className="size-4" />Aktiviteter</Link>
     <PageHeader title={activity.title} action={<StatusPill tone={tone}>{label}</StatusPill>} />
     <p className="-mt-4 text-admin-muted">{[formatSchoolDay(activity.event_date, "no"), time, activity.location].filter(Boolean).join(" · ")}</p>
 

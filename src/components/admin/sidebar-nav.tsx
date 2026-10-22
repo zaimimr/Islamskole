@@ -15,7 +15,6 @@ import {
   ScrollText,
   Settings,
   ShieldCheck,
-  Tent,
   UserCheck,
   Users,
   Wallet,
@@ -66,8 +65,8 @@ function buildNavigation(basePath: string, isAdmin: boolean) {
           links: [
             {
               href: `${basePath}/sfo`,
-              label: "SFO",
-              icon: Tent,
+              label: "Aktiviteter",
+              icon: CalendarDays,
             },
           ],
         },
@@ -111,17 +110,17 @@ function buildNavigation(basePath: string, isAdmin: boolean) {
           countLabel: "nye lærersøknader",
         },
         { href: `${basePath}/betaling`, label: "Økonomi", icon: Wallet },
-        { href: `${basePath}/sfo`, label: "SFO", icon: Tent },
+        {
+          href: `${basePath}/aktiviteter`,
+          label: "Aktiviteter",
+          icon: CalendarDays,
+          alsoMatches: [`${basePath}/sfo`],
+        },
       ],
     },
     {
       label: "Nettside",
       links: [
-        {
-          href: `${basePath}/aktiviteter`,
-          label: "Aktiviteter",
-          icon: CalendarDays,
-        },
         {
           href: `${basePath}/innstillinger`,
           label: "Innstillinger",

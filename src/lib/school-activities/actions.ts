@@ -22,13 +22,13 @@ export async function saveActivity(input: z.infer<typeof activity>) {
   return { ok: true as const, activity: data };
 }
 
-export async function changeActivity(input: { id: string; expected: string; action: string }) {
-  const parsed = z.object({ id, expected: version, action: z.enum(["publish", "cancel", "add_students"]) }).safeParse(input);
+export async function changeActivity(input: { id: string; expected: string; action: string; notify?: boolean }) {
+  const parsed = z.object({ id, expected: version, action: z.enum(["publish", "cancel", "add_students"]), notify: z.boolean().optional() }).safeParse(input);
   if (!parsed.success || !(await getUser())) return { ok: false as const };
   const client = await createClient();
   const args = { p_id: parsed.data.id, p_expected: parsed.data.expected };
   const { error } = parsed.data.action === "add_students" ? await client.rpc("add_activity_students", { p_id: parsed.data.id })
-    : parsed.data.action === "publish" ? await client.rpc("publish_school_activity", args) : await client.rpc("cancel_school_activity", args);
+    : parsed.data.action === "publish" ? await client.rpc("publish_school_activity", { ...args, p_notify: parsed.data.notify ?? true }) : await client.rpc("cancel_school_activity", args);
   if (error) { console.error("Change activity failed", { code: error.code }); return { ok: false as const, code: error.code }; }
   scheduleSchoolEmails();
   revalidatePath("/", "layout");

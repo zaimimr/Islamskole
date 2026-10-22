@@ -4481,7 +4481,7 @@ export type Database = {
         }
       }
       publish_school_activity: {
-        Args: { p_expected: string; p_id: string }
+        Args: { p_expected: string; p_id: string; p_notify?: boolean }
         Returns: string
       }
       add_activity_students: { Args: { p_id: string }; Returns: number }

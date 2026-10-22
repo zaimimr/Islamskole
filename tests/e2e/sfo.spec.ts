@@ -24,10 +24,18 @@ test("SFO staff publish a paid trip, parents sign up with health check, cash is 
   await loginAs(context, staff.email);
   await page.goto("/admin/elever");
   await expect(page).toHaveURL(/\/admin\/sfo$/);
-  await page.getByRole("link", { name: "Ny aktivitet" }).click();
-  await page.getByLabel("Tittel", { exact: true }).fill(title);
-  await page.getByLabel("Dato", { exact: true }).fill(osloDate(7));
-  await page.getByLabel("Svarfrist", { exact: true }).fill(osloDate(3));
+  await page.getByRole("link", { name: "Ny SFO-aktivitet" }).click();
+  await page.getByRole("button", { name: "Publiser", exact: true }).click();
+  await expect(page.getByText("Skriv en tittel")).toBeVisible();
+  await expect(page.getByText("Velg dato")).toBeVisible();
+  await expect(page.getByLabel("Tittel")).toHaveAttribute("aria-invalid", "true");
+  await page.getByLabel("Tittel").fill(title);
+  await expect(page.getByText("Skriv en tittel")).toHaveCount(0);
+  await page.getByLabel("Dato").fill(osloDate(3));
+  await page.getByLabel("Svarfrist").fill(osloDate(5));
+  await expect(page.getByText("Må være før eller på datoen")).toBeVisible();
+  await page.getByLabel("Dato").fill(osloDate(7));
+  await page.getByLabel("Svarfrist").fill(osloDate(3));
   await page.getByLabel("Sted", { exact: true }).fill("ZZTEST Fornebu");
   await page.getByLabel("Maks plasser", { exact: true }).fill("1");
   await page.getByLabel("Pris (kr)", { exact: true }).fill("150");
@@ -38,6 +46,8 @@ test("SFO staff publish a paid trip, parents sign up with health check, cash is 
   await expect(page).toHaveURL(/\/admin\/sfo\/[0-9a-f-]{36}$/);
   await expect(page.getByText("Publisert", { exact: true })).toBeVisible();
   const activityId = page.url().split("/").pop()!;
+  const { count: invitations } = await db().from("school_email_deliveries").select("id", { count: "exact", head: true }).eq("kind", "activity_consent").eq("entity_id", activityId);
+  expect(invitations).toBeGreaterThan(0);
 
   await page.goto("/aktiviteter");
   const card = page.getByRole("article").filter({ hasText: title });
@@ -78,6 +88,8 @@ test("SFO staff publish a paid trip, parents sign up with health check, cash is 
 
   const admin = await seedAdmin();
   await loginAs(context, admin.email);
+  await page.goto("/admin/aktiviteter");
+  await expect(page.getByRole("region", { name: "Kommende og uten dato" }).getByRole("listitem").filter({ hasText: title }).getByRole("link", { name: "Åpne" })).toHaveAttribute("href", `/admin/sfo/${activityId}`);
   await page.goto("/admin/betaling/sadaqa?kilde=aktivitet");
   await expect(page.getByRole("link", { name: title })).toBeVisible();
 

@@ -190,8 +190,12 @@ set local role authenticated;
 select lives_ok(
   $$ select public.save_sfo_activity('5f000000-0000-0000-0000-0000000000b2', null, 'ZZTEST Gratis', '', false, '', public.oslo_today() + 3, public.oslo_today() + 1, null, null, null, null, null, null, null, null, false, '{}') $$,
   'SFO creates a free activity without consent for all classes');
-select lives_ok($$ select public.publish_school_activity('5f000000-0000-0000-0000-0000000000b2', (select updated_at from public.school_activities where id = '5f000000-0000-0000-0000-0000000000b2')) $$, 'free activity is published');
+select lives_ok($$ select public.publish_school_activity('5f000000-0000-0000-0000-0000000000b2', (select updated_at from public.school_activities where id = '5f000000-0000-0000-0000-0000000000b2'), false) $$, 'free activity is published without email');
 select is((select count(*) from public.activity_students where activity_id = '5f000000-0000-0000-0000-0000000000b2'), 4::bigint, 'all enrolled children are invited when no audience is set');
+reset role;
+select is((select count(*) from public.school_email_deliveries where kind = 'activity_consent' and entity_id = '5f000000-0000-0000-0000-0000000000b2'), 0::bigint, 'publishing without notify queues no email');
+select ok((select count(*) from public.school_email_deliveries where kind = 'activity_consent' and entity_id = '5f000000-0000-0000-0000-0000000000b1') > 0, 'default publish emails families');
+set local role authenticated;
 select throws_ok(
   $$ select public.cancel_school_activity('5f000000-0000-0000-0000-0000000000b1', (select updated_at from public.school_activities where id = '5f000000-0000-0000-0000-0000000000b1')) $$,
   '22023', null, 'cancelling a priced activity needs a refund choice');

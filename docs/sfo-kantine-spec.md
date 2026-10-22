@@ -15,14 +15,16 @@ The SFO/Kantine team plans activities and trips, shows them on the website, coll
 
 ## 1. Roles and permissions
 
-Replace the `profiles.role` flag with lookup tables, so new roles are rows, not columns.
+Replace `profiles.role`, `guardians.is_teacher` and `guardians.is_volunteer` with lookup tables, so new roles are rows, not columns.
 
 ```
-roles            (key text pk, name text)                       seed: admin, sfo
+roles            (key text pk, name text)                       seed: admin, sfo, teacher, volunteer
 permissions      (key text pk, name text)                       seed: see below
 role_permissions (role_key -> roles, permission_key -> permissions, pk both)
-user_roles       (user_id -> auth.users, role_key -> roles, granted_by, granted_at, pk both)
+person_roles     (guardian_id -> guardians, role_key -> roles, granted_by, granted_at, suspended_at, note, pk guardian_id + role_key)
 ```
+
+Roles attach to the person (`guardians` row), not the login account. Teachers exist before they ever log in, and `guardians` already holds teachers who are not parents. Outsiders and admins get a `guardians` row too. The logged-in person is resolved by email, the same way as `portal_guardian_ids()`.
 
 Permissions in v1:
 
@@ -32,11 +34,38 @@ Permissions in v1:
 | `activities.sfo.roster` | Roster of signed-up children with allergies, medical notes, photo consent, pickup persons, guardian name + phone. Check-in and participation |
 | `activities.sfo.payments` | See who has paid for SFO activities, register cash payment |
 
-- `admin` role has every permission implicitly. `sfo` role gets the three above.
-- SQL: `has_permission(p text)` (SECURITY DEFINER, `search_path=public`) returns true if the user has `admin` or a role with `p`. `is_admin()` is rewritten to read `user_roles`, so the 120 existing policies keep working unchanged.
-- Migration: every `profiles.role = 'admin'` becomes a `user_roles` row. `handle_new_user` stops writing role. `profiles.role` is dropped in a later migration once nothing reads it.
-- Only admins can read or change `roles`, `role_permissions`, `user_roles`. Every grant and removal is audit-logged.
-- Teachers stay on `guardians.is_teacher` + `class_teachers` for now. Their access is per class, so a role alone does not cover it. Moving them to roles is a follow-up.
+- `admin` role has every permission implicitly. `sfo` role gets the three above. `teacher` and `volunteer` get none in v1 (see 1b).
+- SQL, all SECURITY DEFINER with `search_path=public`:
+  - `guardian_has_role(guardian_id, role)`: role row exists and `suspended_at is null`.
+  - `has_role(role)`: true for any of the caller's `portal_guardian_ids()`.
+  - `has_permission(p)`: `has_role('admin')` or an active role with `p`.
+  - `is_admin()` is rewritten as `has_role('admin')`, so the 120 existing policies keep working unchanged.
+- Admin migration: each `profiles.role = 'admin'` is matched to a `guardians` row by email, or one is created, then gets a `person_roles` row. `handle_new_user` stops writing role. `profiles.role` is dropped once nothing reads it.
+- Only admins can read or change `roles`, `role_permissions`, `person_roles`. Every grant, suspension and removal is audit-logged.
+- Email change on a person (existing `guardian_email_changes` flow) moves their roles with them.
+
+## 1b. Moving teachers and volunteers to roles
+
+A role says what someone is. An assignment says where. `class_teachers`, `class_substitutes` and `lessons.teacher_guardian_id` / `co_teacher_guardian_id` stay as they are and still decide which class a teacher can work in.
+
+| Today | After |
+|---|---|
+| `guardians.is_teacher` | `person_roles` row with `teacher` |
+| `guardians.is_volunteer` | `person_roles` row with `volunteer` |
+| `guardians.teacher_suspended_at` | `person_roles.suspended_at` on the `teacher` row |
+| `guardians.teacher_note` | `person_roles.note` on the `teacher` row |
+| `guardians.source_application_id` | stays on `guardians` |
+
+Two-step migration, so the live site never breaks:
+
+1. Migration A:
+   - Create the tables and fill `person_roles` from `is_teacher`, `is_volunteer`, `teacher_suspended_at`, `teacher_note`.
+   - Recreate every SQL function that checks `g.is_teacher and g.teacher_suspended_at is null` to use `guardian_has_role(g.id, 'teacher')`, among them `sunday_class_staff`, lesson access, week plans, absences, announcements and portal RPCs. Only the latest definition of each function needs changing.
+   - Add a sync trigger so the old flags keep matching `person_roles` while the current code on main still reads them.
+2. App: switch reads and writes in about 14 files (`laerere`, `teacher-actions.ts`, `brukere`, `familier`, `families-actions.ts`, `families/repository.ts`, `elever/[id]`, `klasser/[id]`, `dagsplan`, `copyable-assignments.ts`, `portal-admin-actions.ts`, `actions.ts`, `portal/data.ts`, export route), patch `types.ts` by hand. Approving a teacher application creates the role row. Suspend and reactivate set `suspended_at`. Deploy.
+3. Migration B: once nothing reads them, drop the trigger and `is_teacher`, `is_volunteer`, `teacher_suspended_at`, `teacher_note`.
+
+Later: teacher permissions such as `class.notes.write` and `attendance.mark`, so each check becomes "has the permission and is assigned to this class". New staff types (for example an assistant who marks attendance but does not write notes) are then seed rows, not code.
 
 App side:
 
@@ -107,7 +136,7 @@ Trip payments are recorded in `sadaqa_gifts`, marked with the activity they came
 
 - Kiosk (products, till, day close, reports).
 - Waiting list for full activities.
-- Teachers moved to roles.
+- Teacher permissions (see 1b).
 - More admin sections behind permissions (for example a read-only economy role).
 - Recurring activities.
 
@@ -121,10 +150,11 @@ Trip payments are recorded in `sadaqa_gifts`, marked with the activity they came
 ## 9. Build order
 
 1. Roles: tables, seed, `has_permission`, `is_admin()` rewrite, admin migration, `requirePermission`, filtered admin nav, role picker on Brukere.
+1b. Teachers and volunteers to roles: migration A, app switch, deploy, migration B.
 2. SFO activities: schema, audience, RLS, create/publish, reuse parent sign-up.
 3. Roster with health, check-in, print, audit.
 4. Trip payments via `sadaqa_gifts` (Vipps + cash), Kilde on the sadaqa page.
 5. Public website listing.
 6. Reminders.
 
-Each step ships on its own. Tests: DB checks for every permission (SFO cannot read students outside a roster, cannot read tuition or other sadaqa, cannot touch class activities, existing admin still passes every current check after the `is_admin()` rewrite), e2e for SFO login, publish, parent sign-up, Vipps pay, cash pay.
+Each step ships on its own. Tests: DB checks for every permission (SFO cannot read students outside a roster, cannot read tuition or other sadaqa, cannot touch class activities, existing admin still passes every current check after the `is_admin()` rewrite, every existing teacher and substitute check passes after migration A both with the old flags and with roles, a suspended teacher loses access, teacher + parent and SFO + teacher on one person keep both), e2e for SFO login, publish, parent sign-up, Vipps pay, cash pay.

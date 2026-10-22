@@ -548,9 +548,14 @@ create temp table zz_payments on commit drop as
   where student_id in (select id from zz_students)
      or reference like 'ZZTEST%'
      or lower(coalesce(payer_email, '')) like '%@zztest.local'
-     or id in (select payment_id from public.payment_allocations where student_id in (select id from zz_students));
+     or id in (select payment_id from public.payment_allocations where student_id in (select id from zz_students))
+     or id in (select payment_id from public.activity_payment_targets where student_id in (select id from zz_students));
+create temp table zz_activities on commit drop as
+  select id from public.school_activities where class_id in (select id from zz_classes) or school_year_id in (select id from zz_years) or title like 'ZZTEST%';
+delete from public.sadaqa_gifts where activity_id in (select id from zz_activities) or student_id in (select id from zz_students);
+delete from public.activity_payment_targets where activity_id in (select id from zz_activities) or student_id in (select id from zz_students);
 delete from public.email_send_logs where exists (select 1 from unnest(recipients) r where lower(r) like '%@zztest.local');
-delete from public.school_activities where class_id in (select id from zz_classes) or school_year_id in (select id from zz_years) or title like 'ZZTEST%';
+delete from public.school_activities where id in (select id from zz_activities);
 delete from public.school_announcements where class_id in (select id from zz_classes) or school_year_id in (select id from zz_years) or created_by in (select id from auth.users where lower(email) like '%@zztest.local');
 delete from public.refunds where payment_id in (select id from zz_payments) or student_id in (select id from zz_students);
 delete from public.sadaqa_gifts where source_payment_id in (select id from zz_payments) or family_id in (select id from zz_families);

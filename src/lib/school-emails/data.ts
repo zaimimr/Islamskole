@@ -124,9 +124,14 @@ async function followUpData(admin: Admin, delivery: SchoolDelivery) {
     ? { names: [studentDisplayName(data.students)], followUpMessage: data.message } : null;
 }
 
+function timeLabel(start: string | null, end: string | null) {
+  return [start?.slice(0, 5), end?.slice(0, 5)].filter(Boolean).join("–");
+}
+
 async function activityData(admin: Admin, delivery: SchoolDelivery, locale: string) {
   let activityId = delivery.entity_id;
   let studentId: string | null = null;
+  let previous: string | undefined;
   if (delivery.kind === "activity_added") {
     const { data: invitation, error } = await admin.from("activity_added_invitations").select("activity_id, student_id").eq("id", delivery.entity_id).maybeSingle();
     if (error) throw error;
@@ -134,17 +139,55 @@ async function activityData(admin: Admin, delivery: SchoolDelivery, locale: stri
     activityId = invitation.activity_id;
     studentId = invitation.student_id;
   }
-  const { data: activity, error } = await admin.from("school_activities").select("title, event_date, respond_by, status").eq("id", activityId).maybeSingle();
+  if (delivery.kind === "activity_changed") {
+    const { data: change, error } = await admin.from("activity_changes").select("activity_id, previous").eq("id", delivery.entity_id).maybeSingle();
+    if (error) throw error;
+    if (!change) return null;
+    activityId = change.activity_id;
+    const before = change.previous as { event_date: string; start_time: string | null; end_time: string | null; location: string | null };
+    previous = [dateLabel(before.event_date, locale), timeLabel(before.start_time, before.end_time), before.location].filter(Boolean).join(" · ");
+  }
+  const { data: activity, error } = await admin.from("school_activities")
+    .select("title, event_date, respond_by, status, owner, needs_consent, start_time, end_time, location, price_ore, payment_due, cancel_refund, cancel_refund_ore").eq("id", activityId).maybeSingle();
   if (error) throw error;
-  if (!activity || activity.status !== (delivery.kind === "activity_cancelled" ? "cancelled" : "published") ||
-    (delivery.kind !== "activity_cancelled" && activity.respond_by < osloToday())) return null;
-  let query = admin.from("activity_students").select("students!inner(id, child_first_name, child_last_name, family_id)")
+  const cancelled = delivery.kind === "activity_cancelled";
+  const sfo = activity?.owner === "sfo";
+  const today = osloToday();
+  if (!activity || activity.status !== (cancelled ? "cancelled" : "published")) return null;
+  if ((delivery.kind === "activity_changed" || delivery.kind === "activity_payment_reminder") ? activity.event_date < today
+    : !cancelled && activity.respond_by < today) return null;
+  const goingOnly = sfo && delivery.kind !== "activity_consent" && delivery.kind !== "activity_added" && delivery.kind !== "activity_respond_reminder";
+  let query = admin.from("activity_students").select("student_id, students!inner(id, child_first_name, child_last_name, family_id)")
     .eq("activity_id", activityId).eq("students.family_id", delivery.family_id!);
   if (studentId) query = query.eq("student_id", studentId);
-  const { data, error: studentError } = await query;
+  const { data: rows, error: studentError } = await query;
   if (studentError) throw studentError;
-  return data.length ? { names: data.map((row) => studentDisplayName(row.students)), activityId,
-    activityTitle: activity.title, activityDate: dateLabel(activity.event_date, locale), activityDeadline: dateLabel(activity.respond_by, locale), activityStudentId: data[0].students.id } : null;
+  let data = rows;
+  if (sfo && data.length) {
+    const { data: responses, error: responseError } = await admin.from("activity_responses").select("student_id, going")
+      .eq("activity_id", activityId).in("student_id", data.map((row) => row.student_id));
+    if (responseError) throw responseError;
+    const answered = new Map(responses.map((row) => [row.student_id, row.going]));
+    if (goingOnly) data = data.filter((row) => answered.get(row.student_id) === true);
+    if (delivery.kind === "activity_respond_reminder") data = data.filter((row) => !answered.has(row.student_id));
+  }
+  let owed = 0;
+  if (delivery.kind === "activity_payment_reminder" && data.length) {
+    const { data: gifts, error: giftError } = await admin.from("sadaqa_gifts").select("student_id, amount")
+      .eq("activity_id", activityId).is("voided_at", null).in("student_id", data.map((row) => row.student_id));
+    if (giftError) throw giftError;
+    const paid = new Map<string, number>();
+    for (const gift of gifts) if (gift.student_id) paid.set(gift.student_id, (paid.get(gift.student_id) ?? 0) + gift.amount);
+    data = data.filter((row) => (paid.get(row.student_id) ?? 0) < (activity.price_ore ?? 0));
+    owed = data.reduce((sum, row) => sum + (activity.price_ore ?? 0) - (paid.get(row.student_id) ?? 0), 0);
+  }
+  const refund = cancelled && sfo && activity.price_ore != null
+    ? activity.cancel_refund === "full" ? formatNok(activity.price_ore) : activity.cancel_refund === "amount" && activity.cancel_refund_ore ? formatNok(activity.cancel_refund_ore) : activity.cancel_refund === "none" ? "" : undefined
+    : undefined;
+  return data.length ? { names: data.map((row) => studentDisplayName(row.students)), activityId, activitySfo: sfo, activityNeedsConsent: activity.needs_consent,
+    activityTitle: activity.title, activityDate: dateLabel(activity.event_date, locale), activityDeadline: dateLabel(activity.respond_by, locale), activityStudentId: data[0].students.id,
+    activityTime: timeLabel(activity.start_time, activity.end_time), activityLocation: activity.location ?? "", activityPrevious: previous, activityRefund: refund,
+    amount: owed ? formatNok(owed) : activity.price_ore != null ? formatNok(activity.price_ore) : undefined, dueDate: activity.payment_due ? dateLabel(activity.payment_due, locale) : undefined } : null;
 }
 
 export async function schoolDeliveryContent(admin: Admin, delivery: SchoolDelivery) {

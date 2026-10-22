@@ -118,6 +118,7 @@ type PaymentLogData = {
   payments: PaymentRow[];
   allocations: AllocationRow[];
   targets: AllocationRow[];
+  activityTargets: AllocationRow[];
   events: EventRow[];
   applications: ApplicationRow[];
   students: AllocationStudent[];
@@ -313,6 +314,16 @@ async function getData(
             .in("payment_id", ids)
         : { data: [], error: null };
 
+    const activityTargetResult =
+      ids.length > 0
+        ? await supabase
+            .from("activity_payment_targets")
+            .select(
+              "payment_id, student_id, amount, students(child_first_name, child_last_name)",
+            )
+            .in("payment_id", ids)
+        : { data: [], error: null };
+
     const giftResult =
       ids.length > 0
         ? await supabase
@@ -340,6 +351,9 @@ async function getData(
         targets: targetResult.error
           ? []
           : ((targetResult.data as AllocationRow[] | null) ?? []),
+        activityTargets: activityTargetResult.error
+          ? []
+          : ((activityTargetResult.data as AllocationRow[] | null) ?? []),
         events: (eventResult.data as EventRow[] | null) ?? [],
         applications: (applicationResult.data as ApplicationRow[] | null) ?? [],
         refunds: (refundResult.data as RefundRow[] | null) ?? [],
@@ -433,7 +447,10 @@ export default async function PaymentLogPage({
     );
   }
   const targetsByPayment = new Map<string, AllocationRow[]>();
-  for (const target of data.targets) {
+  const activityPayments = new Set(
+    data.activityTargets.map((target) => target.payment_id),
+  );
+  for (const target of [...data.targets, ...data.activityTargets]) {
     const list = targetsByPayment.get(target.payment_id) ?? [];
     list.push(target);
     targetsByPayment.set(target.payment_id, list);
@@ -681,7 +698,7 @@ export default async function PaymentLogPage({
 
               const actions = (
                 <>
-                  {hasMoney ? (
+                  {hasMoney && !activityPayments.has(payment.id) ? (
                     <AllocatePaymentDialog
                       paymentId={payment.id}
                       paymentAmount={payment.captured_amount - payment.refunded_amount}

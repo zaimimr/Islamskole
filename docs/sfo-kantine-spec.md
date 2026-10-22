@@ -1,6 +1,6 @@
 # SFO / Kantine: spec
 
-Status: draft v2, 2026-10-22. Nothing built yet.
+Status: built 2026-10-22. Steps 1-6 live; kiosk and waitlist later.
 
 ## Goal
 

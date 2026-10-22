@@ -37,6 +37,7 @@ type GiftRow = {
   donor_name: string | null;
   family_id: string | null;
   note: string | null;
+  activity_id: string | null;
 };
 
 type StudentRow = {
@@ -114,7 +115,7 @@ export default async function SadaqaPage({
       .order("disbursed_at", { ascending: false }),
     supabase
       .from("sadaqa_gifts")
-      .select("id, amount, received_on, method, donor_name, family_id, note")
+      .select("id, amount, received_on, method, donor_name, family_id, note, activity_id")
       .eq("school_year_id", selectedYear.id)
       .is("voided_at", null)
       .order("received_on", { ascending: false }),
@@ -187,7 +188,15 @@ export default async function SadaqaPage({
       note: sadaqaSupportNote(row.description),
     };
   });
-  const gifts = (giftResult.data as GiftRow[] | null) ?? [];
+  const allGifts = (giftResult.data as GiftRow[] | null) ?? [];
+  const source = sp.kilde === "direkte" || sp.kilde === "aktivitet" ? sp.kilde : "";
+  const gifts = allGifts.filter((gift) => !source || (source === "aktivitet") === (gift.activity_id != null));
+  const activityIds = [...new Set(allGifts.map((gift) => gift.activity_id).filter((id): id is string => id != null))];
+  const { data: activityData } = activityIds.length
+    ? await supabase.from("school_activities").select("id, title").in("id", activityIds)
+    : { data: [] };
+  const activityTitles = new Map((activityData ?? []).map((row) => [row.id, row.title]));
+  const yearQuery = requestedYear ? `aar=${requestedYear}&` : "";
 
   const remainingByStudent = new Map(
     (balanceResult.data ?? [])
@@ -401,6 +410,23 @@ export default async function SadaqaPage({
           <h2 id="sadaqa-gifts" className="font-heading text-xl font-bold">
             Gaver ({gifts.length})
           </h2>
+          {activityIds.length ? (
+            <nav aria-label="Kilde" className="mt-2 flex flex-wrap gap-2">
+              {([["", "Alle"], ["direkte", "Direkte"], ["aktivitet", "Aktiviteter"]] as const).map(([value, label]) => (
+                <Link
+                  key={value}
+                  href={`${pageHref}?${yearQuery}${value ? `kilde=${value}` : ""}`}
+                  aria-current={source === value ? "page" : undefined}
+                  className={cn(
+                    "inline-flex min-h-11 items-center rounded-full px-4 text-sm font-bold ring-1 ring-[#DCD7CC]",
+                    source === value ? "bg-[#1E3A23] text-white ring-[#1E3A23]" : "bg-white hover:bg-[#F2F1EB]",
+                  )}
+                >
+                  {label}
+                </Link>
+              ))}
+            </nav>
+          ) : null}
           <p className="mt-0.5 text-sm text-admin-muted">
             Penger gitt til sadaqa, også overskudd familier har gitt bort.
           </p>
@@ -446,6 +472,14 @@ export default async function SadaqaPage({
                       <span className="rounded-full bg-[#F0F0ED] px-2 py-0.5 text-xs font-bold text-[#4E5550]">
                         {giftMethodLabels[gift.method] ?? gift.method}
                       </span>
+                      {gift.activity_id ? (
+                        <Link
+                          href={`${basePath}/sfo/${gift.activity_id}`}
+                          className="rounded-full bg-[#E8F1E3] px-2 py-0.5 text-xs font-bold text-[#2F5D25] outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+                        >
+                          {activityTitles.get(gift.activity_id) ?? "Aktivitet"}
+                        </Link>
+                      ) : null}
                     </p>
                     <p className="mt-0.5 text-sm text-admin-muted">
                       {formatOsloDate(gift.received_on)}

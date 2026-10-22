@@ -107,6 +107,14 @@ export async function getPublishedEvents(): Promise<EventItem[]> {
   return (data as EventItem[] | null) ?? [];
 }
 
+export type PublicSfoActivity = Database["public"]["Functions"]["public_sfo_activities"]["Returns"][number];
+
+export async function getPublicSfoActivities(): Promise<PublicSfoActivity[]> {
+  if (!hasSupabaseEnv()) return [];
+  const { data } = await getReadClient().rpc("public_sfo_activities");
+  return data ?? [];
+}
+
 const EVENT_ARCHIVE_GRACE_DAYS = 3;
 
 function archiveCutoffIso() {

@@ -1,5 +1,5 @@
 export type OnboardingRole = "parent" | "student";
-export type SchoolEmailKind = "signup_parent" | "signup_student" | "welcome_parent" | "welcome_student" | "plan_confirmed" | "payment_reminder" | "installment_due" | "installment_reminder" | "report_published" | "attendance_followup" | "activity_consent" | "activity_cancelled" | "activity_added";
+export type SchoolEmailKind = "signup_parent" | "signup_student" | "welcome_parent" | "welcome_student" | "plan_confirmed" | "payment_reminder" | "installment_due" | "installment_reminder" | "report_published" | "attendance_followup" | "activity_consent" | "activity_cancelled" | "activity_added" | "activity_changed" | "activity_respond_reminder" | "activity_payment_reminder";
 
 const GUIDES = {
   no: {
@@ -62,6 +62,12 @@ export function schoolEmailContent(input: {
   activityDate?: string;
   activityDeadline?: string;
   activityStudentId?: string;
+  activitySfo?: boolean;
+  activityNeedsConsent?: boolean;
+  activityTime?: string;
+  activityLocation?: string;
+  activityPrevious?: string;
+  activityRefund?: string;
 }) {
   const en = input.locale === "en";
   const names = input.names.join(", ");
@@ -89,6 +95,38 @@ export function schoolEmailContent(input: {
       rows: guide.items.map((item): [string, string] => [item.label, item.text]),
       href: "/min-side/logg-inn",
       ctaLabel: en ? "Open Min side" : "Åpne Min side",
+    };
+  }
+  if (input.kind.startsWith("activity") && input.activitySfo) {
+    const href = input.activityStudentId ? `/min-side/barn/${input.activityStudentId}#activities` : "/min-side";
+    const when: [string, string][] = [[en ? "Date" : "Dato", input.activityDate ?? ""], ...(input.activityTime ? [[en ? "Time" : "Tid", input.activityTime] as [string, string]] : []),
+      ...(input.activityLocation ? [[en ? "Place" : "Sted", input.activityLocation] as [string, string]] : [])];
+    const open = en ? "Open activity" : "Åpne aktivitet";
+    if (input.kind === "activity_cancelled") return {
+      subject: en ? "Activity cancelled" : "Aktivitet avlyst", title: input.activityTitle ?? "",
+      intro: en ? `The activity for ${names} has been cancelled.` : `Aktiviteten for ${names} er avlyst.`,
+      rows: [[en ? "Date" : "Dato", input.activityDate ?? ""], ...(input.activityRefund !== undefined ? [[en ? "Refund per child" : "Tilbakebetaling per barn", input.activityRefund || (en ? "None" : "Ingen")] as [string, string]] : [])] as [string, string][],
+      href, ctaLabel: open,
+    };
+    if (input.kind === "activity_changed") return {
+      subject: en ? "Activity changed" : "Endring i aktivitet", title: input.activityTitle ?? "",
+      intro: en ? `Time or place has changed for ${names}.` : `Tid eller sted er endret for ${names}.`,
+      rows: [...when, ...(input.activityPrevious ? [[en ? "Before" : "Før", input.activityPrevious] as [string, string]] : [])] as [string, string][],
+      href, ctaLabel: open,
+    };
+    if (input.kind === "activity_payment_reminder") return {
+      subject: en ? "Reminder: activity payment" : "Påminnelse om betaling for aktivitet", title: input.activityTitle ?? "",
+      intro: en ? `Payment for ${names} is not registered yet.` : `Betaling for ${names} er ikke registrert ennå.`,
+      rows: [[en ? "Amount" : "Beløp", input.amount ?? ""], [en ? "Due date" : "Betalingsfrist", input.dueDate ?? ""], ...when] as [string, string][],
+      href, ctaLabel: en ? "Pay with Vipps" : "Betal med Vipps",
+    };
+    const reminder = input.kind === "activity_respond_reminder";
+    return {
+      subject: reminder ? (en ? "Reminder: activity sign-up" : "Påminnelse om påmelding") : (en ? "New activity" : "Ny aktivitet"), title: input.activityTitle ?? "",
+      intro: input.activityNeedsConsent ? (en ? `Read the consent statement on Min side and respond for ${names}.` : `Les samtykketeksten på Min side og svar for ${names}.`)
+        : (en ? `Respond on Min side for ${names}.` : `Svar på Min side for ${names}.`),
+      rows: [...when, [en ? "Response deadline" : "Svarfrist", input.activityDeadline ?? ""], ...(input.amount ? [[en ? "Price" : "Pris", input.amount] as [string, string]] : [])] as [string, string][],
+      href, ctaLabel: open,
     };
   }
   if (input.kind.startsWith("activity")) {

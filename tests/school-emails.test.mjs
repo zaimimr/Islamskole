@@ -76,3 +76,23 @@ test("payment deadlines cross month and year boundaries safely", () => {
   assert.equal(addCalendarDays("2026-12-25", 14), "2027-01-08");
   assert.equal(addCalendarDays("2028-02-20", 14), "2028-03-05");
 });
+
+test("SFO activity emails cover change, reminders and refunds", () => {
+  const base = { locale: "no", names: ["Ali"], activitySfo: true, activityTitle: "Tur", activityDate: "1. november 2026", activityDeadline: "28. oktober 2026", activityStudentId: "s1", activityTime: "10:00–12:00", activityLocation: "Fornebu" };
+  const changed = schoolEmailContent({ ...base, kind: "activity_changed", activityPrevious: "31. oktober 2026" });
+  assert.equal(changed.subject, "Endring i aktivitet");
+  assert.deepEqual(changed.rows.at(-1), ["Før", "31. oktober 2026"]);
+  assert.equal(changed.href, "/min-side/barn/s1#activities");
+  const payment = schoolEmailContent({ ...base, kind: "activity_payment_reminder", amount: "150 kr", dueDate: "30. oktober 2026" });
+  assert.deepEqual(payment.rows[0], ["Beløp", "150 kr"]);
+  const reminder = schoolEmailContent({ ...base, kind: "activity_respond_reminder", activityNeedsConsent: false });
+  assert.equal(reminder.subject, "Påminnelse om påmelding");
+  assert.doesNotMatch(reminder.intro, /samtykke/);
+  const consent = schoolEmailContent({ ...base, kind: "activity_consent", activityNeedsConsent: true, locale: "en" });
+  assert.equal(consent.subject, "New activity");
+  assert.match(consent.intro, /consent/);
+  const cancelled = schoolEmailContent({ ...base, kind: "activity_cancelled", activityRefund: "" });
+  assert.deepEqual(cancelled.rows.at(-1), ["Tilbakebetaling per barn", "Ingen"]);
+  const classCancelled = schoolEmailContent({ ...base, activitySfo: false, kind: "activity_cancelled" });
+  assert.equal(classCancelled.subject, "Skoleaktivitet avlyst");
+});

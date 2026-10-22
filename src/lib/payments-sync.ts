@@ -246,6 +246,15 @@ export async function syncPaymentByReference(
   }
 
   const justCaptured = status === "fanget" && previousStatus !== "fanget";
+
+  if (payment?.id && (await isActivityPayment(admin, payment.id))) {
+    if (status === "fanget") {
+      const { error } = await admin.rpc("record_activity_payment", { p_payment: payment.id });
+      if (error) console.error("Activity payment record failed", { reference, code: error.code });
+    }
+    return status;
+  }
+
   const moneyChanged =
     payment != null &&
     (payment.captured_amount !== capturedAmount || previousStatus !== status);
@@ -293,6 +302,14 @@ export async function syncPaymentByReference(
   }
 
   return status;
+}
+
+async function isActivityPayment(admin: Client, paymentId: string) {
+  const { count } = await admin
+    .from("activity_payment_targets")
+    .select("payment_id", { count: "exact", head: true })
+    .eq("payment_id", paymentId);
+  return (count ?? 0) > 0;
 }
 
 export async function rebuildInstallmentsForPayment(

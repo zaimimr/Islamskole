@@ -113,7 +113,15 @@
       "copy": "Copy link",
       "copied": "Link copied",
       "calendar": "Add to calendar"
-    }
+    },
+    "sfoTitle": "After-school club",
+    "sfoSignUp": "Sign up",
+    "sfoFull": "Full",
+    "sfoSpots": "{count, plural, one {# spot left} other {# spots left}}",
+    "sfoAges": "Ages {min}–{max}",
+    "sfoFromAge": "Age {min}+",
+    "sfoToAge": "Up to age {max}",
+    "sfoRespondBy": "Sign up by {date}"
   },
   "info": {
     "title": "Useful information",

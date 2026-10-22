@@ -113,7 +113,15 @@
       "copy": "Kopier lenke",
       "copied": "Lenke kopiert",
       "calendar": "Legg til i kalender"
-    }
+    },
+    "sfoTitle": "SFO",
+    "sfoSignUp": "Meld på",
+    "sfoFull": "Fullt",
+    "sfoSpots": "{count, plural, one {# plass igjen} other {# plasser igjen}}",
+    "sfoAges": "{min}–{max} år",
+    "sfoFromAge": "Fra {min} år",
+    "sfoToAge": "Til {max} år",
+    "sfoRespondBy": "Påmelding innen {date}"
   },
   "info": {
     "title": "Nyttig informasjon",

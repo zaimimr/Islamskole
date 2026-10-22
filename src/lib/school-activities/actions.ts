@@ -35,12 +35,12 @@ export async function changeActivity(input: { id: string; expected: string; acti
   return { ok: true as const };
 }
 
-export async function respondActivity(input: { requestId: string; activityId: string; studentId: string; expected: string; consent: string; going: boolean }) {
-  const parsed = z.object({ requestId: id, activityId: id, studentId: id, expected: version, consent: z.enum(["granted", "declined"]), going: z.boolean() }).safeParse(input);
+export async function respondActivity(input: { requestId: string; activityId: string; studentId: string; expected: string; consent: string; going: boolean; healthConfirmed?: boolean }) {
+  const parsed = z.object({ requestId: id, activityId: id, studentId: id, expected: version, consent: z.enum(["granted", "declined"]), going: z.boolean(), healthConfirmed: z.boolean().optional() }).safeParse(input);
   if (!parsed.success || !(await getUser())) return { ok: false as const };
   const value = parsed.data;
   const { error } = await (await createClient()).rpc("respond_school_activity", { p_request_id: value.requestId, p_id: value.activityId,
-    p_student: value.studentId, p_expected: value.expected, p_consent: value.consent, p_going: value.going });
+    p_student: value.studentId, p_expected: value.expected, p_consent: value.consent, p_going: value.going, p_health_confirmed: value.healthConfirmed ?? false });
   if (error) { console.error("Activity response failed", { code: error.code }); return { ok: false as const, code: error.code }; }
   revalidatePath("/", "layout");
   return { ok: true as const };

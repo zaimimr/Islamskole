@@ -10,8 +10,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
-    const { error } = await createAdminClient().rpc("queue_overdue_payment_emails");
+    const admin = createAdminClient();
+    const { error } = await admin.rpc("queue_overdue_payment_emails");
     if (error) throw error;
+    const { error: activityError } = await admin.rpc("queue_activity_reminders");
+    if (activityError) throw activityError;
     return NextResponse.json(await deliverSchoolEmails(undefined, deadline));
   } catch (error) {
     console.error("School email cron failed", error);

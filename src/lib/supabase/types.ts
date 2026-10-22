@@ -34,6 +34,132 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_payment_targets: {
+        Row: {
+          activity_id: string
+          amount: number
+          payment_id: string
+          student_id: string
+        }
+        Insert: {
+          activity_id: string
+          amount: number
+          payment_id: string
+          student_id: string
+        }
+        Update: {
+          activity_id?: string
+          amount?: number
+          payment_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_payment_targets_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "school_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_payment_targets_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "duplicate_payment_candidates"
+            referencedColumns: ["matched_payment_id"]
+          },
+          {
+            foreignKeyName: "activity_payment_targets_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "duplicate_payment_candidates"
+            referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "activity_payment_targets_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_payment_targets_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "sadaqa_disbursements"
+            referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "activity_payment_targets_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_changes: {
+        Row: {
+          activity_id: string
+          changed_at: string
+          changed_by: string | null
+          id: string
+          previous: Json
+        }
+        Insert: {
+          activity_id: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          previous: Json
+        }
+        Update: {
+          activity_id?: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          previous?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_changes_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "school_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_audience: {
+        Row: {
+          activity_id: string
+          class_id: string
+        }
+        Insert: {
+          activity_id: string
+          class_id: string
+        }
+        Update: {
+          activity_id?: string
+          class_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_audience_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "school_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_audience_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_roles: {
         Row: {
           granted_at: string
@@ -223,39 +349,78 @@ export type Database = {
       }
       school_activities: {
         Row: {
-          class_id: string
+          cancel_refund: string | null
+          cancel_refund_ore: number | null
+          capacity: number | null
+          class_id: string | null
           consent_text: string
           description: string
+          end_time: string | null
           event_date: string
           id: string
+          location: string | null
+          max_age: number | null
+          min_age: number | null
+          needs_consent: boolean
+          owner: string
+          payment_due: string | null
+          price_ore: number | null
           respond_by: string
           school_year_id: string
+          show_on_website: boolean
+          start_time: string | null
           status: string
           title: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
-          class_id: string
+          cancel_refund?: string | null
+          cancel_refund_ore?: number | null
+          capacity?: number | null
+          class_id?: string | null
           consent_text: string
           description?: string
+          end_time?: string | null
           event_date: string
           id?: string
+          location?: string | null
+          max_age?: number | null
+          min_age?: number | null
+          needs_consent?: boolean
+          owner?: string
+          payment_due?: string | null
+          price_ore?: number | null
           respond_by: string
           school_year_id: string
+          show_on_website?: boolean
+          start_time?: string | null
           status?: string
           title: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
-          class_id?: string
+          cancel_refund?: string | null
+          cancel_refund_ore?: number | null
+          capacity?: number | null
+          class_id?: string | null
           consent_text?: string
           description?: string
+          end_time?: string | null
           event_date?: string
           id?: string
+          location?: string | null
+          max_age?: number | null
+          min_age?: number | null
+          needs_consent?: boolean
+          owner?: string
+          payment_due?: string | null
+          price_ore?: number | null
           respond_by?: string
           school_year_id?: string
+          show_on_website?: boolean
+          start_time?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -3116,6 +3281,7 @@ export type Database = {
       }
       sadaqa_gifts: {
         Row: {
+          activity_id: string | null
           amount: number
           created_at: string
           created_by: string | null
@@ -3127,11 +3293,13 @@ export type Database = {
           received_on: string
           school_year_id: string | null
           source_payment_id: string | null
+          student_id: string | null
           void_reason: string | null
           voided_at: string | null
           voided_by: string | null
         }
         Insert: {
+          activity_id?: string | null
           amount: number
           created_at?: string
           created_by?: string | null
@@ -3143,11 +3311,13 @@ export type Database = {
           received_on?: string
           school_year_id?: string | null
           source_payment_id?: string | null
+          student_id?: string | null
           void_reason?: string | null
           voided_at?: string | null
           voided_by?: string | null
         }
         Update: {
+          activity_id?: string | null
           amount?: number
           created_at?: string
           created_by?: string | null
@@ -3159,11 +3329,19 @@ export type Database = {
           received_on?: string
           school_year_id?: string | null
           source_payment_id?: string | null
+          student_id?: string | null
           void_reason?: string | null
           voided_at?: string | null
           voided_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sadaqa_gifts_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "school_activities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sadaqa_gifts_family_id_fkey"
             columns: ["family_id"]
@@ -3205,6 +3383,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sadaqa_disbursements"
             referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "sadaqa_gifts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -4053,6 +4238,181 @@ export type Database = {
       }
     }
     Functions: {
+      my_activity_status: {
+        Args: { p_student: string }
+        Returns: {
+          activity_id: string
+          allergies: string | null
+          health_confirm_needed: boolean
+          medical_notes: string | null
+          paid_ore: number
+          spots_left: number | null
+        }[]
+      }
+      activity_paid_ore: {
+        Args: { p_id: string; p_student: string }
+        Returns: number
+      }
+      activity_going_count: { Args: { p_id: string }; Returns: number }
+      sfo_activity_eligible: {
+        Args: { p_id: string }
+        Returns: {
+          student_id: string
+        }[]
+      }
+      activity_child_age: {
+        Args: { p_birth: string; p_on: string }
+        Returns: number
+      }
+      oslo_today: { Args: never; Returns: string }
+      queue_activity_reminders: { Args: never; Returns: number }
+      public_sfo_activities: {
+        Args: never
+        Returns: {
+          capacity: number | null
+          description: string
+          end_time: string | null
+          event_date: string
+          id: string
+          location: string | null
+          max_age: number | null
+          min_age: number | null
+          price_ore: number | null
+          respond_by: string
+          spots_left: number | null
+          start_time: string | null
+          title: string
+        }[]
+      }
+      record_activity_payment: { Args: { p_payment: string }; Returns: number }
+      create_activity_payment: {
+        Args: { p_id: string; p_students: string[] }
+        Returns: {
+          amount: number
+          payment_id: string
+          reference: string
+        }[]
+      }
+      activity_refunds: {
+        Args: { p_id: string }
+        Returns: {
+          family_id: string
+          name: string
+          paid_ore: number
+          refund_ore: number
+          student_id: string
+        }[]
+      }
+      register_activity_cash: {
+        Args: {
+          p_amount: number
+          p_date: string
+          p_id: string
+          p_student: string
+        }
+        Returns: string
+      }
+      sfo_activity_payments: {
+        Args: { p_id: string }
+        Returns: {
+          going: boolean
+          last_paid_on: string | null
+          methods: string | null
+          name: string
+          paid_ore: number
+          student_id: string
+        }[]
+      }
+      sfo_activity_roster: {
+        Args: { p_id: string }
+        Returns: {
+          age: number | null
+          allergies: string | null
+          classes: string | null
+          consent: string
+          going: boolean
+          guardians: Json
+          health_updated_at: string | null
+          medical_notes: string | null
+          name: string
+          paid_ore: number
+          participation: string
+          photo_consent: boolean | null
+          pickup: Json
+          student_id: string
+        }[]
+      }
+      class_activity_overview: {
+        Args: never
+        Returns: {
+          class_name: string
+          event_date: string
+          going: number
+          id: string
+          invited: number
+          missing: number
+          not_going: number
+          respond_by: string
+          status: string
+          title: string
+        }[]
+      }
+      save_sfo_activity: {
+        Args: {
+          p_audience: string[]
+          p_capacity: number | null
+          p_consent: string
+          p_date: string
+          p_description: string
+          p_end: string | null
+          p_expected: string | null
+          p_id: string
+          p_location: string | null
+          p_max_age: number | null
+          p_min_age: number | null
+          p_needs_consent: boolean
+          p_payment_due: string | null
+          p_price_ore: number | null
+          p_respond_by: string
+          p_show_on_website: boolean
+          p_start: string | null
+          p_title: string
+        }
+        Returns: {
+          cancel_refund: string | null
+          cancel_refund_ore: number | null
+          capacity: number | null
+          class_id: string | null
+          consent_text: string
+          description: string
+          end_time: string | null
+          event_date: string
+          id: string
+          location: string | null
+          max_age: number | null
+          min_age: number | null
+          needs_consent: boolean
+          owner: string
+          payment_due: string | null
+          price_ore: number | null
+          respond_by: string
+          school_year_id: string
+          show_on_website: boolean
+          start_time: string | null
+          status: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "school_activities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      activity_spots_left: { Args: { p_id: string }; Returns: number }
+      activity_can_roster: { Args: { p_id: string }; Returns: boolean }
       ensure_guardian_for_email: {
         Args: { p_email: string; p_name?: string }
         Returns: string
@@ -4088,13 +4448,26 @@ export type Database = {
           p_year: string
         }
         Returns: {
-          class_id: string
+          cancel_refund: string | null
+          cancel_refund_ore: number | null
+          capacity: number | null
+          class_id: string | null
           consent_text: string
           description: string
+          end_time: string | null
           event_date: string
           id: string
+          location: string | null
+          max_age: number | null
+          min_age: number | null
+          needs_consent: boolean
+          owner: string
+          payment_due: string | null
+          price_ore: number | null
           respond_by: string
           school_year_id: string
+          show_on_website: boolean
+          start_time: string | null
           status: string
           title: string
           updated_at: string
@@ -4113,7 +4486,12 @@ export type Database = {
       }
       add_activity_students: { Args: { p_id: string }; Returns: number }
       cancel_school_activity: {
-        Args: { p_expected: string; p_id: string }
+        Args: {
+          p_expected: string
+          p_id: string
+          p_refund?: string
+          p_refund_ore?: number
+        }
         Returns: string
       }
       respond_school_activity: {
@@ -4121,6 +4499,7 @@ export type Database = {
           p_consent: string
           p_expected: string
           p_going: boolean
+          p_health_confirmed?: boolean
           p_id: string
           p_request_id: string
           p_student: string

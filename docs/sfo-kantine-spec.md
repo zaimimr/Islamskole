@@ -33,8 +33,9 @@ Permissions in v1:
 | `activities.sfo.manage` | Create, edit, publish, cancel SFO activities |
 | `activities.sfo.roster` | Roster of signed-up children with allergies, medical notes, photo consent, pickup persons, guardian name + phone. Check-in and participation |
 | `activities.sfo.payments` | See who has paid for SFO activities, register cash payment |
+| `activities.class.read` | See Sunday-school class activities read-only: details and response counts, not the class roster or health info |
 
-- `admin` role has every permission implicitly. `sfo` role gets the three above. `teacher` and `volunteer` get none in v1 (see 1b).
+- `admin` role has every permission implicitly. `sfo` role gets the four above. `teacher` and `volunteer` get none in v1 (see 1b).
 - SQL, all SECURITY DEFINER with `search_path=public`:
   - `guardian_has_role(guardian_id, role)`: role row exists and `suspended_at is null`.
   - `has_role(role)`: true for any of the caller's `portal_guardian_ids()`.
@@ -87,7 +88,8 @@ Extend `school_activities`:
 - `owner text not null default 'class' check (owner in ('class','sfo'))`.
 - `class_id` nullable when `owner = 'sfo'`. Audience in `activity_audience(activity_id, class_id)`: one or more classes, or all.
 - New columns: `location`, `starts_at`/`ends_at`, `capacity int null`, `min_age`/`max_age` (calendar-year age via `src/lib/age.ts`), `price_ore int null`, `payment_due date null`, `show_on_website boolean`, `needs_consent boolean`.
-- RLS: `activity_can_staff()` becomes `is_admin()` or class staff for `owner = 'class'`, or `has_permission('activities.sfo.manage')` for `owner = 'sfo'`. SFO cannot see or edit class activities.
+- RLS: `activity_can_staff()` becomes `is_admin()` or class staff for `owner = 'class'`, or `has_permission('activities.sfo.manage')` for `owner = 'sfo'`. `activity_can_read()` also allows `has_permission('activities.class.read')` for `owner = 'class'`. SFO cannot edit class activities.
+- Only enrolled children can be invited or signed up. No guests, siblings or friends outside the school.
 
 Flow:
 
@@ -96,7 +98,7 @@ Flow:
 3. Parent answers in `min-side/aktiviteter`: going / not going, consent, sees the allergies and medical notes on file with "Stemmer dette?" and an edit link, pays if priced.
 4. Capacity reached: sign-up closes and the activity shows "Fullt". No waiting list.
 5. On the day: SFO opens the roster, checks children in, sees health info inline.
-6. Cancel: existing cancellation notice to everyone going. Paid trips are listed for admin to refund.
+6. Cancel: existing cancellation notice to everyone going. Refund is decided per trip: whoever cancels picks Full, an amount per child, or Ingen. Paid children are then listed for admin to refund with that amount.
 
 ## 3. Public website
 
@@ -139,13 +141,11 @@ Trip payments are recorded in `sadaqa_gifts`, marked with the activity they came
 - Teacher permissions (see 1b).
 - More admin sections behind permissions (for example a read-only economy role).
 - Recurring activities.
+- Skattefradrag: whether activity gifts count in any gift report to Skatteetaten.
 
 ## 8. Open questions
 
-1. Trip payments as sadaqa: if the school reports gifts to Skatteetaten for skattefradrag, payment for a trip is not a gift. Should activity gifts be left out of any such report?
-2. Refunds for cancelled trips: always full, or decided per trip?
-3. Can children who are not enrolled (siblings, friends) join SFO activities? v1 assumes enrolled children only.
-4. Should SFO see Sunday-school class activities read-only, or nothing?
+None.
 
 ## 9. Build order
 

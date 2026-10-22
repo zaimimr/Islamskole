@@ -17,9 +17,11 @@ import {
 
 export function AdminMobileNav({
   basePath,
+  isAdmin,
   loginHref,
 }: {
   basePath: string;
+  isAdmin: boolean;
   loginHref: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -68,7 +70,11 @@ export function AdminMobileNav({
           </SheetClose>
         </SheetHeader>
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5">
-          <SidebarNav basePath={basePath} onNavigate={() => setOpen(false)} />
+          <SidebarNav
+            basePath={basePath}
+            isAdmin={isAdmin}
+            onNavigate={() => setOpen(false)}
+          />
           <div className="mt-3 border-t border-[#E9E5DC] pt-3">
             <SignOutButton
               loginHref={loginHref}

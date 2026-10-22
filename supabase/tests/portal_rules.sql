@@ -52,11 +52,12 @@ values
   ('d7000000-0000-0000-0000-0000000000f1', 'test'),
   ('d7000000-0000-0000-0000-0000000000f2', 'test');
 
-insert into public.guardians (id, first_name, last_name, email, is_teacher)
+insert into public.guardians (id, first_name, last_name, email)
 values
-  ('d7000000-0000-0000-0000-000000000061', 'ZZTEST', 'Laerer', 'zz-d7-teacher@zztest.local', true),
-  ('d7000000-0000-0000-0000-000000000062', 'ZZTEST', 'Forelder', 'zz-d7-parent@zztest.local', false),
-  ('d7000000-0000-0000-0000-000000000063', 'ZZTEST', 'Annen Forelder', 'zz-d7-other@zztest.local', false);
+  ('d7000000-0000-0000-0000-000000000061', 'ZZTEST', 'Laerer', 'zz-d7-teacher@zztest.local'),
+  ('d7000000-0000-0000-0000-000000000062', 'ZZTEST', 'Forelder', 'zz-d7-parent@zztest.local'),
+  ('d7000000-0000-0000-0000-000000000063', 'ZZTEST', 'Annen Forelder', 'zz-d7-other@zztest.local');
+insert into public.person_roles (guardian_id, role_key) values ('d7000000-0000-0000-0000-000000000061', 'teacher');
 
 insert into public.family_guardians (family_id, guardian_id, is_primary_contact)
 values

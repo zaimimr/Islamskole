@@ -1,11 +1,11 @@
 import { expect, test, type Page } from "playwright/test";
 import {
-  db,
   ensureAuthUser,
   findAuthUser,
   hasRowAction,
   loginAs,
-  profileRole,
+  hasRole,
+  pickOption,
   rowAction,
   rowWith,
   seedAdmin,
@@ -15,18 +15,13 @@ import {
   zzEmail,
 } from "./fixtures";
 
-async function openGrantForm(page: Page) {
-  const trigger = page.getByRole("button", { name: "Gi administratortilgang" });
-  if (await trigger.count()) await trigger.first().click();
-  return page.getByRole("dialog").or(page.getByRole("form", { name: "Gi administratortilgang" })).first();
-}
-
-async function grantAdmin(page: Page, name: string, email: string) {
-  const form = await openGrantForm(page);
+async function addUser(page: Page, name: string, email: string, role: "SFO" | "Administrator") {
+  const form = page.getByRole("form", { name: "Legg til bruker" });
   await expect(page.locator('input[type="password"]')).toHaveCount(0);
   await form.getByLabel("Navn").fill(name);
   await form.getByLabel("E-post").fill(email);
-  await form.getByRole("button", { name: "Gi tilgang" }).click();
+  await pickOption(page, form, "Rolle", role);
+  await form.getByRole("button", { name: "Legg til" }).click();
 }
 
 test.describe("/admin/brukere", () => {
@@ -41,12 +36,12 @@ test.describe("/admin/brukere", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Brukere og tilganger" })).toBeVisible();
   });
 
-  test("AUTH-15 Gi administratortilgang for a brand new email sends a login link", async ({ page }) => {
+  test("AUTH-15 Legg til bruker as admin for a brand new email sends a login link", async ({ page }) => {
     const email = zzEmail("ny-admin");
     await page.goto("/admin/brukere");
     const since = Date.now();
-    await grantAdmin(page, "ZZTEST Ny Admin", email);
-    await expect.poll(() => profileRole(email)).toBe("admin");
+    await addUser(page, "ZZTEST Ny Admin", email, "Administrator");
+    await expect.poll(() => hasRole(email, "admin")).toBe(true);
     await waitForLoginLink(email, since);
     await page.reload();
     const row = rowWith(page, email);
@@ -54,19 +49,30 @@ test.describe("/admin/brukere", () => {
     await expect(row.getByText("Admin", { exact: true })).toBeVisible();
   });
 
-  test("AUTH-12 Gi administratortilgang for an email that already has a portal login", async ({ page }) => {
+  test("AUTH-12 Legg til bruker as admin for an email that already has a portal login", async ({ page }) => {
     const family = await seedFamily();
     const guardian = family.guardians[0];
     const before = await ensureAuthUser(guardian.email);
     await page.goto("/admin/brukere");
-    await grantAdmin(page, guardian.name, guardian.email.toUpperCase());
-    await expect.poll(() => profileRole(guardian.email)).toBe("admin");
+    await addUser(page, guardian.name, guardian.email.toUpperCase(), "Administrator");
+    await expect.poll(() => hasRole(guardian.email, "admin")).toBe(true);
     const after = await findAuthUser(guardian.email);
     expect(after?.id).toBe(before.id);
     await page.reload();
     const row = rowWith(page, guardian.email);
     await expect(row.getByText("Admin", { exact: true })).toBeVisible();
     await expect(row.getByText("Foresatt", { exact: true })).toBeVisible();
+  });
+
+  test("Legg til bruker as SFO gives SFO access only", async ({ page }) => {
+    const email = zzEmail("ny-sfo");
+    await page.goto("/admin/brukere");
+    await addUser(page, "ZZTEST Ny SFO", email, "SFO");
+    await expect.poll(() => hasRole(email, "sfo")).toBe(true);
+    expect(await hasRole(email, "admin")).toBe(false);
+    await page.reload();
+    await page.getByRole("navigation", { name: "Filtrer på rolle" }).getByRole("button", { name: /^SFO/ }).click();
+    await expect(rowWith(page, email).getByText("SFO", { exact: true })).toBeVisible();
   });
 
   test("AUTH-14 Fjern administratortilgang is not offered for yourself", async ({ page }) => {
@@ -85,7 +91,7 @@ test.describe("/admin/brukere", () => {
     await page.goto("/admin/brukere");
     await rowAction(page, rowWith(page, other.email), "Fjern administratortilgang");
     await confirmIfAsked(page, /^(Fjern administratortilgang|Fjern tilgang|Fjern)/);
-    await expect.poll(() => profileRole(other.email)).toBe("member");
+    await expect.poll(() => hasRole(other.email, "admin")).toBe(false);
     expect(await findAuthUser(other.email)).not.toBeNull();
   });
 
@@ -94,12 +100,7 @@ test.describe("/admin/brukere", () => {
     await page.goto("/admin/brukere");
     await rowAction(page, rowWith(page, other.email), "Gjør til lærer");
     await confirmIfAsked(page, /^(Gjør til lærer|Bekreft)/);
-    await expect
-      .poll(async () => {
-        const { data } = await db().from("guardians").select("is_teacher").ilike("email", other.email);
-        return (data as { is_teacher: boolean }[] | null)?.map((row) => row.is_teacher) ?? [];
-      })
-      .toEqual([true]);
+    await expect.poll(() => hasRole(other.email, "teacher")).toBe(true);
     await page.goto("/admin/laerere");
     await expect(rowWith(page, other.email)).toBeVisible();
     await page.goto("/admin/brukere");

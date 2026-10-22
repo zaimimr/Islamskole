@@ -34,6 +34,121 @@ export type Database = {
   }
   public: {
     Tables: {
+      person_roles: {
+        Row: {
+          granted_at: string
+          granted_by: string | null
+          guardian_id: string
+          note: string | null
+          role_key: string
+          suspended_at: string | null
+          suspended_by: string | null
+          suspended_reason: string | null
+        }
+        Insert: {
+          granted_at?: string
+          granted_by?: string | null
+          guardian_id: string
+          note?: string | null
+          role_key: string
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspended_reason?: string | null
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string | null
+          guardian_id?: string
+          note?: string | null
+          role_key?: string
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspended_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_roles_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_roles_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_gift_report"
+            referencedColumns: ["teacher_guardian_id"]
+          },
+          {
+            foreignKeyName: "person_roles_role_key_fkey"
+            columns: ["role_key"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      role_permissions: {
+        Row: {
+          permission_key: string
+          role_key: string
+        }
+        Insert: {
+          permission_key: string
+          role_key: string
+        }
+        Update: {
+          permission_key?: string
+          role_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_permission_key_fkey"
+            columns: ["permission_key"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "role_permissions_role_key_fkey"
+            columns: ["role_key"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      permissions: {
+        Row: {
+          key: string
+          name: string
+        }
+        Insert: {
+          key: string
+          name: string
+        }
+        Update: {
+          key?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      roles: {
+        Row: {
+          key: string
+          name: string
+        }
+        Insert: {
+          key: string
+          name: string
+        }
+        Update: {
+          key?: string
+          name?: string
+        }
+        Relationships: []
+      }
       email_send_logs: {
         Row: {
           completed_at: string | null
@@ -2029,15 +2144,9 @@ export type Database = {
           email: string | null
           first_name: string | null
           id: string
-          is_teacher: boolean
-          is_volunteer: boolean
           last_name: string | null
           phone: string | null
           source_application_id: string | null
-          teacher_note: string | null
-          teacher_suspended_at: string | null
-          teacher_suspended_by: string | null
-          teacher_suspended_reason: string | null
           updated_at: string
         }
         Insert: {
@@ -2045,15 +2154,9 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           id?: string
-          is_teacher?: boolean
-          is_volunteer?: boolean
           last_name?: string | null
           phone?: string | null
           source_application_id?: string | null
-          teacher_note?: string | null
-          teacher_suspended_at?: string | null
-          teacher_suspended_by?: string | null
-          teacher_suspended_reason?: string | null
           updated_at?: string
         }
         Update: {
@@ -2061,15 +2164,9 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           id?: string
-          is_teacher?: boolean
-          is_volunteer?: boolean
           last_name?: string | null
           phone?: string | null
           source_application_id?: string | null
-          teacher_note?: string | null
-          teacher_suspended_at?: string | null
-          teacher_suspended_by?: string | null
-          teacher_suspended_reason?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3956,6 +4053,22 @@ export type Database = {
       }
     }
     Functions: {
+      ensure_guardian_for_email: {
+        Args: { p_email: string; p_name?: string }
+        Returns: string
+      }
+      my_guardian_ids: { Args: never; Returns: string[] }
+      guardian_has_role: {
+        Args: {
+          p_guardian_id: string
+          p_include_suspended?: boolean
+          p_role: string
+        }
+        Returns: boolean
+      }
+      has_role: { Args: { p_role: string }; Returns: boolean }
+      has_permission: { Args: { p_permission: string }; Returns: boolean }
+      my_access: { Args: never; Returns: Json }
       activity_can_staff: { Args: { p_id: string }; Returns: boolean }
       activity_owns_child: {
         Args: { p_guardian_only?: boolean; p_student: string }
@@ -4364,15 +4477,9 @@ export type Database = {
           email: string | null
           first_name: string | null
           id: string
-          is_teacher: boolean
-          is_volunteer: boolean
           last_name: string | null
           phone: string | null
           source_application_id: string | null
-          teacher_note: string | null
-          teacher_suspended_at: string | null
-          teacher_suspended_by: string | null
-          teacher_suspended_reason: string | null
           updated_at: string
         }[]
         SetofOptions: {

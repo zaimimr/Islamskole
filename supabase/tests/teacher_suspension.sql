@@ -34,8 +34,9 @@ values
 insert into public.families (id, origin)
 values ('f2000000-0000-0000-0000-0000000000f1', 'test'), ('f2000000-0000-0000-0000-0000000000f2', 'test');
 
-insert into public.guardians (id, first_name, last_name, email, is_teacher)
-values ('f2000000-0000-0000-0000-000000000061', 'ZZTEST', 'Laerer', 'zz-f2-teacher@zztest.local', true);
+insert into public.guardians (id, first_name, last_name, email)
+values ('f2000000-0000-0000-0000-000000000061', 'ZZTEST', 'Laerer', 'zz-f2-teacher@zztest.local');
+insert into public.person_roles (guardian_id, role_key) values ('f2000000-0000-0000-0000-000000000061', 'teacher');
 
 insert into public.family_guardians (family_id, guardian_id, is_primary_contact)
 values ('f2000000-0000-0000-0000-0000000000f1', 'f2000000-0000-0000-0000-000000000061', true);
@@ -66,11 +67,7 @@ select ok(
 );
 
 reset role;
-update public.guardians
-set teacher_suspended_at = now(),
-    teacher_suspended_reason = 'ZZTEST',
-    teacher_suspended_by = 'zz-f2-admin@zztest.local'
-where id = 'f2000000-0000-0000-0000-000000000061';
+update public.person_roles set suspended_at = now(), suspended_reason = 'ZZTEST', suspended_by = 'zz-f2-admin@zztest.local' where guardian_id = 'f2000000-0000-0000-0000-000000000061' and role_key = 'teacher';
 set local role authenticated;
 
 select ok(
@@ -151,11 +148,7 @@ select ok(
 );
 
 reset role;
-update public.guardians
-set teacher_suspended_at = null,
-    teacher_suspended_reason = null,
-    teacher_suspended_by = null
-where id = 'f2000000-0000-0000-0000-000000000061';
+update public.person_roles set suspended_at = null, suspended_reason = null, suspended_by = null where guardian_id = 'f2000000-0000-0000-0000-000000000061' and role_key = 'teacher';
 delete from public.class_substitutes where guardian_id = 'f2000000-0000-0000-0000-000000000061';
 set local role authenticated;
 

@@ -19,11 +19,12 @@ insert into public.school_years (id, label, starts_on, ends_on, is_active)
 values ('f4000000-0000-0000-0000-000000000001', 'ZZTEST F4 aktiv',
   (now() at time zone 'Europe/Oslo')::date - 60, (now() at time zone 'Europe/Oslo')::date + 200, true);
 
-insert into public.guardians (id, first_name, last_name, email, is_teacher)
+insert into public.guardians (id, first_name, last_name, email)
 values
-  ('f4000000-0000-0000-0000-000000000061', 'ZZTEST', 'Laerer', 'zz-f4-teacher@zztest.local', true),
-  ('f4000000-0000-0000-0000-000000000062', 'ZZTEST', 'Annen laerer', 'zz-f4-other@zztest.local', true),
-  ('f4000000-0000-0000-0000-000000000063', 'ZZTEST', 'Forelder', 'zz-f4-parent@zztest.local', false);
+  ('f4000000-0000-0000-0000-000000000061', 'ZZTEST', 'Laerer', 'zz-f4-teacher@zztest.local'),
+  ('f4000000-0000-0000-0000-000000000062', 'ZZTEST', 'Annen laerer', 'zz-f4-other@zztest.local'),
+  ('f4000000-0000-0000-0000-000000000063', 'ZZTEST', 'Forelder', 'zz-f4-parent@zztest.local');
+insert into public.person_roles (guardian_id, role_key) values ('f4000000-0000-0000-0000-000000000061', 'teacher'), ('f4000000-0000-0000-0000-000000000062', 'teacher');
 
 insert into public.school_days (id, school_year_id, date)
 values

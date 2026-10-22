@@ -5,7 +5,7 @@ import {
   deleteStudentApplication,
   updateStudentApplicationStatus,
 } from "@/app/[locale]/admin/actions";
-import { markApplicationsAsSpam } from "@/app/[locale]/admin/register/register-actions";
+import { markApplicationsAsSpam } from "@/app/[locale]/admin/(admin-only)/register/register-actions";
 import {
   RowActionsMenu,
   type RowAction,

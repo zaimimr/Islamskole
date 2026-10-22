@@ -36,12 +36,13 @@ values
   ('f3000000-0000-0000-0000-0000000000f1', 'test'),
   ('f3000000-0000-0000-0000-0000000000f2', 'test');
 
-insert into public.guardians (id, first_name, last_name, email, is_teacher)
+insert into public.guardians (id, first_name, last_name, email)
 values
-  ('f3000000-0000-0000-0000-000000000061', 'ZZTEST', 'Laerer', 'zz-f3-teacher@zztest.local', true),
-  ('f3000000-0000-0000-0000-000000000062', 'ZZTEST', 'Annen laerer', 'zz-f3-other-teacher@zztest.local', true),
-  ('f3000000-0000-0000-0000-000000000063', 'ZZTEST', 'Forelder', 'zz-f3-parent@zztest.local', false),
-  ('f3000000-0000-0000-0000-000000000064', 'ZZTEST', 'Annen forelder', 'zz-f3-other-parent@zztest.local', false);
+  ('f3000000-0000-0000-0000-000000000061', 'ZZTEST', 'Laerer', 'zz-f3-teacher@zztest.local'),
+  ('f3000000-0000-0000-0000-000000000062', 'ZZTEST', 'Annen laerer', 'zz-f3-other-teacher@zztest.local'),
+  ('f3000000-0000-0000-0000-000000000063', 'ZZTEST', 'Forelder', 'zz-f3-parent@zztest.local'),
+  ('f3000000-0000-0000-0000-000000000064', 'ZZTEST', 'Annen forelder', 'zz-f3-other-parent@zztest.local');
+insert into public.person_roles (guardian_id, role_key) values ('f3000000-0000-0000-0000-000000000061', 'teacher'), ('f3000000-0000-0000-0000-000000000062', 'teacher');
 
 insert into public.students (id, family_id, child_first_name, child_last_name, child_email)
 values
@@ -122,7 +123,7 @@ select is((select count(*) from public.learning_goals), 1::bigint, 'student sees
 select is((select count(*) from public.learning_progress_updates), 2::bigint, 'student sees own history');
 
 reset role;
-update public.guardians set teacher_suspended_at = now() where id = 'f3000000-0000-0000-0000-000000000061';
+update public.person_roles set suspended_at = now() where guardian_id = 'f3000000-0000-0000-0000-000000000061' and role_key = 'teacher';
 select set_config('request.jwt.claims', '{"sub":"f3000000-0000-0000-0000-0000000000a2","email":"zz-f3-teacher@zztest.local","role":"authenticated"}', true);
 set local role authenticated;
 select ok(not public.learning_can_manage_student('f3000000-0000-0000-0000-000000000051'), 'suspended teacher loses access');
@@ -146,7 +147,7 @@ select is((select count(*) from public.learning_goals), 1::bigint, 'new class te
 select lives_ok($$ select public.record_learning_progress('f3000000-0000-0000-0000-0000000000e3', 'f3000000-0000-0000-0000-0000000000e1', 'f3000000-0000-0000-0000-0000000000e2', 'needs_revision', 'Repeter', null) $$, 'new teacher can continue goal after transfer');
 
 reset role;
-update public.guardians set teacher_suspended_at = null where id = 'f3000000-0000-0000-0000-000000000061';
+update public.person_roles set suspended_at = null where guardian_id = 'f3000000-0000-0000-0000-000000000061' and role_key = 'teacher';
 select set_config('request.jwt.claims', '{"sub":"f3000000-0000-0000-0000-0000000000a2","email":"zz-f3-teacher@zztest.local","role":"authenticated"}', true);
 set local role authenticated;
 select is((select count(*) from public.learning_goals), 0::bigint, 'former class teacher loses history after transfer');

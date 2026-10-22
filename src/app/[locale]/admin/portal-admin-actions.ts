@@ -57,15 +57,16 @@ export async function assignTeacher(
   if (!schoolYearId) return { ok: false, error: "Ingen aktivt skoleår." };
 
   const supabase = await createClient();
-  const { data: guardian } = await supabase
-    .from("guardians")
-    .select("id, is_teacher, teacher_suspended_at")
-    .eq("id", guardianId)
+  const { data: teacherRole } = await supabase
+    .from("person_roles")
+    .select("suspended_at")
+    .eq("guardian_id", guardianId)
+    .eq("role_key", "teacher")
     .maybeSingle();
-  if (!guardian?.is_teacher) {
+  if (!teacherRole) {
     return { ok: false, error: "Personen er ikke registrert som lærer." };
   }
-  if (guardian.teacher_suspended_at) {
+  if (teacherRole.suspended_at) {
     return { ok: false, error: "Læreren er suspendert og kan ikke knyttes til en klasse." };
   }
 

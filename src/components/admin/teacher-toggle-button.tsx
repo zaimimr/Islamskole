@@ -11,7 +11,7 @@ import { GraduationCap, UserMinus } from "lucide-react";
 import {
   registerTeacher,
   removeTeacher,
-} from "@/app/[locale]/admin/familier/families-actions";
+} from "@/app/[locale]/admin/(admin-only)/familier/families-actions";
 import { cn } from "@/lib/utils";
 
 const TeacherRoleContext = createContext<

@@ -103,6 +103,26 @@ export type SeededFamily = { id: string; displayName: string; guardians: SeededG
 type GuardianInput = { firstName?: string; lastName?: string; email?: string; phone?: string; isTeacher?: boolean };
 type StudentInput = { firstName?: string; lastName?: string; birthDate?: string; childEmail?: string | null };
 
+export async function grantRole(guardianId: string, role: "admin" | "sfo" | "teacher" | "volunteer") {
+  must(
+    await db()
+      .from("person_roles")
+      .upsert({ guardian_id: guardianId, role_key: role, granted_by: "zztest" }, { onConflict: "guardian_id,role_key", ignoreDuplicates: true })
+      .select("guardian_id"),
+    `grant ${role}`,
+  );
+}
+
+export async function hasRole(email: string, role: string) {
+  const { data } = await db()
+    .from("guardians")
+    .select("id, person_roles!inner(role_key)")
+    .ilike("email", email)
+    .eq("person_roles.role_key", role)
+    .is("person_roles.suspended_at", null);
+  return Boolean(data?.length);
+}
+
 export async function seedGuardian(input: GuardianInput = {}): Promise<SeededGuardian> {
   const suffix = uid();
   const firstName = input.firstName ?? `ZZTEST Foresatt ${suffix}`;
@@ -112,11 +132,12 @@ export async function seedGuardian(input: GuardianInput = {}): Promise<SeededGua
   const row = must(
     await db()
       .from("guardians")
-      .insert({ first_name: firstName, last_name: lastName, email, phone, is_teacher: input.isTeacher ?? false })
+      .insert({ first_name: firstName, last_name: lastName, email, phone })
       .select("id")
       .single(),
     "insert guardian",
   ) as { id: string };
+  if (input.isTeacher) await grantRole(row.id, "teacher");
   return { id: row.id, firstName, lastName, email, phone, name: `${firstName} ${lastName}` };
 }
 
@@ -196,7 +217,7 @@ export async function enroll(studentId: string, classId: string, yearId: string,
 }
 
 export async function assignTeacher(guardianId: string, classId: string, yearId: string) {
-  must(await db().from("guardians").update({ is_teacher: true }).eq("id", guardianId).select("id"), "mark teacher");
+  await grantRole(guardianId, "teacher");
   must(
     await db()
       .from("class_teachers")
@@ -329,13 +350,12 @@ export async function ensureAuthUser(email: string, options: { admin?: boolean; 
     user = data.user;
   }
   if (options.admin) {
-    must(
-      await db()
-        .from("profiles")
-        .upsert({ id: user.id, role: "admin", full_name: options.fullName ?? "ZZTEST Admin" })
-        .select("id"),
-      "admin profile",
-    );
+    const { data: guardianId, error } = await db().rpc("ensure_guardian_for_email", {
+      p_email: email,
+      p_name: options.fullName ?? "ZZTEST Admin",
+    });
+    if (error) throw error;
+    await grantRole(guardianId as string, "admin");
   }
   return user;
 }
@@ -345,13 +365,6 @@ export async function seedAdmin(options: { email?: string; fullName?: string } =
   const fullName = options.fullName ?? `ZZTEST Admin ${uid()}`;
   const user = await ensureAuthUser(email, { admin: true, fullName });
   return { id: user.id, email, fullName };
-}
-
-export async function profileRole(email: string) {
-  const user = await findAuthUser(email);
-  if (!user) return null;
-  const { data } = await db().from("profiles").select("role").eq("id", user.id).maybeSingle();
-  return (data as { role: string } | null)?.role ?? null;
 }
 
 const CHUNK_SIZE = 3180;

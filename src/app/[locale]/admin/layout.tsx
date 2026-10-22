@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { CalendarRange, House, UserRound } from "lucide-react";
-import { getIsAdmin, getUser } from "@/lib/auth";
+import { getAccess, getUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
@@ -109,14 +109,17 @@ export default async function AdminLayout({
   params,
 }: LayoutProps<"/[locale]/admin">) {
   const { locale } = await params;
-  const [user, isAdmin] = await Promise.all([getUser(), getIsAdmin()]);
+  const [user, access] = await Promise.all([getUser(), getAccess()]);
   if (!user) {
     redirect(`${loginPath(locale)}?next=${encodeURIComponent(adminBasePath(locale))}`);
   }
-  if (!isAdmin) {
+  if (!access.admin && access.permissions.size === 0) {
     redirect(`${localePrefix(locale)}/min-side`);
   }
-  const navCounts = getNavCounts();
+  const isAdmin = access.admin;
+  const navCounts = isAdmin
+    ? getNavCounts()
+    : Promise.resolve({ applications: 0, teacherApplications: 0 });
 
   const basePath = adminBasePath(locale);
   const resolvedLoginPath = loginPath(locale);
@@ -147,7 +150,7 @@ export default async function AdminLayout({
               priority
             />
           </Link>
-          <SidebarNav basePath={basePath} />
+          <SidebarNav basePath={basePath} isAdmin={isAdmin} />
           <div className="mt-3 border-t border-[#E9E5DC] pt-3">
             <SignOutButton
               loginHref={resolvedLoginPath}
@@ -162,6 +165,7 @@ export default async function AdminLayout({
             <div className="mx-auto flex w-full max-w-[96rem] items-center gap-2 px-4 py-2 sm:gap-3 sm:px-6 lg:px-8 lg:py-3">
               <AdminMobileNav
                 basePath={basePath}
+                isAdmin={isAdmin}
                 loginHref={resolvedLoginPath}
               />
               <Link
@@ -178,6 +182,7 @@ export default async function AdminLayout({
                 />
               </Link>
 
+              {isAdmin ? (
               <Link
                 href={`${basePath}/skolear`}
                 className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-[#E4E1D8] bg-white px-3 text-sm font-bold text-foreground outline-none transition-colors hover:border-[#BFD9C2] hover:bg-[#F7FBF7] focus-visible:ring-3 focus-visible:ring-ring/50 lg:min-w-[10.5rem] lg:px-4"
@@ -197,9 +202,10 @@ export default async function AdminLayout({
                   </Suspense>
                 </span>
               </Link>
+              ) : null}
 
               <div className="flex lg:mx-auto lg:w-full lg:max-w-[46rem]">
-                <CommandPalette basePath={basePath} />
+                {isAdmin ? <CommandPalette basePath={basePath} /> : null}
               </div>
 
               <Suspense fallback={null}>

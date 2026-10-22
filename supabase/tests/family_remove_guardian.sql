@@ -27,13 +27,14 @@ values
   ('d3000000-0000-0000-0000-0000000000f2', 'test'),
   ('d3000000-0000-0000-0000-0000000000f3', 'test');
 
-insert into public.guardians (id, first_name, last_name, email, is_teacher)
+insert into public.guardians (id, first_name, last_name, email)
 values
-  ('d3000000-0000-0000-0000-000000000061', 'ZZTEST', 'Bare En', 'zz-d3-1@zztest.local', false),
-  ('d3000000-0000-0000-0000-000000000062', 'ZZTEST', 'To Familier', 'zz-d3-2@zztest.local', false),
-  ('d3000000-0000-0000-0000-000000000063', 'ZZTEST', 'Laerer', 'zz-d3-3@zztest.local', true),
-  ('d3000000-0000-0000-0000-000000000064', 'ZZTEST', 'Fire', 'zz-d3-4@zztest.local', false),
-  ('d3000000-0000-0000-0000-000000000065', 'ZZTEST', 'Fem', 'zz-d3-5@zztest.local', false);
+  ('d3000000-0000-0000-0000-000000000061', 'ZZTEST', 'Bare En', 'zz-d3-1@zztest.local'),
+  ('d3000000-0000-0000-0000-000000000062', 'ZZTEST', 'To Familier', 'zz-d3-2@zztest.local'),
+  ('d3000000-0000-0000-0000-000000000063', 'ZZTEST', 'Laerer', 'zz-d3-3@zztest.local'),
+  ('d3000000-0000-0000-0000-000000000064', 'ZZTEST', 'Fire', 'zz-d3-4@zztest.local'),
+  ('d3000000-0000-0000-0000-000000000065', 'ZZTEST', 'Fem', 'zz-d3-5@zztest.local');
+insert into public.person_roles (guardian_id, role_key) values ('d3000000-0000-0000-0000-000000000063', 'teacher');
 
 insert into public.family_guardians (family_id, guardian_id, is_primary_contact)
 values

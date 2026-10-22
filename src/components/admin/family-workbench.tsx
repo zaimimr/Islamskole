@@ -30,9 +30,9 @@ import {
   MergeDuplicateButton,
   RemoveGuardianButton,
   type FamilyOption,
-} from "@/app/[locale]/admin/familier/family-controls";
-import { mergeFamilies } from "@/app/[locale]/admin/familier/families-actions";
-import { ChildMergeDialog } from "@/app/[locale]/admin/familier/child-merge-dialog";
+} from "@/app/[locale]/admin/(admin-only)/familier/family-controls";
+import { mergeFamilies } from "@/app/[locale]/admin/(admin-only)/familier/families-actions";
+import { ChildMergeDialog } from "@/app/[locale]/admin/(admin-only)/familier/child-merge-dialog";
 
 export type FamilyStatusTone =
   "success" | "warning" | "danger" | "info" | "neutral";

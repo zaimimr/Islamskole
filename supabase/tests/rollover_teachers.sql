@@ -23,10 +23,11 @@ values
   ('d6000000-0000-0000-0000-0000000000c1', 'zztest-d6-a', 'ZZTEST D6 A', 'ZZTEST D6 A'),
   ('d6000000-0000-0000-0000-0000000000c2', 'zztest-d6-b', 'ZZTEST D6 B', 'ZZTEST D6 B');
 
-insert into public.guardians (id, first_name, last_name, email, is_teacher)
+insert into public.guardians (id, first_name, last_name, email)
 values
-  ('d6000000-0000-0000-0000-000000000061', 'ZZTEST', 'Fortsetter', 'zz-d6-1@zztest.local', true),
-  ('d6000000-0000-0000-0000-000000000062', 'ZZTEST', 'Sluttet', 'zz-d6-2@zztest.local', false);
+  ('d6000000-0000-0000-0000-000000000061', 'ZZTEST', 'Fortsetter', 'zz-d6-1@zztest.local'),
+  ('d6000000-0000-0000-0000-000000000062', 'ZZTEST', 'Sluttet', 'zz-d6-2@zztest.local');
+insert into public.person_roles (guardian_id, role_key) values ('d6000000-0000-0000-0000-000000000061', 'teacher');
 
 insert into public.class_teachers (class_id, guardian_id, school_year_id, role)
 values

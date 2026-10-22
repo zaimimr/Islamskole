@@ -26,11 +26,12 @@ values
   ('d4000000-0000-0000-0000-0000000000e1', 'test'),
   ('d4000000-0000-0000-0000-0000000000e2', 'test');
 
-insert into public.guardians (id, first_name, last_name, email, phone, is_teacher)
+insert into public.guardians (id, first_name, last_name, email, phone)
 values
-  ('d4000000-0000-0000-0000-000000000061', 'ZZTEST', 'Dup Behold', 'zz-d4-dup@zztest.local', null, false),
-  ('d4000000-0000-0000-0000-000000000062', 'ZZTEST', 'Dup Slett', 'ZZ-D4-Dup@zztest.local', '+4790000004', true),
-  ('d4000000-0000-0000-0000-000000000063', 'ZZTEST', 'Annen', 'zz-d4-c@zztest.local', null, false);
+  ('d4000000-0000-0000-0000-000000000061', 'ZZTEST', 'Dup Behold', 'zz-d4-dup@zztest.local', null),
+  ('d4000000-0000-0000-0000-000000000062', 'ZZTEST', 'Dup Slett', 'ZZ-D4-Dup@zztest.local', '+4790000004'),
+  ('d4000000-0000-0000-0000-000000000063', 'ZZTEST', 'Annen', 'zz-d4-c@zztest.local', null);
+insert into public.person_roles (guardian_id, role_key) values ('d4000000-0000-0000-0000-000000000062', 'teacher');
 
 insert into public.family_guardians (family_id, guardian_id, is_primary_contact)
 values
@@ -114,13 +115,13 @@ select is(
 
 select is(
   (
-    select bool_or(g.is_teacher)
+    select bool_or(exists (select 1 from public.person_roles pr where pr.guardian_id = g.id and pr.role_key = 'teacher'))
     from public.guardians g
     join public.family_guardians fg on fg.guardian_id = g.id and fg.family_id = 'd4000000-0000-0000-0000-0000000000e1'
     where lower(g.email) = 'zz-d4-dup@zztest.local'
   ),
   true,
-  'D4 FAM-22: the merged guardian keeps is_teacher when either row had it'
+  'D4 FAM-22: the merged guardian keeps the teacher role when either row had it'
 );
 
 select is(

@@ -14,48 +14,45 @@ values
   ('db000000-0000-0000-0000-0000000000a2', 'zz-d11-admin2@zztest.local', '{"role":"admin"}'),
   ('db000000-0000-0000-0000-0000000000a3', 'zz-d11-member@zztest.local', '{"role":"member"}');
 
-alter table public.profiles disable trigger profiles_protect_developer;
-update public.profiles
-set role = 'member'
-where role in ('admin', 'developer')
-  and id not in ('db000000-0000-0000-0000-0000000000a1', 'db000000-0000-0000-0000-0000000000a2');
-alter table public.profiles enable trigger profiles_protect_developer;
+delete from public.person_roles
+where role_key = 'admin'
+  and guardian_id not in (select id from public.guardians where email in ('zz-d11-admin1@zztest.local', 'zz-d11-admin2@zztest.local'));
 
 select lives_ok(
-  $$ update public.profiles set role = 'member' where id = 'db000000-0000-0000-0000-0000000000a2' $$,
-  'D11 SEC-18: demoting one of two admins works'
+  $$ delete from public.person_roles where role_key = 'admin' and guardian_id = (select id from public.guardians where email = 'zz-d11-admin2@zztest.local') $$,
+  'D11 SEC-18: removing one of two admins works'
 );
 
 select throws_ok(
-  $$ update public.profiles set role = 'member' where id = 'db000000-0000-0000-0000-0000000000a1' $$,
+  $$ update public.person_roles set suspended_at = now() where role_key = 'admin' and guardian_id = (select id from public.guardians where email = 'zz-d11-admin1@zztest.local') $$,
   'P0001',
   null,
-  'D11 AUTH-14: demoting the last admin is refused'
+  'D11 AUTH-14: suspending the last admin is refused'
 );
 
 select throws_ok(
-  $$ delete from public.profiles where id = 'db000000-0000-0000-0000-0000000000a1' $$,
+  $$ delete from public.person_roles where role_key = 'admin' and guardian_id = (select id from public.guardians where email = 'zz-d11-admin1@zztest.local') $$,
   'P0001',
   null,
-  'D11 AUTH-14: deleting the last admin profile is refused'
+  'D11 AUTH-14: removing the last admin role is refused'
 );
 
 select throws_ok(
-  $$ delete from auth.users where id = 'db000000-0000-0000-0000-0000000000a1' $$,
+  $$ delete from public.guardians where email = 'zz-d11-admin1@zztest.local' $$,
   'P0001',
   null,
-  'D11 AUTH-14: deleting the last admin auth user is refused'
+  'D11 AUTH-14: deleting the last admin person is refused'
 );
 
 select is(
-  (select count(*) from public.profiles where role = 'admin'),
+  (select count(*) from public.person_roles where role_key = 'admin'),
   1::bigint,
   'D11 AUTH-14: one admin is left'
 );
 
 select lives_ok(
-  $$ update public.profiles set full_name = 'ZZTEST Admin' where id = 'db000000-0000-0000-0000-0000000000a1' $$,
-  'D11 AUTH-14: editing the last admin without changing role works'
+  $$ update public.person_roles set note = 'ZZTEST' where role_key = 'admin' and guardian_id = (select id from public.guardians where email = 'zz-d11-admin1@zztest.local') $$,
+  'D11 AUTH-14: editing the last admin without removing the role works'
 );
 
 select lives_ok(
@@ -64,13 +61,13 @@ select lives_ok(
 );
 
 select lives_ok(
-  $$ update public.profiles set role = 'admin' where id = 'db000000-0000-0000-0000-0000000000a2' $$,
+  $$ insert into public.person_roles (guardian_id, role_key) values ((select id from public.guardians where email = 'zz-d11-admin2@zztest.local'), 'admin') $$,
   'D11 SEC-18: promoting a member back to admin works'
 );
 
 select lives_ok(
-  $$ delete from auth.users where id = 'db000000-0000-0000-0000-0000000000a2' $$,
-  'D11 AUTH-14: deleting one of two admins works'
+  $$ delete from public.person_roles where role_key = 'admin' and guardian_id = (select id from public.guardians where email = 'zz-d11-admin2@zztest.local') $$,
+  'D11 AUTH-14: removing one of two admins works'
 );
 
 insert into public.classes (id, slug, name_no, name_en)

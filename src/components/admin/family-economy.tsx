@@ -22,7 +22,7 @@ import {
   sendInstallmentNow,
   setPlanPaused,
   stopInstallment,
-} from "@/app/[locale]/admin/familier/families-actions";
+} from "@/app/[locale]/admin/(admin-only)/familier/families-actions";
 import {
   grantFeeAdjustment,
   revokeFeeAdjustment,
@@ -32,7 +32,7 @@ import { formatOsloDate } from "@/lib/dates";
 import {
   FamilyPaymentDialog,
   type FamilyPaymentChild,
-} from "@/app/[locale]/admin/betaling/family-payment-dialog";
+} from "@/app/[locale]/admin/(admin-only)/betaling/family-payment-dialog";
 import { SadaqaCoverDialog } from "@/components/admin/sadaqa";
 import { CustomPlanBuilder } from "@/components/admin/custom-plan-builder";
 import type { CustomPlanConfig } from "@/lib/custom-payment-plan";

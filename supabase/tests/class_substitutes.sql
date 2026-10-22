@@ -37,11 +37,12 @@ values
 insert into public.families (id, origin)
 values ('e1000000-0000-0000-0000-0000000000f1', 'test');
 
-insert into public.guardians (id, first_name, last_name, email, is_teacher)
+insert into public.guardians (id, first_name, last_name, email)
 values
-  ('e1000000-0000-0000-0000-000000000061', 'ZZTEST', 'Laerer', 'zz-e1-teacher@zztest.local', true),
-  ('e1000000-0000-0000-0000-000000000062', 'ZZTEST', 'Vikar', 'zz-e1-sub@zztest.local', true),
-  ('e1000000-0000-0000-0000-000000000063', 'ZZTEST', 'Forelder', 'zz-e1-parent@zztest.local', false);
+  ('e1000000-0000-0000-0000-000000000061', 'ZZTEST', 'Laerer', 'zz-e1-teacher@zztest.local'),
+  ('e1000000-0000-0000-0000-000000000062', 'ZZTEST', 'Vikar', 'zz-e1-sub@zztest.local'),
+  ('e1000000-0000-0000-0000-000000000063', 'ZZTEST', 'Forelder', 'zz-e1-parent@zztest.local');
+insert into public.person_roles (guardian_id, role_key) values ('e1000000-0000-0000-0000-000000000061', 'teacher'), ('e1000000-0000-0000-0000-000000000062', 'teacher');
 
 insert into public.family_guardians (family_id, guardian_id, is_primary_contact)
 values ('e1000000-0000-0000-0000-0000000000f1', 'e1000000-0000-0000-0000-000000000063', true);

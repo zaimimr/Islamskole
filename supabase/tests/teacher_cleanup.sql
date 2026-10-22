@@ -18,10 +18,11 @@ values
   ('d1000000-0000-0000-0000-0000000000a1', 'zztest-d1-a', 'ZZTEST D1 A', 'ZZTEST D1 A'),
   ('d1000000-0000-0000-0000-0000000000a2', 'zztest-d1-b', 'ZZTEST D1 B', 'ZZTEST D1 B');
 
-insert into public.guardians (id, first_name, last_name, email, is_teacher)
+insert into public.guardians (id, first_name, last_name, email)
 values
-  ('d1000000-0000-0000-0000-0000000000f1', 'ZZTEST', 'Laerer En', 'zz-d1-en@zztest.local', true),
-  ('d1000000-0000-0000-0000-0000000000f2', 'ZZTEST', 'Laerer To', 'zz-d1-to@zztest.local', true);
+  ('d1000000-0000-0000-0000-0000000000f1', 'ZZTEST', 'Laerer En', 'zz-d1-en@zztest.local'),
+  ('d1000000-0000-0000-0000-0000000000f2', 'ZZTEST', 'Laerer To', 'zz-d1-to@zztest.local');
+insert into public.person_roles (guardian_id, role_key) values ('d1000000-0000-0000-0000-0000000000f1', 'teacher'), ('d1000000-0000-0000-0000-0000000000f2', 'teacher');
 
 insert into public.class_teachers (class_id, guardian_id, school_year_id)
 values
@@ -39,9 +40,7 @@ select is(
   'D1 TCH-03: editing a teacher without touching is_teacher keeps the class links'
 );
 
-update public.guardians
-set is_teacher = false
-where id = 'd1000000-0000-0000-0000-0000000000f1';
+delete from public.person_roles where guardian_id = 'd1000000-0000-0000-0000-0000000000f1' and role_key = 'teacher';
 
 select is(
   (select count(*) from public.class_teachers where guardian_id = 'd1000000-0000-0000-0000-0000000000f1'),
@@ -55,9 +54,7 @@ select is(
   'D1 TCH-03: other teachers of the same class keep their links'
 );
 
-update public.guardians
-set is_teacher = true
-where id = 'd1000000-0000-0000-0000-0000000000f1';
+insert into public.person_roles (guardian_id, role_key) values ('d1000000-0000-0000-0000-0000000000f1', 'teacher');
 
 select is(
   (select count(*) from public.class_teachers where guardian_id = 'd1000000-0000-0000-0000-0000000000f1'),

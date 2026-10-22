@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { toast } from "sonner";
 import { GraduationCap, Loader2, Plus } from "lucide-react";
-import { registerTeacher } from "@/app/[locale]/admin/familier/families-actions";
+import { registerTeacher } from "@/app/[locale]/admin/(admin-only)/familier/families-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

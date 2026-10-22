@@ -4,9 +4,10 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { createClient as createSupabaseClient, type Session, type User } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ADMIN_AREA_ROLES, activeRolesForEmail } from "@/lib/roles";
 import { getSessionContext } from "@/lib/supabase/server";
 import { createCookieClient, developerIdentity } from "./session";
-import { hasAdminRole, IMPERSONATION_AUTH_COOKIE, IMPERSONATION_COOKIE, IMPERSONATION_MARKER_MAX_AGE } from "./constants";
+import { IMPERSONATION_AUTH_COOKIE, IMPERSONATION_COOKIE, IMPERSONATION_MARKER_MAX_AGE } from "./constants";
 
 type Result = { ok: true; href: string } | { ok: false; error: string };
 
@@ -90,8 +91,8 @@ export async function startImpersonation(targetId: string): Promise<Result> {
     await issued.client.auth.signOut({ scope: "local" });
     return { ok: false, error: "Kunne ikke registrere brukerbyttet. Prøv igjen." };
   }
-  const { data: profile } = await createAdminClient().from("profiles").select("role").eq("id", targetId).maybeSingle();
-  return { ok: true, href: hasAdminRole(profile?.role) ? "/admin" : "/min-side" };
+  const roles = await activeRolesForEmail(issued.user.email).catch(() => []);
+  return { ok: true, href: roles.some((role) => ADMIN_AREA_ROLES.includes(role)) ? "/admin" : "/min-side" };
 }
 
 export async function stopImpersonation(): Promise<Result> {

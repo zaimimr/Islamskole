@@ -36,12 +36,13 @@ values
   ('f2000000-0000-0000-0000-0000000000f1', 'test'),
   ('f2000000-0000-0000-0000-0000000000f2', 'test');
 
-insert into public.guardians (id, first_name, last_name, email, is_teacher)
+insert into public.guardians (id, first_name, last_name, email)
 values
-  ('f2000000-0000-0000-0000-000000000061', 'ZZTEST', 'Laerer', 'zz-f2-teacher@zztest.local', true),
-  ('f2000000-0000-0000-0000-000000000062', 'ZZTEST', 'Annen laerer', 'zz-f2-other-teacher@zztest.local', true),
-  ('f2000000-0000-0000-0000-000000000063', 'ZZTEST', 'Forelder', 'zz-f2-parent@zztest.local', false),
-  ('f2000000-0000-0000-0000-000000000064', 'ZZTEST', 'Annen forelder', 'zz-f2-other-parent@zztest.local', false);
+  ('f2000000-0000-0000-0000-000000000061', 'ZZTEST', 'Laerer', 'zz-f2-teacher@zztest.local'),
+  ('f2000000-0000-0000-0000-000000000062', 'ZZTEST', 'Annen laerer', 'zz-f2-other-teacher@zztest.local'),
+  ('f2000000-0000-0000-0000-000000000063', 'ZZTEST', 'Forelder', 'zz-f2-parent@zztest.local'),
+  ('f2000000-0000-0000-0000-000000000064', 'ZZTEST', 'Annen forelder', 'zz-f2-other-parent@zztest.local');
+insert into public.person_roles (guardian_id, role_key) values ('f2000000-0000-0000-0000-000000000061', 'teacher'), ('f2000000-0000-0000-0000-000000000062', 'teacher');
 
 insert into public.students (id, family_id, child_first_name, child_last_name, child_email)
 values
@@ -125,7 +126,8 @@ select is((select count(*) from public.lesson_materials), 0::bigint, 'another fa
 select is((select count(*) from storage.objects where bucket_id = 'lesson-materials'), 0::bigint, 'another family cannot bypass material policy through storage');
 reset role;
 insert into auth.users (id, email, raw_app_meta_data) values ('f2000000-0000-0000-0000-0000000000a7', 'zz-f2-substitute@zztest.local', '{"role":"member"}');
-insert into public.guardians (id, first_name, email, is_teacher) values ('f2000000-0000-0000-0000-000000000065', 'ZZTEST Substitute', 'zz-f2-substitute@zztest.local', true);
+insert into public.guardians (id, first_name, email) values ('f2000000-0000-0000-0000-000000000065', 'ZZTEST Substitute', 'zz-f2-substitute@zztest.local');
+insert into public.person_roles (guardian_id, role_key) values ('f2000000-0000-0000-0000-000000000065', 'teacher');
 update public.lessons set teacher_guardian_id = 'f2000000-0000-0000-0000-000000000065', is_override = true where id = 'f2000000-0000-0000-0000-0000000000b1';
 insert into public.school_days (id, school_year_id, date) values ('f2000000-0000-0000-0000-0000000000d3', 'f2000000-0000-0000-0000-000000000001', '2026-10-04');
 insert into public.class_notes (class_id, school_day_id, homework) values ('f2000000-0000-0000-0000-0000000000c1', 'f2000000-0000-0000-0000-0000000000d3', 'Previous homework');

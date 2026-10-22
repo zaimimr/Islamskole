@@ -90,7 +90,7 @@ const entityConfigs: Record<ExportEntity, EntityConfig> = {
   },
   teachers: {
     table: "guardians",
-    select: "id, first_name, last_name, email, phone, teacher_note, created_at",
+    select: "id, first_name, last_name, email, phone, created_at, teacher:person_roles!inner(note)",
     columns: [
       { key: "first_name", header: "Fornavn" },
       { key: "last_name", header: "Etternavn" },
@@ -325,7 +325,7 @@ export async function GET(
       .order("id", { ascending: true })
       .range(from, to) as unknown as ExportQuery;
 
-    if (entity === "teachers") query = query.eq("is_teacher", "true");
+    if (entity === "teachers") query = query.eq("teacher.role_key", "teacher");
     if (status && status !== "alle" && entity === "applications") {
       query = query.eq("status", status);
     }
@@ -335,8 +335,9 @@ export async function GET(
     return new Response("Eksporten feilet", { status: 500 });
   }
 
-  const rows = data.map((row) => ({
+  const rows = data.map(({ teacher, ...row }) => ({
     ...row,
+    ...(Array.isArray(teacher) ? { teacher_note: (teacher[0] as { note?: string | null })?.note ?? "" } : {}),
     created_at:
       typeof row.created_at === "string" ? osloToday(new Date(row.created_at)) : "",
   }));

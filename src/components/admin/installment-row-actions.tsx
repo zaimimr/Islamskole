@@ -8,7 +8,7 @@ import {
   reopenInstallment,
   sendInstallmentNow,
   stopInstallment,
-} from "@/app/[locale]/admin/familier/families-actions";
+} from "@/app/[locale]/admin/(admin-only)/familier/families-actions";
 import { formatNok } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 import {

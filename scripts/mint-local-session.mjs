@@ -12,12 +12,14 @@ if (!user) {
   const { data, error } = await admin.auth.admin.createUser({
     email,
     email_confirm: true,
-    user_metadata: { role: "admin" },
+    app_metadata: { role: "admin" },
   });
   if (error) throw error;
   user = data.user;
 }
-await admin.from("profiles").upsert({ id: user.id, role: "admin", full_name: "Test Admin" });
+const { data: guardianId, error: guardianError } = await admin.rpc("ensure_guardian_for_email", { p_email: email, p_name: "Test Admin" });
+if (guardianError) throw guardianError;
+await admin.from("person_roles").upsert({ guardian_id: guardianId, role_key: "admin", granted_by: "system" }, { onConflict: "guardian_id,role_key", ignoreDuplicates: true });
 
 const { data: link, error: linkError } = await admin.auth.admin.generateLink({ type: "magiclink", email });
 if (linkError) throw linkError;

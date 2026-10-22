@@ -36,12 +36,13 @@ values
   ('f7000000-0000-0000-0000-0000000000f1', 'test'),
   ('f7000000-0000-0000-0000-0000000000f2', 'test');
 
-insert into public.guardians (id, first_name, last_name, email, is_teacher)
+insert into public.guardians (id, first_name, last_name, email)
 values
-  ('f7000000-0000-0000-0000-000000000061', 'ZZTEST', 'Laerer', 'zz-f7-teacher@zztest.local', true),
-  ('f7000000-0000-0000-0000-000000000062', 'ZZTEST', 'Annen laerer', 'zz-f7-other-teacher@zztest.local', true),
-  ('f7000000-0000-0000-0000-000000000063', 'ZZTEST', 'Forelder', 'zz-f7-parent@zztest.local', false),
-  ('f7000000-0000-0000-0000-000000000064', 'ZZTEST', 'Annen forelder', 'zz-f7-other-parent@zztest.local', false);
+  ('f7000000-0000-0000-0000-000000000061', 'ZZTEST', 'Laerer', 'zz-f7-teacher@zztest.local'),
+  ('f7000000-0000-0000-0000-000000000062', 'ZZTEST', 'Annen laerer', 'zz-f7-other-teacher@zztest.local'),
+  ('f7000000-0000-0000-0000-000000000063', 'ZZTEST', 'Forelder', 'zz-f7-parent@zztest.local'),
+  ('f7000000-0000-0000-0000-000000000064', 'ZZTEST', 'Annen forelder', 'zz-f7-other-parent@zztest.local');
+insert into public.person_roles (guardian_id, role_key) values ('f7000000-0000-0000-0000-000000000061', 'teacher'), ('f7000000-0000-0000-0000-000000000062', 'teacher');
 
 insert into public.students (id, family_id, child_first_name, child_last_name, child_email)
 values

@@ -1,8 +1,6 @@
-import { hasAdminRole } from "@/lib/impersonation/constants";
 import { NextResponse, type NextRequest } from "next/server";
 import { localePrefix } from "@/components/admin/paths";
 import { resolvePostLoginPath } from "@/lib/auth-redirect";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 const OTP_TYPES = new Set(["magiclink", "email"]);
@@ -22,14 +20,11 @@ export async function GET(
       type: type as "magiclink" | "email",
     });
     if (!error && data.user) {
-      const { data: profile } = await createAdminClient()
-        .from("profiles")
-        .select("role")
-        .eq("id", data.user.id)
-        .maybeSingle();
+      const { data: access } = await supabase.rpc("my_access");
+      const result = access as { admin?: boolean; permissions?: string[] } | null;
       const target = resolvePostLoginPath({
         next: request.nextUrl.searchParams.get("next"),
-        isAdmin: hasAdminRole(profile?.role),
+        isAdmin: Boolean(result?.admin || result?.permissions?.length),
         locale,
       });
       return NextResponse.redirect(new URL(target, request.nextUrl.origin));

@@ -894,7 +894,7 @@ export async function deleteStudentApplication(
   return { ok: true, id };
 }
 
-const grantAdminSchema = z.object({
+const addUserSchema = z.object({
   email: z
     .string()
     .trim()
@@ -902,22 +902,68 @@ const grantAdminSchema = z.object({
     .min(1, "E-post er påkrevd")
     .email("Ugyldig e-postadresse"),
   fullName: z.string().trim().max(200),
+  role: z.enum(["admin", "sfo"], { message: "Velg en rolle" }),
 });
 
-export async function grantAdminAccess(
+const roleKeySchema = z.enum(["admin", "sfo", "teacher", "volunteer"]);
+
+function splitFullName(fullName: string, email: string) {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { first: email.split("@")[0], last: null };
+  if (parts.length === 1) return { first: parts[0], last: null };
+  return { first: parts.slice(0, -1).join(" "), last: parts[parts.length - 1] };
+}
+
+async function guardianIdForEmail(
+  email: string,
+  fullName: string,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const admin = createAdminClient();
+  const { data: matches, error } = await admin
+    .from("guardians")
+    .select("id")
+    .ilike("email", email.replace(/[\\%_]/g, "\\$&"))
+    .order("created_at")
+    .limit(1);
+  if (error) return { ok: false, error: toUserError(error) };
+  if (matches?.[0]) return { ok: true, id: matches[0].id };
+  const name = splitFullName(fullName, email);
+  const { data, error: insertError } = await admin
+    .from("guardians")
+    .insert({ email, first_name: name.first, last_name: name.last })
+    .select("id")
+    .single();
+  if (insertError) return { ok: false, error: toUserError(insertError) };
+  return { ok: true, id: data.id };
+}
+
+async function grantRole(guardianId: string, role: z.infer<typeof roleKeySchema>) {
+  const supabase = await createClient();
+  const me = await getUser();
+  const { error } = await supabase
+    .from("person_roles")
+    .upsert(
+      { guardian_id: guardianId, role_key: role, granted_by: me?.email ?? null },
+      { onConflict: "guardian_id,role_key", ignoreDuplicates: true },
+    );
+  return error;
+}
+
+export async function addUserWithRole(
   _previous: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
   const denied = await requireAdmin();
   if (denied) return denied;
-  const parsed = grantAdminSchema.safeParse({
+  const parsed = addUserSchema.safeParse({
     email: readString(formData, "email"),
     fullName: readString(formData, "full_name"),
+    role: readString(formData, "role"),
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0].message };
   }
-  const { email, fullName } = parsed.data;
+  const { email, fullName, role } = parsed.data;
 
   const admin = createAdminClient();
   let existingId;
@@ -926,54 +972,23 @@ export async function grantAdminAccess(
   } catch (error) {
     return { ok: false, error: toUserError(error as { code?: string; message?: string }) };
   }
-  const existing = existingId
-    ? (await admin.auth.admin.getUserById(existingId)).data.user
-    : null;
-
-  let userId: string;
-  let oldRole = "none";
-  if (existing) {
-    userId = existing.id;
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("role, full_name")
-      .eq("id", userId)
-      .maybeSingle();
-    oldRole = profile?.role ?? "member";
-    if (oldRole === "developer") return { ok: false, error: "Utviklertilgangen kan ikke endres her." };
-    const { error: metaError } = await admin.auth.admin.updateUserById(userId, {
-      app_metadata: { ...existing.app_metadata, role: "admin" },
-    });
-    if (metaError) return { ok: false, error: toAuthUserError(metaError) };
-    const { error } = await admin.from("profiles").upsert({
-      id: userId,
-      role: "admin",
-      full_name: profile?.full_name || fullName,
-    });
-    if (error) return { ok: false, error: toUserError(error) };
-  } else {
+  let userId = existingId;
+  if (!userId) {
     const { data, error } = await admin.auth.admin.createUser({
       email,
       email_confirm: true,
       user_metadata: { full_name: fullName },
-      app_metadata: { role: "admin" },
     });
     if (error || !data.user) {
       return { ok: false, error: toAuthUserError(error ?? {}) };
     }
     userId = data.user.id;
-    const { error: profileError } = await admin
-      .from("profiles")
-      .upsert({ id: userId, role: "admin", full_name: fullName });
-    if (profileError) return { ok: false, error: toUserError(profileError) };
   }
 
-  await writeAudit({
-    action: "user.role_changed",
-    entityType: "users",
-    entityId: userId,
-    metadata: { email, old_role: oldRole, new_role: "admin" },
-  });
+  const guardian = await guardianIdForEmail(email, fullName);
+  if (!guardian.ok) return guardian;
+  const grantError = await grantRole(guardian.id, role);
+  if (grantError) return { ok: false, error: toUserError(grantError) };
   revalidatePath("/", "layout");
 
   const link = await sendLoginLink({ email, locale: "no" });
@@ -986,72 +1001,24 @@ export async function grantAdminAccess(
   return { ok: true, id: userId };
 }
 
-export async function removeAdminAccess(
+export async function setUserRole(
   _previous: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  const userId = readString(formData, "user_id");
   const denied = await requireAdmin();
   if (denied) return denied;
-  if (!z.string().uuid().safeParse(userId).success) {
+  const userId = readString(formData, "user_id");
+  const role = roleKeySchema.safeParse(readString(formData, "role"));
+  const enabled = readString(formData, "enabled") === "true";
+  if (!z.string().uuid().safeParse(userId).success || !role.success) {
     return { ok: false, error: "Ugyldig bruker." };
+  }
+  if (role.data === "teacher" && !enabled) {
+    return { ok: false, error: "Lærere fjernes fra lærersiden." };
   }
   const me = await getUser();
-  if (me?.id === userId) {
+  if (me?.id === userId && role.data === "admin" && !enabled) {
     return { ok: false, error: "Du kan ikke fjerne din egen administratortilgang." };
-  }
-
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("profiles")
-    .update({ role: "member" })
-    .eq("id", userId)
-    .eq("role", "admin")
-    .select("id")
-    .maybeSingle();
-  if (error) {
-    return {
-      ok: false,
-      error: error.message.includes("minst én administrator")
-        ? "Det må alltid finnes minst én administrator."
-        : toUserError(error),
-    };
-  }
-  if (!data) return { ok: false, error: "Fant ikke brukeren. Last siden på nytt." };
-
-  const { data: authUser } = await admin.auth.admin.getUserById(userId);
-  if (authUser.user) {
-    await admin.auth.admin.updateUserById(userId, {
-      app_metadata: { ...authUser.user.app_metadata, role: "member" },
-    });
-  }
-
-  await writeAudit({
-    action: "user.role_changed",
-    entityType: "users",
-    entityId: userId,
-    metadata: { email: authUser.user?.email ?? null, old_role: "admin", new_role: "member" },
-  });
-  revalidatePath("/", "layout");
-  return { ok: true, id: userId };
-}
-
-function splitFullName(fullName: string, email: string) {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return { first: email.split("@")[0], last: null };
-  if (parts.length === 1) return { first: parts[0], last: null };
-  return { first: parts.slice(0, -1).join(" "), last: parts[parts.length - 1] };
-}
-
-export async function makeUserTeacher(
-  _previous: ActionResult | null,
-  formData: FormData,
-): Promise<ActionResult> {
-  const userId = readString(formData, "user_id");
-  const denied = await requireAdmin();
-  if (denied) return denied;
-  if (!z.string().uuid().safeParse(userId).success) {
-    return { ok: false, error: "Ugyldig bruker." };
   }
 
   const admin = createAdminClient();
@@ -1061,52 +1028,55 @@ export async function makeUserTeacher(
     return { ok: false, error: "Fant ikke brukeren. Last siden på nytt." };
   }
 
-  const { data: matches, error: lookupError } = await admin
-    .from("guardians")
-    .select("id")
-    .ilike("email", email.replace(/[\\%_]/g, "\\$&"));
-  if (lookupError) return { ok: false, error: toUserError(lookupError) };
-  if ((matches?.length ?? 0) > 1) {
-    return {
-      ok: false,
-      error: "E-posten finnes hos flere foresatte. Gjør riktig person til lærer fra familiesiden.",
-    };
-  }
-
-  let guardianId = matches?.[0]?.id ?? null;
-  if (guardianId) {
-    const { error } = await admin
-      .from("guardians")
-      .update({ is_teacher: true })
-      .eq("id", guardianId);
-    if (error) return { ok: false, error: toUserError(error) };
-  } else {
+  if (enabled) {
     const { data: profile } = await admin
       .from("profiles")
       .select("full_name")
       .eq("id", userId)
       .maybeSingle();
-    const name = splitFullName(
-      profile?.full_name || String(authUser.user?.user_metadata?.full_name ?? ""),
+    const guardian = await guardianIdForEmail(
       email,
+      profile?.full_name || String(authUser.user?.user_metadata?.full_name ?? ""),
     );
-    const { data, error } = await admin
+    if (!guardian.ok) return guardian;
+    const grantError = await grantRole(guardian.id, role.data);
+    if (grantError) return { ok: false, error: toUserError(grantError) };
+    await writeAudit({
+      action: role.data === "teacher" ? "teacher.registered" : "role.granted",
+      entityType: "guardian",
+      entityId: guardian.id,
+      metadata: { email, role: role.data, from_user: userId },
+    });
+  } else {
+    const { data: guardians, error: lookupError } = await admin
       .from("guardians")
-      .insert({ email, first_name: name.first, last_name: name.last, is_teacher: true })
       .select("id")
-      .single();
-    if (error) return { ok: false, error: toUserError(error) };
-    guardianId = data.id;
+      .ilike("email", email.replace(/[\\%_]/g, "\\$&"));
+    if (lookupError) return { ok: false, error: toUserError(lookupError) };
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("person_roles")
+      .delete()
+      .eq("role_key", role.data)
+      .in("guardian_id", (guardians ?? []).map((guardian) => guardian.id));
+    if (error) {
+      return {
+        ok: false,
+        error: error.message.includes("minst én administrator")
+          ? "Det må alltid finnes minst én administrator."
+          : toUserError(error),
+      };
+    }
+    await writeAudit({
+      action: "role.removed",
+      entityType: "user",
+      entityId: userId,
+      metadata: { email, role: role.data, from_user: userId },
+    });
   }
 
-  await writeAudit({
-    action: "teacher.registered",
-    entityType: "guardian",
-    entityId: guardianId,
-    metadata: { email, from_user: userId },
-  });
   revalidatePath("/", "layout");
-  return { ok: true, id: guardianId };
+  return { ok: true, id: userId };
 }
 
 export async function deleteUser(userId: string): Promise<ActionResult> {
@@ -1123,6 +1093,28 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
   const admin = createAdminClient();
   const { data: profile, error: profileError } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
   if (profileError || profile?.role === "developer") return { ok: false, error: "Utviklerkontoen kan ikke slettes her." };
+  const { data: authUser } = await admin.auth.admin.getUserById(userId);
+  const email = authUser.user?.email?.trim().toLowerCase();
+  if (email) {
+    const { data: guardians, error: lookupError } = await admin
+      .from("guardians")
+      .select("id")
+      .ilike("email", email.replace(/[\\%_]/g, "\\$&"));
+    if (lookupError) return { ok: false, error: toUserError(lookupError) };
+    const { error: roleError } = await supabase
+      .from("person_roles")
+      .delete()
+      .in("role_key", ["admin", "sfo"])
+      .in("guardian_id", (guardians ?? []).map((guardian) => guardian.id));
+    if (roleError) {
+      return {
+        ok: false,
+        error: roleError.message.includes("minst én administrator")
+          ? "Det må alltid finnes minst én administrator."
+          : toUserError(roleError),
+      };
+    }
+  }
   const { error } = await admin.auth.admin.deleteUser(userId);
   if (error) return { ok: false, error: toAuthUserError(error) };
   await writeAudit({

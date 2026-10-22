@@ -19,7 +19,7 @@ import {
   coverWithSadaqa,
   recordSadaqaGift,
   voidSadaqaGift,
-} from "@/app/[locale]/admin/betaling/sadaqa/sadaqa-actions";
+} from "@/app/[locale]/admin/(admin-only)/betaling/sadaqa/sadaqa-actions";
 import { voidPayment } from "@/app/[locale]/admin/students-actions";
 import { formatNok, kronerToOre } from "@/lib/money";
 import { osloToday } from "@/lib/dates";

@@ -18,12 +18,12 @@ import {
 import {
   admitApplications,
   markApplicationsAsSpam,
-} from "@/app/[locale]/admin/register/register-actions";
+} from "@/app/[locale]/admin/(admin-only)/register/register-actions";
 import {
   classOptionLabel,
   suggestPlacements,
   type PlacementClass,
-} from "@/app/[locale]/admin/register/placement";
+} from "@/app/[locale]/admin/(admin-only)/register/placement";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

@@ -23,18 +23,20 @@ import {
 async function guardiansWithEmail(email: string) {
   const { data, error } = await db()
     .from("guardians")
-    .select("id, first_name, last_name, email, phone, teacher_note, is_teacher")
+    .select("id, first_name, last_name, email, phone, person_roles(role_key, note)")
     .ilike("email", email);
   if (error) throw error;
-  return (data ?? []) as {
+  return ((data ?? []) as {
     id: string;
     first_name: string | null;
     last_name: string | null;
     email: string;
     phone: string | null;
-    teacher_note: string | null;
-    is_teacher: boolean;
-  }[];
+    person_roles: { role_key: string; note: string | null }[];
+  }[]).map(({ person_roles, ...row }) => {
+    const teacher = person_roles.find((role) => role.role_key === "teacher");
+    return { ...row, is_teacher: Boolean(teacher), teacher_note: teacher?.note ?? null };
+  });
 }
 
 async function classTeacherCount(guardianId: string) {

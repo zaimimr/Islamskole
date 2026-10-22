@@ -36,12 +36,13 @@ values
   ('f2000000-0000-0000-0000-0000000000f1', 'test'),
   ('f2000000-0000-0000-0000-0000000000f2', 'test');
 
-insert into public.guardians (id, first_name, last_name, email, is_teacher)
+insert into public.guardians (id, first_name, last_name, email)
 values
-  ('f2000000-0000-0000-0000-000000000061', 'ZZTEST', 'Laerer', 'zz-f2-teacher@zztest.local', true),
-  ('f2000000-0000-0000-0000-000000000062', 'ZZTEST', 'Annen laerer', 'zz-f2-other-teacher@zztest.local', true),
-  ('f2000000-0000-0000-0000-000000000063', 'ZZTEST', 'Forelder', 'zz-f2-parent@zztest.local', false),
-  ('f2000000-0000-0000-0000-000000000064', 'ZZTEST', 'Annen forelder', 'zz-f2-other-parent@zztest.local', false);
+  ('f2000000-0000-0000-0000-000000000061', 'ZZTEST', 'Laerer', 'zz-f2-teacher@zztest.local'),
+  ('f2000000-0000-0000-0000-000000000062', 'ZZTEST', 'Annen laerer', 'zz-f2-other-teacher@zztest.local'),
+  ('f2000000-0000-0000-0000-000000000063', 'ZZTEST', 'Forelder', 'zz-f2-parent@zztest.local'),
+  ('f2000000-0000-0000-0000-000000000064', 'ZZTEST', 'Annen forelder', 'zz-f2-other-parent@zztest.local');
+insert into public.person_roles (guardian_id, role_key) values ('f2000000-0000-0000-0000-000000000061', 'teacher'), ('f2000000-0000-0000-0000-000000000062', 'teacher');
 
 insert into public.students (id, family_id, child_first_name, child_last_name, child_email)
 values
@@ -158,7 +159,7 @@ select lives_ok($$ select public.publish_announcement('f2000000-0000-0000-0000-0
 select is((select email_status from public.announcement_family_status('f2000000-0000-0000-0000-0000000000e4')), 'missing_email', 'a missing email recipient is visible to the sender');
 select throws_ok($$ select public.publish_announcement(gen_random_uuid(), null, ' ', 'Hei', true, false) $$, '23514', null, 'empty titles are rejected by the database');
 reset role;
-update public.guardians set teacher_suspended_at = now() where id = 'f2000000-0000-0000-0000-000000000061';
+update public.person_roles set suspended_at = now() where guardian_id = 'f2000000-0000-0000-0000-000000000061' and role_key = 'teacher';
 select set_config('request.jwt.claims', '{"sub":"f2000000-0000-0000-0000-0000000000a2","email":"zz-f2-teacher@zztest.local","role":"authenticated"}', true);
 set local role authenticated;
 select throws_ok($$ select public.publish_announcement(gen_random_uuid(), 'f2000000-0000-0000-0000-0000000000c1', 'Hei', 'Hei', true, false) $$, '42501', 'Forbidden', 'suspended teachers cannot publish');

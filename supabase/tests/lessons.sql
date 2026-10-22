@@ -43,13 +43,14 @@ values
 insert into public.families (id, origin)
 values ('f1000000-0000-0000-0000-0000000000f1', 'test');
 
-insert into public.guardians (id, first_name, last_name, email, is_teacher)
+insert into public.guardians (id, first_name, last_name, email)
 values
-  ('f1000000-0000-0000-0000-000000000061', 'ZZTEST', 'Islam', 'zz-f1-islam@zztest.local', true),
-  ('f1000000-0000-0000-0000-000000000062', 'ZZTEST', 'Koran', 'zz-f1-koran@zztest.local', true),
-  ('f1000000-0000-0000-0000-000000000063', 'ZZTEST', 'Vikar', 'zz-f1-vikar@zztest.local', true),
-  ('f1000000-0000-0000-0000-000000000064', 'ZZTEST', 'Forelder', 'zz-f1-parent@zztest.local', false),
-  ('f1000000-0000-0000-0000-000000000065', 'ZZTEST', 'Medlaerer', 'zz-f1-medlaerer@zztest.local', true);
+  ('f1000000-0000-0000-0000-000000000061', 'ZZTEST', 'Islam', 'zz-f1-islam@zztest.local'),
+  ('f1000000-0000-0000-0000-000000000062', 'ZZTEST', 'Koran', 'zz-f1-koran@zztest.local'),
+  ('f1000000-0000-0000-0000-000000000063', 'ZZTEST', 'Vikar', 'zz-f1-vikar@zztest.local'),
+  ('f1000000-0000-0000-0000-000000000064', 'ZZTEST', 'Forelder', 'zz-f1-parent@zztest.local'),
+  ('f1000000-0000-0000-0000-000000000065', 'ZZTEST', 'Medlaerer', 'zz-f1-medlaerer@zztest.local');
+insert into public.person_roles (guardian_id, role_key) values ('f1000000-0000-0000-0000-000000000061', 'teacher'), ('f1000000-0000-0000-0000-000000000062', 'teacher'), ('f1000000-0000-0000-0000-000000000063', 'teacher'), ('f1000000-0000-0000-0000-000000000065', 'teacher');
 
 insert into public.family_guardians (family_id, guardian_id, is_primary_contact)
 values ('f1000000-0000-0000-0000-0000000000f1', 'f1000000-0000-0000-0000-000000000064', true);
@@ -275,7 +276,7 @@ select lives_ok(
 );
 
 reset role;
-update public.guardians set teacher_suspended_at = now() where id = 'f1000000-0000-0000-0000-000000000065';
+update public.person_roles set suspended_at = now() where guardian_id = 'f1000000-0000-0000-0000-000000000065' and role_key = 'teacher';
 set local role authenticated;
 
 select is(
@@ -293,7 +294,7 @@ select is(
 select set_config('request.jwt.claims', '{"sub":"f1000000-0000-0000-0000-0000000000a4","email":"zz-f1-vikar@zztest.local","role":"authenticated"}', true);
 
 reset role;
-update public.guardians set teacher_suspended_at = now() where id = 'f1000000-0000-0000-0000-000000000063';
+update public.person_roles set suspended_at = now() where guardian_id = 'f1000000-0000-0000-0000-000000000063' and role_key = 'teacher';
 set local role authenticated;
 
 select is(

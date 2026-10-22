@@ -16,9 +16,9 @@ import {
 async function copyableAssignments(yearId: string) {
   const { data, error } = await db()
     .from("class_teachers")
-    .select("class_id, guardians!inner(is_teacher)")
+    .select("class_id, guardians!inner(person_roles!inner(role_key))")
     .eq("school_year_id", yearId)
-    .eq("guardians.is_teacher", true);
+    .eq("guardians.person_roles.role_key", "teacher");
   if (error) throw error;
   return data?.length ?? 0;
 }

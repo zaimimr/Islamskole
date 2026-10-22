@@ -15,6 +15,7 @@ import {
   ScrollText,
   Settings,
   ShieldCheck,
+  Tent,
   UserCheck,
   Users,
   Wallet,
@@ -56,7 +57,28 @@ type NavGroup = {
   links: NavLink[];
 };
 
-function buildNavigation(basePath: string) {
+function buildNavigation(basePath: string, isAdmin: boolean) {
+  if (!isAdmin) {
+    return {
+      groups: [
+        {
+          label: null,
+          links: [
+            {
+              href: `${basePath}/sfo`,
+              label: "SFO",
+              icon: Tent,
+            },
+          ],
+        },
+      ] satisfies NavGroup[],
+      account: {
+        href: `${basePath}/konto`,
+        label: "Min konto",
+        icon: CircleUserRound,
+      } satisfies NavLink,
+    };
+  }
   const groups: NavGroup[] = [
     {
       label: null,
@@ -89,6 +111,7 @@ function buildNavigation(basePath: string) {
           countLabel: "nye lærersøknader",
         },
         { href: `${basePath}/betaling`, label: "Økonomi", icon: Wallet },
+        { href: `${basePath}/sfo`, label: "SFO", icon: Tent },
       ],
     },
     {
@@ -190,16 +213,18 @@ function NavItem({
 
 export function SidebarNav({
   basePath,
+  isAdmin,
   onNavigate,
 }: {
   basePath: string;
+  isAdmin: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const [pending, setPending] = useState<{ href: string; from: string } | null>(
     null,
   );
-  const navigation = buildNavigation(basePath);
+  const navigation = buildNavigation(basePath, isAdmin);
   const currentPath =
     pending && pending.from === pathname ? pending.href : pathname;
 

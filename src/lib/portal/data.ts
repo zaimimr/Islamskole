@@ -174,12 +174,12 @@ export async function isRegisteredTeacher(): Promise<boolean> {
   const guardianIds = await getGuardianIds();
   if (!guardianIds.length) return false;
   const { count, error } = await createAdminClient()
-    .from("guardians")
-    .select("id", { count: "exact", head: true })
-    .in("id", guardianIds)
-    .eq("is_teacher", true)
-    .is("teacher_suspended_at", null);
-  if (error) console.error("guardians is_teacher failed", error);
+    .from("person_roles")
+    .select("guardian_id", { count: "exact", head: true })
+    .in("guardian_id", guardianIds)
+    .eq("role_key", "teacher")
+    .is("suspended_at", null);
+  if (error) console.error("person_roles teacher failed", error);
   return (count ?? 0) > 0;
 }
 
@@ -187,15 +187,15 @@ export const isSuspendedTeacher = cache(async (): Promise<boolean> => {
   const guardianIds = await getGuardianIds();
   if (!guardianIds.length) return false;
   const { data, error } = await createAdminClient()
-    .from("guardians")
-    .select("teacher_suspended_at")
-    .in("id", guardianIds)
-    .eq("is_teacher", true);
+    .from("person_roles")
+    .select("suspended_at")
+    .in("guardian_id", guardianIds)
+    .eq("role_key", "teacher");
   if (error) {
-    console.error("guardians teacher_suspended_at failed", error);
+    console.error("person_roles teacher suspended failed", error);
     return false;
   }
-  return (data ?? []).length > 0 && (data ?? []).every((row) => row.teacher_suspended_at);
+  return (data ?? []).length > 0 && (data ?? []).every((row) => row.suspended_at);
 });
 
 const getActiveYear = cache(

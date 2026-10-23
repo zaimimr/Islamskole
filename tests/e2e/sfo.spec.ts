@@ -24,6 +24,10 @@ test("SFO staff publish a paid trip, parents sign up with health check, cash is 
   await loginAs(context, staff.email);
   await page.goto("/admin/elever");
   await expect(page).toHaveURL(/\/admin\/sfo$/);
+  await page.getByRole("link", { name: "Min side" }).click();
+  await expect(page).toHaveURL(/\/min-side/);
+  await page.getByRole("link", { name: "Administrasjon" }).click();
+  await expect(page).toHaveURL(/\/admin\/sfo$/);
   await page.getByRole("link", { name: "Ny SFO-aktivitet" }).click();
   await page.getByRole("button", { name: "Publiser", exact: true }).click();
   await expect(page.getByText("Skriv en tittel")).toBeVisible();

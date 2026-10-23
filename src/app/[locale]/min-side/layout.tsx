@@ -6,7 +6,7 @@ import { Logo } from "@/components/site/Logo";
 import { LocaleSwitcher } from "@/components/site/LocaleSwitcher";
 import { PortalSignOutButton } from "@/components/portal/portal-sign-out-button";
 import { PortalNav } from "@/components/portal/portal-nav";
-import { getIsAdmin, getUser } from "@/lib/auth";
+import { getAccess, getUser } from "@/lib/auth";
 import { getPortalContext } from "@/lib/portal/data";
 import { cn } from "@/lib/utils";
 import { ImpersonationBanner } from "@/components/impersonation/banner";
@@ -28,10 +28,10 @@ export default async function PortalLayout({
 }: LayoutProps<"/[locale]/min-side">) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const [t, user, isAdmin, context] = await Promise.all([
+  const [t, user, access, context] = await Promise.all([
     getTranslations("portal"),
     getUser(),
-    getIsAdmin(),
+    getAccess(),
     getPortalContext(),
   ]);
 
@@ -42,7 +42,7 @@ export default async function PortalLayout({
         <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-2 sm:px-6">
           <Logo priority className="mr-auto" />
           <LocaleSwitcher />
-          {isAdmin ? (
+          {access.admin || access.permissions.size > 0 ? (
             <NextLink
               href="/admin"
               className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-semibold outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"

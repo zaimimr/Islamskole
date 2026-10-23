@@ -26,7 +26,7 @@ export async function SfoActivityCard({ item, locale }: { item: PublicSfoActivit
       <h3 className="text-xl font-bold">{item.title}</h3>
       {item.description && <p className="line-clamp-4 text-base text-muted-foreground text-balance-pretty">{item.description}</p>}
       {facts.length > 0 && <p className="text-sm font-semibold">{facts.join(" · ")}</p>}
-      {!full && <Link href="/min-side/logg-inn?next=/min-side" className="mt-auto inline-flex min-h-11 w-fit items-center rounded-full bg-brand-green-dark px-5 text-base font-bold text-white outline-none focus-visible:ring-3 focus-visible:ring-ring/50">{t("sfoSignUp")}</Link>}
+      {item.signup && !full && <Link href="/min-side/logg-inn?next=/min-side" className="mt-auto inline-flex min-h-11 w-fit items-center rounded-full bg-brand-green-dark px-5 text-base font-bold text-white outline-none focus-visible:ring-3 focus-visible:ring-ring/50">{t("sfoSignUp")}</Link>}
       </div>
     </article>
   );

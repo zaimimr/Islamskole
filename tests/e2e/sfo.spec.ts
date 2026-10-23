@@ -114,3 +114,52 @@ test("SFO staff publish a paid trip, parents sign up with health check, cash is 
   await page.goto(`/admin/sfo/${activityId}`);
   await expect(page.getByRole("region", { name: "Tilbakebetaling" }).getByText("Betalt 150 kr · Tilbake 150 kr")).toBeVisible();
 });
+
+test("SFO staff run an activity without sign-up, see health and record attendance", async ({ page, context }) => {
+  const year = await activeYear();
+  const schoolClass = await seedClass();
+  const { error: classError } = await db().from("classes").update({ published: true }).eq("id", schoolClass.id);
+  if (classError) throw classError;
+  const family = await seedFamily({ students: [{}, {}] });
+  for (const student of family.students) await enroll(student.id, schoolClass.id, year.id);
+  const { error: healthError } = await db().from("students").update({ allergies: "ZZTEST Gluten" }).eq("id", family.students[0].id);
+  if (healthError) throw healthError;
+  const staff = await seedGuardian();
+  await grantRole(staff.id, "sfo");
+  const title = `ZZTEST Skoletid ${Date.now()}`;
+
+  await loginAs(context, staff.email);
+  await page.goto("/admin/sfo/ny");
+  await page.getByLabel("Krever påmelding", { exact: true }).uncheck();
+  await expect(page.getByLabel("Svarfrist")).toHaveCount(0);
+  await expect(page.getByLabel("Pris (kr)", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Krever samtykke", { exact: true })).toHaveCount(0);
+  await page.getByLabel("Tittel").fill(title);
+  await page.getByLabel("Dato").fill(osloDate(0));
+  await page.getByLabel(schoolClass.name, { exact: true }).check();
+  await page.getByRole("button", { name: "Publiser", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/sfo\/[0-9a-f-]{36}$/);
+  await expect(page.getByText("Publisert", { exact: true })).toBeVisible();
+  const activityId = page.url().split("/").pop()!;
+
+  const roster = page.getByRole("region", { name: "Deltakere" });
+  await expect(roster.getByText("Uten påmelding · Elever: 2")).toBeVisible();
+  await expect(roster.getByText("ZZTEST Gluten", { exact: false }).first()).toBeVisible();
+  await expect(roster.getByText("Foresatte:", { exact: false }).first()).toBeVisible();
+  const child = roster.getByRole("listitem").first();
+  await child.getByRole("button", { name: "Deltok", exact: true }).click();
+  await expect(child.getByRole("button", { name: "Deltok", exact: true })).toHaveAttribute("aria-pressed", "true");
+  const { count: marked } = await db().from("activity_students").select("student_id", { count: "exact", head: true }).eq("activity_id", activityId).eq("participation", "participated");
+  expect(marked).toBe(1);
+
+  await page.goto("/admin/sfo");
+  await page.getByRole("link", { name: "Allergiliste" }).click();
+  await expect(page).toHaveURL(/\/admin\/sfo\/allergier$/);
+  await expect(page.getByRole("region", { name: schoolClass.name }).getByText("ZZTEST Gluten")).toBeVisible();
+
+  await loginAs(context, family.guardians[0].email);
+  await page.goto(`/min-side/barn/${family.students[1].id}`);
+  const item = page.getByRole("region", { name: "Aktiviteter og samtykke", exact: true }).getByRole("article").filter({ hasText: title });
+  await expect(item.getByText("Ingen påmelding", { exact: true })).toBeVisible();
+  await expect(item.getByRole("button", { name: "Deltar", exact: true })).toHaveCount(0);
+});

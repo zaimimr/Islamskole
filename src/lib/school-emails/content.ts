@@ -64,6 +64,7 @@ export function schoolEmailContent(input: {
   activityStudentId?: string;
   activitySfo?: boolean;
   activityNeedsConsent?: boolean;
+  activitySignup?: boolean;
   activityTime?: string;
   activityLocation?: string;
   activityPrevious?: string;
@@ -121,6 +122,11 @@ export function schoolEmailContent(input: {
       href, ctaLabel: en ? "Pay with Vipps" : "Betal med Vipps",
     };
     const reminder = input.kind === "activity_respond_reminder";
+    if (input.activitySignup === false) return {
+      subject: en ? "New activity" : "Ny aktivitet", title: input.activityTitle ?? "",
+      intro: en ? `Activity for ${names}. No sign-up needed.` : `Aktivitet for ${names}. Ingen påmelding.`,
+      rows: when, href, ctaLabel: open,
+    };
     return {
       subject: reminder ? (en ? "Reminder: activity sign-up" : "Påminnelse om påmelding") : (en ? "New activity" : "Ny aktivitet"), title: input.activityTitle ?? "",
       intro: input.activityNeedsConsent ? (en ? `Read the consent statement on Min side and respond for ${names}.` : `Les samtykketeksten på Min side og svar for ${names}.`)

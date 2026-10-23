@@ -19,7 +19,7 @@ const activity = z.object({
   id, expected: version.nullable(), title: z.string().trim().min(1).max(200), description: z.string().trim().max(4000),
   needsConsent: z.boolean(), consent: z.string().trim().max(4000), date, respondBy: date, location: z.string().trim().max(200).nullable(),
   start: time.nullable(), end: time.nullable(), capacity: optionalInt(10000), minAge: optionalInt(30), maxAge: optionalInt(30),
-  priceOre: optionalInt(10_000_000), paymentDue: date.nullable(), showOnWebsite: z.boolean(), audience: z.array(id).max(100),
+  priceOre: optionalInt(10_000_000), paymentDue: date.nullable(), showOnWebsite: z.boolean(), signup: z.boolean(), audience: z.array(id).max(100),
 });
 
 type Result = { ok: true } | { ok: false; code?: string };
@@ -37,7 +37,7 @@ export async function saveSfoActivity(input: z.infer<typeof activity>) {
     p_id: v.id, p_expected: v.expected, p_title: v.title, p_description: v.description, p_needs_consent: v.needsConsent, p_consent: v.consent,
     p_date: v.date, p_respond_by: v.respondBy, p_location: v.location || null, p_start: v.start, p_end: v.end, p_capacity: v.capacity,
     p_min_age: v.minAge, p_max_age: v.maxAge, p_price_ore: v.priceOre || null, p_payment_due: v.priceOre ? v.paymentDue : null,
-    p_show_on_website: v.showOnWebsite, p_audience: v.audience,
+    p_show_on_website: v.showOnWebsite, p_audience: v.audience, p_signup: v.signup,
   });
   if (error) return failed("Save SFO activity failed", error.code);
   scheduleSchoolEmails();

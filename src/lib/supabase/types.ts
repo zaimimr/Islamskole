@@ -368,6 +368,7 @@ export type Database = {
           respond_by: string
           school_year_id: string
           show_on_website: boolean
+          signup: boolean
           start_time: string | null
           status: string
           title: string
@@ -394,6 +395,7 @@ export type Database = {
           respond_by: string
           school_year_id: string
           show_on_website?: boolean
+          signup?: boolean
           start_time?: string | null
           status?: string
           title: string
@@ -420,6 +422,7 @@ export type Database = {
           respond_by?: string
           school_year_id?: string
           show_on_website?: boolean
+          signup?: boolean
           start_time?: string | null
           status?: string
           title?: string
@@ -4279,9 +4282,19 @@ export type Database = {
           min_age: number | null
           price_ore: number | null
           respond_by: string
+          signup: boolean
           spots_left: number | null
           start_time: string | null
           title: string
+        }[]
+      }
+      sfo_allergy_list: {
+        Args: never
+        Returns: {
+          allergies: string
+          classes: string
+          name: string
+          student_id: string
         }[]
       }
       record_activity_payment: { Args: { p_payment: string }; Returns: number }
@@ -4375,6 +4388,7 @@ export type Database = {
           p_price_ore: number | null
           p_respond_by: string
           p_show_on_website: boolean
+          p_signup?: boolean
           p_start: string | null
           p_title: string
         }
@@ -4398,6 +4412,7 @@ export type Database = {
           respond_by: string
           school_year_id: string
           show_on_website: boolean
+          signup: boolean
           start_time: string | null
           status: string
           title: string
@@ -4467,6 +4482,7 @@ export type Database = {
           respond_by: string
           school_year_id: string
           show_on_website: boolean
+          signup: boolean
           start_time: string | null
           status: string
           title: string

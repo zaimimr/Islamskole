@@ -223,6 +223,37 @@ select set_config('request.jwt.claims', '{"sub":"5f000000-0000-0000-0000-0000000
 select ok(public.activity_can_staff('5f000000-0000-0000-0000-0000000000b9'), 'class teacher still manages class activities');
 select ok(not public.activity_can_staff('5f000000-0000-0000-0000-0000000000b2'), 'class teacher cannot manage SFO activities');
 
+select set_config('request.jwt.claims', '{"sub":"5f000000-0000-0000-0000-0000000000a2","email":"zz-sfo-staff@zztest.local","role":"authenticated"}', true);
+select throws_ok(
+  $$ select public.save_sfo_activity('5f000000-0000-0000-0000-0000000000b4', null, 'ZZTEST Feil', '', false, '', public.oslo_today(), public.oslo_today(), null, null, null, null, null, null, 5000, null, false, '{}', false) $$,
+  '22023', null, 'an activity without sign-up cannot have a price');
+select lives_ok(
+  $$ select public.save_sfo_activity('5f000000-0000-0000-0000-0000000000b3', null, 'ZZTEST Skoletid', '', false, '', public.oslo_today(), public.oslo_today() - 5, null, null, null, null, null, null, null, null, true, '{}', false) $$,
+  'SFO saves an activity without sign-up');
+select is((select respond_by from public.school_activities where id = '5f000000-0000-0000-0000-0000000000b3'), public.oslo_today(), 'no sign-up uses the event date as deadline');
+select lives_ok($$ select public.publish_school_activity('5f000000-0000-0000-0000-0000000000b3', (select updated_at from public.school_activities where id = '5f000000-0000-0000-0000-0000000000b3')) $$, 'activity without sign-up is published');
+select throws_ok(
+  $$ select public.save_sfo_activity('5f000000-0000-0000-0000-0000000000b3', (select updated_at from public.school_activities where id = '5f000000-0000-0000-0000-0000000000b3'), 'ZZTEST Skoletid', '', false, '', public.oslo_today(), public.oslo_today(), null, null, null, null, null, null, null, null, true, '{}', true) $$,
+  '23514', null, 'sign-up cannot be switched on after publishing');
+select is((select count(*) from public.sfo_activity_roster('5f000000-0000-0000-0000-0000000000b3')), 4::bigint, 'roster lists every invited child without responses');
+select ok((select bool_and(going) from public.sfo_activity_roster('5f000000-0000-0000-0000-0000000000b3')), 'every child counts as attending');
+select is((select allergies from public.sfo_activity_roster('5f000000-0000-0000-0000-0000000000b3') where student_id = '5f000000-0000-0000-0000-000000000051'), 'Nøtter', 'roster shows allergies');
+select is((select guardians->0->>'phone' from public.sfo_activity_roster('5f000000-0000-0000-0000-0000000000b3') where student_id = '5f000000-0000-0000-0000-000000000051'), '+4790000001', 'roster shows guardian phone');
+select lives_ok($$ select public.record_activity_participation('5f000000-0000-0000-0000-0000000000b3', '5f000000-0000-0000-0000-000000000052', 'participated') $$, 'attendance is recorded without a response');
+select is((select participation from public.activity_students where activity_id = '5f000000-0000-0000-0000-0000000000b3' and student_id = '5f000000-0000-0000-0000-000000000052'), 'participated', 'attendance is stored');
+select is((select allergies from public.sfo_allergy_list() where student_id = '5f000000-0000-0000-0000-000000000051'), 'Nøtter', 'SFO staff read the allergy list');
+select is((select count(*) from public.sfo_allergy_list() where student_id = '5f000000-0000-0000-0000-000000000052'), 0::bigint, 'children without allergies are not listed');
+
+select set_config('request.jwt.claims', '{"sub":"5f000000-0000-0000-0000-0000000000a3","email":"zz-sfo-parent@zztest.local","role":"authenticated"}', true);
+select throws_ok(
+  $$ select public.respond_school_activity(gen_random_uuid(), '5f000000-0000-0000-0000-0000000000b3', '5f000000-0000-0000-0000-000000000051', (select updated_at from public.school_activities where id = '5f000000-0000-0000-0000-0000000000b3'), 'granted', true) $$,
+  '22023', null, 'parents cannot respond to an activity without sign-up');
+select throws_ok($$ select * from public.sfo_allergy_list() $$, '42501', null, 'a parent cannot read the allergy list');
+
+reset role;
+select ok(exists(select 1 from public.audit_log where action = 'sfo.allergies.read' and actor_id = '5f000000-0000-0000-0000-0000000000a2'), 'allergy list reads are audited');
+select is((select count(distinct family_id) from public.school_email_deliveries where kind = 'activity_consent' and entity_id = '5f000000-0000-0000-0000-0000000000b3'), 2::bigint, 'publishing notifies every invited family');
+
 select * from finish();
 
 rollback;

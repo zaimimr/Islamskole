@@ -148,7 +148,7 @@ async function activityData(admin: Admin, delivery: SchoolDelivery, locale: stri
     previous = [dateLabel(before.event_date, locale), timeLabel(before.start_time, before.end_time), before.location].filter(Boolean).join(" · ");
   }
   const { data: activity, error } = await admin.from("school_activities")
-    .select("title, event_date, respond_by, status, owner, needs_consent, start_time, end_time, location, price_ore, payment_due, cancel_refund, cancel_refund_ore").eq("id", activityId).maybeSingle();
+    .select("title, event_date, respond_by, status, owner, signup, needs_consent, start_time, end_time, location, price_ore, payment_due, cancel_refund, cancel_refund_ore").eq("id", activityId).maybeSingle();
   if (error) throw error;
   const cancelled = delivery.kind === "activity_cancelled";
   const sfo = activity?.owner === "sfo";
@@ -156,7 +156,7 @@ async function activityData(admin: Admin, delivery: SchoolDelivery, locale: stri
   if (!activity || activity.status !== (cancelled ? "cancelled" : "published")) return null;
   if ((delivery.kind === "activity_changed" || delivery.kind === "activity_payment_reminder") ? activity.event_date < today
     : !cancelled && activity.respond_by < today) return null;
-  const goingOnly = sfo && delivery.kind !== "activity_consent" && delivery.kind !== "activity_added" && delivery.kind !== "activity_respond_reminder";
+  const goingOnly = sfo && activity.signup && delivery.kind !== "activity_consent" && delivery.kind !== "activity_added" && delivery.kind !== "activity_respond_reminder";
   let query = admin.from("activity_students").select("student_id, students!inner(id, child_first_name, child_last_name, family_id)")
     .eq("activity_id", activityId).eq("students.family_id", delivery.family_id!);
   if (studentId) query = query.eq("student_id", studentId);
@@ -184,7 +184,7 @@ async function activityData(admin: Admin, delivery: SchoolDelivery, locale: stri
   const refund = cancelled && sfo && activity.price_ore != null
     ? activity.cancel_refund === "full" ? formatNok(activity.price_ore) : activity.cancel_refund === "amount" && activity.cancel_refund_ore ? formatNok(activity.cancel_refund_ore) : activity.cancel_refund === "none" ? "" : undefined
     : undefined;
-  return data.length ? { names: data.map((row) => studentDisplayName(row.students)), activityId, activitySfo: sfo, activityNeedsConsent: activity.needs_consent,
+  return data.length ? { names: data.map((row) => studentDisplayName(row.students)), activityId, activitySfo: sfo, activitySignup: activity.signup, activityNeedsConsent: activity.needs_consent,
     activityTitle: activity.title, activityDate: dateLabel(activity.event_date, locale), activityDeadline: dateLabel(activity.respond_by, locale), activityStudentId: data[0].students.id,
     activityTime: timeLabel(activity.start_time, activity.end_time), activityLocation: activity.location ?? "", activityPrevious: previous, activityRefund: refund,
     amount: owed ? formatNok(owed) : activity.price_ore != null ? formatNok(activity.price_ore) : undefined, dueDate: activity.payment_due ? dateLabel(activity.payment_due, locale) : undefined } : null;

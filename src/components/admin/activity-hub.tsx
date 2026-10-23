@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { CalendarDays, Clock3, MapPin, Pencil, Plus } from "lucide-react";
+import { CalendarDays, Clock3, HeartPulse, MapPin, Pencil, Plus } from "lucide-react";
 import type { Locale } from "@/i18n/routing";
 import { getAccess } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -45,7 +45,7 @@ async function loadItems(locale: Locale) {
   const today = osloToday();
   const [events, sfo] = await Promise.all([
     client.from("events").select("id, slug, title_no, starts_at, location, published").order("starts_at", { ascending: false }),
-    client.from("school_activities").select("id, title, event_date, start_time, end_time, location, status, price_ore, capacity").eq("owner", "sfo").order("event_date", { ascending: false }),
+    client.from("school_activities").select("id, title, event_date, start_time, end_time, location, status, price_ore, capacity, signup").eq("owner", "sfo").order("event_date", { ascending: false }),
   ]);
   if (events.error || sfo.error) return null;
   const ids = sfo.data.map((row) => row.id);
@@ -69,7 +69,7 @@ async function loadItems(locale: Locale) {
         sortKey: new Date(`${activity.event_date}T${activity.start_time ?? "00:00"}`).getTime(), upcoming: activity.event_date >= today,
         day: activity.event_date, when: [formatSchoolDay(activity.event_date, "no"), time].filter(Boolean).join(" "),
         location: activity.location, status: statusLabel[activity.status] ?? ["Ukjent", "neutral"],
-        extra: `Påmeldt: ${going}${activity.capacity ? ` / ${activity.capacity}` : ""}${activity.price_ore != null ? ` · ${formatNok(activity.price_ore)}` : ""}`,
+        extra: !activity.signup ? "Uten påmelding" : `Påmeldt: ${going}${activity.capacity ? ` / ${activity.capacity}` : ""}${activity.price_ore != null ? ` · ${formatNok(activity.price_ore)}` : ""}`,
         shareUrl: null,
       };
     }),
@@ -156,9 +156,13 @@ export async function ActivityHub({ locale, sp, listPath }: { locale: Locale; sp
   const basePath = adminBasePath(locale);
   const access = await getAccess();
   const canSfo = access.permissions.has("activities.sfo.manage");
+  const canAllergies = access.permissions.has("students.allergies.read");
   return <div className="grid gap-6 lg:gap-7">
     <PageHeader title="Aktiviteter"
-      action={access.admin ? <Link href={`${basePath}/aktiviteter/ny`} className={buttonVariants({ variant: "outline", className: "min-h-11 rounded-xl font-bold" })}><Plus aria-hidden="true" className="size-4" />Nytt arrangement</Link> : undefined}
+      action={access.admin || canAllergies ? <>
+        {canAllergies ? <Link href={`${basePath}/sfo/allergier`} className={buttonVariants({ variant: "outline", className: "min-h-11 rounded-xl font-bold" })}><HeartPulse aria-hidden="true" className="size-4" />Allergiliste</Link> : null}
+        {access.admin ? <Link href={`${basePath}/aktiviteter/ny`} className={buttonVariants({ variant: "outline", className: "min-h-11 rounded-xl font-bold" })}><Plus aria-hidden="true" className="size-4" />Nytt arrangement</Link> : null}
+      </> : undefined}
       newHref={canSfo ? `${basePath}/sfo/ny` : undefined} newLabel="Ny SFO-aktivitet" />
     <Suspense fallback={<><ListCardSkeleton rows={2} lead="tile" /><ListCardSkeleton rows={3} lead="tile" /></>}>
       <ActivitySections locale={locale} sp={sp} listPath={listPath} admin={access.admin} />

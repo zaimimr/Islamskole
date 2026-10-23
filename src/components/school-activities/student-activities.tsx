@@ -9,7 +9,7 @@ export async function StudentActivities({ studentId, locale, guardian = false }:
   const en = locale === "en";
   const client = await createClient();
   const [{ data, error }, { data: responses, error: responseError }, { data: history, error: historyError }, { data: status }] = await Promise.all([
-    client.from("activity_students").select("activity_id, participation, school_activities!inner(id, title, description, consent_text, needs_consent, event_date, respond_by, status, updated_at, owner, location, start_time, end_time, price_ore)").eq("student_id", studentId),
+    client.from("activity_students").select("activity_id, participation, school_activities!inner(id, title, description, consent_text, needs_consent, signup, event_date, respond_by, status, updated_at, owner, location, start_time, end_time, price_ore)").eq("student_id", studentId),
     client.from("activity_responses").select("activity_id, consent, going, guardian_name, responded_at").eq("student_id", studentId),
     client.from("activity_response_history").select("id, activity_id, consent, going, guardian_name, responded_at").eq("student_id", studentId).order("responded_at", { ascending: false }),
     client.rpc("my_activity_status", { p_student: studentId }),
@@ -26,7 +26,7 @@ export async function StudentActivities({ studentId, locale, guardian = false }:
       const response = responses?.find((item) => item.activity_id === activity.id);
       const earlier = history?.filter((item) => item.activity_id === activity.id) ?? [];
       const state = status?.find((item) => item.activity_id === activity.id);
-      const open = activity.status === "published" && activity.respond_by >= today && activity.event_date >= today && row.participation === "unrecorded";
+      const open = activity.signup && activity.status === "published" && activity.respond_by >= today && activity.event_date >= today && row.participation === "unrecorded";
       const time = [activity.start_time?.slice(0, 5), activity.end_time?.slice(0, 5)].filter(Boolean).join("–");
       const paid = state?.paid_ore ?? 0;
       const owing = activity.price_ore != null && response?.going ? Math.max(activity.price_ore - paid, 0) : 0;
@@ -37,14 +37,16 @@ export async function StudentActivities({ studentId, locale, guardian = false }:
         <p className="whitespace-pre-line wrap-anywhere">{activity.description}</p>
         {activity.needs_consent ? <><p className="font-semibold">{en ? "Consent statement" : "Samtykketekst"}</p><p className="whitespace-pre-line wrap-anywhere">{activity.consent_text}</p></> : null}
         {activity.price_ore != null ? <p>{en ? "Price" : "Pris"}: {formatNok(activity.price_ore)}{response?.going ? ` · ${owing > 0 ? (en ? `Paid ${formatNok(paid)}` : `Betalt ${formatNok(paid)}`) : (en ? "Paid" : "Betalt")}` : ""}</p> : null}
-        <p className="text-sm text-muted-foreground">{en ? "Response deadline" : "Svarfrist"}: {formatSchoolDay(activity.respond_by, locale)}</p>
-        <p className="font-semibold">{response ? answer(response.consent, response.going, activity.needs_consent) : (en ? "Awaiting guardian response" : "Venter på svar fra foresatt")}</p>
+        {activity.signup ? <>
+          <p className="text-sm text-muted-foreground">{en ? "Response deadline" : "Svarfrist"}: {formatSchoolDay(activity.respond_by, locale)}</p>
+          <p className="font-semibold">{response ? answer(response.consent, response.going, activity.needs_consent) : (en ? "Awaiting guardian response" : "Venter på svar fra foresatt")}</p>
+        </> : <p className="font-semibold">{en ? "No sign-up needed" : "Ingen påmelding"}</p>}
         {response ? <p className="text-sm text-muted-foreground">{response.guardian_name} · {formatSchoolDay(response.responded_at.slice(0, 10), locale)}</p> : null}
         {guardian && open ? <ActivityResponse activityId={activity.id} studentId={studentId} expected={activity.updated_at} consent={response?.consent} going={response?.going} locale={locale}
           needsConsent={activity.needs_consent} full={state?.spots_left === 0 && !response?.going}
           health={state?.health_confirm_needed ? { allergies: state.allergies, medicalNotes: state.medical_notes, editHref: `/min-side/familie#child-${studentId}` } : null} /> : null}
         {guardian && owing > 0 && activity.status === "published" && activity.event_date >= today ? <ActivityPayButton activityId={activity.id} studentId={studentId} amount={formatNok(owing)} locale={locale} /> : null}
-        {activity.status === "published" && !open ? <p className="text-sm text-muted-foreground">{en ? "Responses closed" : "Svarfristen er utløpt"}</p> : null}
+        {activity.signup && activity.status === "published" && !open ? <p className="text-sm text-muted-foreground">{en ? "Responses closed" : "Svarfristen er utløpt"}</p> : null}
         {row.participation !== "unrecorded" ? <p>{row.participation === "participated" ? (en ? "Participated" : "Deltok") : (en ? "Absent" : "Fravær")}</p> : null}
         {earlier.length ? <details><summary className="min-h-11 cursor-pointer py-2 font-semibold">{en ? "Response history" : "Svarhistorikk"}</summary><ul className="grid gap-2">{earlier.map((item) => <li key={item.id} className="border-t pt-2"><p>{item.guardian_name} · {formatSchoolDay(item.responded_at.slice(0, 10), locale)}</p><p>{answer(item.consent, item.going, activity.needs_consent)}</p></li>)}</ul></details> : null}
       </article>;

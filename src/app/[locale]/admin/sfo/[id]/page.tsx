@@ -69,13 +69,13 @@ export default async function SfoActivityPage({ params }: PageProps<"/[locale]/a
     {showRoster ? <section aria-labelledby="sfo-roster" className={`${card} grid gap-4`}>
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="sfo-roster" className="font-heading text-xl font-bold">Deltakere</h2><PrintRoster locale="no" /></div>
       {roster.error ? <p role="status">Kunne ikke hente deltakerlisten</p> : <>
-        <p className="font-semibold">Deltar: {going.length}{activity.capacity ? ` / ${activity.capacity}` : ""} · Deltar ikke: {(roster.data ?? []).length - going.length}</p>
+        <p className="font-semibold">{activity.signup ? <>Deltar: {going.length}{activity.capacity ? ` / ${activity.capacity}` : ""} · Deltar ikke: {(roster.data ?? []).length - going.length}</> : <>Uten påmelding · Elever: {going.length}</>}</p>
         {health.length ? <div className="grid gap-1 rounded-xl bg-[#FEF3D7] p-4"><p className="font-bold">Allergier og helse</p>{health.map((row) => <p key={row.student_id}><span className="font-semibold">{row.name}</span>: {[row.allergies, row.medical_notes].filter(Boolean).join(" · ")}</p>)}</div> : null}
         <ul className="grid gap-3 lg:grid-cols-2">{(roster.data ?? []).map((row) => {
           const guardians = (row.guardians as Person[] | null) ?? [];
           const pickup = (row.pickup as Person[] | null) ?? [];
           return <li key={row.student_id} className="grid gap-2 rounded-xl border border-[#E3DED3] p-4 break-inside-avoid">
-            <p className="flex flex-wrap items-center gap-2"><span className="font-bold">{row.name}</span>{row.age != null ? <span className="text-sm text-admin-muted">{row.age} år</span> : null}<StatusPill tone={row.going ? "ok" : "neutral"}>{row.going ? "Deltar" : row.consent === "declined" ? "Ikke samtykke" : "Deltar ikke"}</StatusPill></p>
+            <p className="flex flex-wrap items-center gap-2"><span className="font-bold">{row.name}</span>{row.age != null ? <span className="text-sm text-admin-muted">{row.age} år</span> : null}{activity.signup ? <StatusPill tone={row.going ? "ok" : "neutral"}>{row.going ? "Deltar" : row.consent === "declined" ? "Ikke samtykke" : "Deltar ikke"}</StatusPill> : null}</p>
             {row.classes ? <p className="text-sm text-admin-muted">{row.classes}</p> : null}
             {row.going ? <>
               {guardians.length ? <p className="text-sm">Foresatte: {guardians.map((person) => [person.name, person.phone].filter(Boolean).join(" ")).join(", ")}</p> : null}

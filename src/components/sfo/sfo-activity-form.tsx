@@ -35,7 +35,7 @@ function osloToday() {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Oslo" }).format(new Date());
 }
 
-function validate(data: FormData, needsConsent: boolean, locked: boolean, published: boolean): Errors {
+function validate(data: FormData, needsConsent: boolean, locked: boolean, published: boolean, signup: boolean): Errors {
   const value = (name: string) => String(data.get(name) ?? "").trim();
   const result: Errors = {};
   const today = osloToday();
@@ -44,6 +44,10 @@ function validate(data: FormData, needsConsent: boolean, locked: boolean, publis
   if (!value("title")) result.title = "Skriv en tittel";
   if (!date) result.date = "Velg dato";
   else if (date < today) result.date = "Datoen er passert";
+  if (!signup) {
+    if (value("start") && value("end") && value("end") <= value("start")) result.end = "Må være etter starttid";
+    return result;
+  }
   if (!respondBy) result.respondBy = "Velg svarfrist";
   else if (!published && respondBy < today) result.respondBy = "Svarfristen er passert";
   else if (date && respondBy > date) result.respondBy = "Må være før eller på datoen";
@@ -73,6 +77,7 @@ export function SfoActivityForm({ initial, audience, classes, basePath }: { init
   const form = useRef<HTMLFormElement>(null);
   const draftId = useRef(initial?.id ?? crypto.randomUUID());
   const [needsConsent, setNeedsConsent] = useState(initial?.needs_consent ?? true);
+  const [signup, setSignup] = useState(initial?.signup ?? true);
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<Errors>({});
   const [attempted, setAttempted] = useState(false);
@@ -85,7 +90,7 @@ export function SfoActivityForm({ initial, audience, classes, basePath }: { init
 
   function revalidate() {
     if (!form.current) return {};
-    const next = validate(new FormData(form.current), needsConsent, locked, published);
+    const next = validate(new FormData(form.current), needsConsent, locked, published, signup);
     setErrors(next);
     return next;
   }
@@ -109,11 +114,12 @@ export function SfoActivityForm({ initial, audience, classes, basePath }: { init
       setMessage("");
       const result = await saveSfoActivity({
         id: draftId.current, expected: initial?.updated_at ?? null, title: String(data.get("title")), description: String(data.get("description") ?? ""),
-        needsConsent, consent: locked ? initial.consent_text : needsConsent ? String(data.get("consent") ?? "") : "", date: String(data.get("date")), respondBy: String(data.get("respondBy")),
+        needsConsent: signup && needsConsent, consent: locked ? initial.consent_text : signup && needsConsent ? String(data.get("consent") ?? "") : "",
+        date: String(data.get("date")), respondBy: String(data.get(signup ? "respondBy" : "date")),
         location: String(data.get("location") ?? "") || null, start: String(data.get("start") ?? "") || null, end: String(data.get("end") ?? "") || null,
-        capacity: toInt(data.get("capacity")), minAge: locked ? initial.min_age : toInt(data.get("minAge")), maxAge: locked ? initial.max_age : toInt(data.get("maxAge")),
-        priceOre: locked ? initial.price_ore : toOre(data.get("price")),
-        paymentDue: String(data.get("paymentDue") ?? "") || null, showOnWebsite: data.get("showOnWebsite") === "on",
+        capacity: signup ? toInt(data.get("capacity")) : null, minAge: locked ? initial.min_age : toInt(data.get("minAge")), maxAge: locked ? initial.max_age : toInt(data.get("maxAge")),
+        priceOre: locked ? initial.price_ore : signup ? toOre(data.get("price")) : null,
+        paymentDue: signup ? String(data.get("paymentDue") ?? "") || null : null, signup, showOnWebsite: data.get("showOnWebsite") === "on",
         audience: locked ? audience : data.getAll("audience").map(String),
       });
       if (!result.ok) { setMessage(serverErrors[result.code ?? ""] ?? "Kunne ikke lagre."); return; }
@@ -131,29 +137,30 @@ export function SfoActivityForm({ initial, audience, classes, basePath }: { init
     <fieldset disabled={pending || closed} className="grid gap-5">
       <div className={field}><Label htmlFor="sfo-title" required>Tittel</Label><Input id="sfo-title" name="title" defaultValue={initial?.title} required maxLength={200} {...invalid("title")} />{error("title")}</div>
       <div className={field}><Label htmlFor="sfo-description">Beskrivelse</Label><Textarea id="sfo-description" name="description" defaultValue={initial?.description} maxLength={4000} /></div>
+      <label className={check}><input type="checkbox" checked={signup} onChange={(event) => setSignup(event.target.checked)} disabled={locked} className="size-4 accent-[#3C8F44]" />Krever påmelding</label>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className={field}><Label htmlFor="sfo-date" required>Dato</Label><Input id="sfo-date" name="date" type="date" defaultValue={initial?.event_date} required {...invalid("date")} />{error("date")}</div>
         <div className={field}><Label htmlFor="sfo-start">Fra</Label><Input id="sfo-start" name="start" type="time" defaultValue={initial?.start_time?.slice(0, 5) ?? ""} /></div>
         <div className={field}><Label htmlFor="sfo-end">Til</Label><Input id="sfo-end" name="end" type="time" defaultValue={initial?.end_time?.slice(0, 5) ?? ""} {...invalid("end")} />{error("end")}</div>
-        <div className={field}><Label htmlFor="sfo-respond" required>Svarfrist</Label><Input id="sfo-respond" name="respondBy" type="date" defaultValue={initial?.respond_by} required {...invalid("respondBy")} />{error("respondBy")}</div>
+        {signup ? <div className={field}><Label htmlFor="sfo-respond" required>Svarfrist</Label><Input id="sfo-respond" name="respondBy" type="date" defaultValue={initial?.respond_by} required {...invalid("respondBy")} />{error("respondBy")}</div> : null}
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className={`${field} lg:col-span-2`}><Label htmlFor="sfo-location">Sted</Label><Input id="sfo-location" name="location" defaultValue={initial?.location ?? ""} maxLength={200} /></div>
-        <div className={field}><Label htmlFor="sfo-capacity">Maks plasser</Label><Input id="sfo-capacity" name="capacity" type="number" min={1} defaultValue={initial?.capacity ?? ""} {...invalid("capacity")} />{error("capacity")}</div>
+        {signup ? <div className={field}><Label htmlFor="sfo-capacity">Maks plasser</Label><Input id="sfo-capacity" name="capacity" type="number" min={1} defaultValue={initial?.capacity ?? ""} {...invalid("capacity")} />{error("capacity")}</div> : null}
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className={field}><Label htmlFor="sfo-min-age">Fra alder</Label><Input id="sfo-min-age" name="minAge" type="number" min={0} max={30} defaultValue={initial?.min_age ?? ""} disabled={locked} {...invalid("minAge")} />{error("minAge")}</div>
         <div className={field}><Label htmlFor="sfo-max-age">Til alder</Label><Input id="sfo-max-age" name="maxAge" type="number" min={0} max={30} defaultValue={initial?.max_age ?? ""} disabled={locked} {...invalid("maxAge")} />{error("maxAge")}</div>
-        <div className={field}><Label htmlFor="sfo-price">Pris (kr)</Label><Input id="sfo-price" name="price" inputMode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?" defaultValue={initial?.price_ore != null ? String(initial.price_ore / 100) : ""} disabled={locked} {...invalid("price")} />{error("price")}</div>
-        <div className={field}><Label htmlFor="sfo-due">Betalingsfrist</Label><Input id="sfo-due" name="paymentDue" type="date" defaultValue={initial?.payment_due ?? ""} {...invalid("paymentDue")} />{error("paymentDue")}</div>
+        {signup ? <><div className={field}><Label htmlFor="sfo-price">Pris (kr)</Label><Input id="sfo-price" name="price" inputMode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?" defaultValue={initial?.price_ore != null ? String(initial.price_ore / 100) : ""} disabled={locked} {...invalid("price")} />{error("price")}</div>
+        <div className={field}><Label htmlFor="sfo-due">Betalingsfrist</Label><Input id="sfo-due" name="paymentDue" type="date" defaultValue={initial?.payment_due ?? ""} {...invalid("paymentDue")} />{error("paymentDue")}</div></> : null}
       </div>
       <fieldset className="grid gap-2" disabled={locked}>
         <legend className="mb-2 text-sm font-semibold">Klasser <span className="font-normal text-admin-muted">(ingen valgt = alle)</span></legend>
         <div className="flex flex-wrap gap-x-6">{classes.map((item) => <label key={item.id} className={check}>
           <input type="checkbox" name="audience" value={item.id} defaultChecked={audience.includes(item.id)} className="size-4 accent-[#3C8F44]" />{item.name}</label>)}</div>
       </fieldset>
-      <label className={check}><input type="checkbox" checked={needsConsent} onChange={(event) => setNeedsConsent(event.target.checked)} disabled={locked} className="size-4 accent-[#3C8F44]" />Krever samtykke</label>
-      {needsConsent ? <div className={field}><Label htmlFor="sfo-consent" required>Samtykketekst</Label><Textarea id="sfo-consent" name="consent" defaultValue={initial?.consent_text} required maxLength={4000} disabled={locked} {...invalid("consent")} />{error("consent")}</div> : null}
+      {signup ? <label className={check}><input type="checkbox" checked={needsConsent} onChange={(event) => setNeedsConsent(event.target.checked)} disabled={locked} className="size-4 accent-[#3C8F44]" />Krever samtykke</label> : null}
+      {signup && needsConsent ? <div className={field}><Label htmlFor="sfo-consent" required>Samtykketekst</Label><Textarea id="sfo-consent" name="consent" defaultValue={initial?.consent_text} required maxLength={4000} disabled={locked} {...invalid("consent")} />{error("consent")}</div> : null}
       <label className={check}><input type="checkbox" name="showOnWebsite" defaultChecked={initial?.show_on_website ?? false} className="size-4 accent-[#3C8F44]" />Vis på nettsiden</label>
       {!locked ? <label className={check}><input type="checkbox" checked={notify} onChange={(event) => setNotify(event.target.checked)} className="size-4 accent-[#3C8F44]" />Send e-post til foresatte ved publisering</label> : null}
       <div className="flex flex-wrap gap-3">

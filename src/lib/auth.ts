@@ -17,7 +17,8 @@ export type Permission =
   | "activities.sfo.manage"
   | "activities.sfo.roster"
   | "activities.sfo.payments"
-  | "activities.class.read";
+  | "activities.class.read"
+  | "students.allergies.read";
 
 export type Access = {
   admin: boolean;

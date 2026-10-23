@@ -4,6 +4,7 @@ import { Link } from "@/i18n/navigation";
 import type { PublicSfoActivity } from "@/lib/data";
 import type { Locale } from "@/i18n/routing";
 import { formatNok } from "@/lib/money";
+import { MediaFrame } from "./MediaFrame";
 import { formatEventDate } from "./format";
 
 export async function SfoActivityCard({ item, locale }: { item: PublicSfoActivity; locale: Locale }) {
@@ -15,7 +16,9 @@ export async function SfoActivityCard({ item, locale }: { item: PublicSfoActivit
   const full = item.spots_left === 0;
   const facts = [ages, item.price_ore != null ? formatNok(item.price_ore) : null, full ? t("sfoFull") : item.spots_left != null ? t("sfoSpots", { count: item.spots_left }) : null].filter(Boolean);
   return (
-    <article className="soft-card flex flex-col gap-3 p-6">
+    <article className="soft-card flex flex-col overflow-hidden">
+      <MediaFrame alt={item.title} tone="green" className="aspect-[16/10] w-full" />
+      <div className="flex flex-1 flex-col gap-3 p-6">
       <div className="flex flex-wrap gap-3 text-sm font-semibold text-brand-green-dark">
         <span className="inline-flex items-center gap-1.5"><CalendarDaysIcon className="size-4" aria-hidden="true" />{date}</span>
         {item.location && <span className="inline-flex items-center gap-1.5 text-muted-foreground"><MapPinIcon className="size-4" aria-hidden="true" />{item.location}</span>}
@@ -24,6 +27,7 @@ export async function SfoActivityCard({ item, locale }: { item: PublicSfoActivit
       {item.description && <p className="line-clamp-4 text-base text-muted-foreground text-balance-pretty">{item.description}</p>}
       {facts.length > 0 && <p className="text-sm font-semibold">{facts.join(" · ")}</p>}
       {!full && <Link href="/min-side/logg-inn?next=/min-side" className="mt-auto inline-flex min-h-11 w-fit items-center rounded-full bg-brand-green-dark px-5 text-base font-bold text-white outline-none focus-visible:ring-3 focus-visible:ring-ring/50">{t("sfoSignUp")}</Link>}
+      </div>
     </article>
   );
 }

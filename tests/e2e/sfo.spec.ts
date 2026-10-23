@@ -53,6 +53,9 @@ test("SFO staff publish a paid trip, parents sign up with health check, cash is 
   const card = page.getByRole("article").filter({ hasText: title });
   await expect(card.getByText("150 kr · 1 plass igjen")).toBeVisible();
   await expect(card.getByRole("link", { name: "Meld på" })).toHaveAttribute("href", /\/min-side\/logg-inn\?next=/);
+  await expect(page.getByRole("region", { name: "Kommende" }).getByRole("article").filter({ hasText: title })).toBeVisible();
+  await page.goto("/");
+  await expect(page.getByRole("article").filter({ hasText: title })).toBeVisible();
 
   await loginAs(context, family.guardians[0].email);
   await page.goto(`/min-side/barn/${family.students[0].id}`);

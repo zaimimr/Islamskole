@@ -5,7 +5,7 @@ import { getPublicSfoActivities, getPublishedEvents } from "@/lib/data";
 import { PageHeader } from "@/components/site/PageHeader";
 import { Section, SectionHeading } from "@/components/site/Section";
 import { EventCard } from "@/components/site/EventCard";
-import { SfoActivityCard } from "@/components/site/SfoActivityCard";
+import { ActivityGrid } from "@/components/site/ActivityGrid";
 import { EmptyState } from "@/components/site/EmptyState";
 import { isUpcoming } from "@/components/site/format";
 
@@ -47,30 +47,15 @@ export default async function EventsPage({
           title={t("upcoming")}
         />
         <div className="mt-10">
-          {upcoming.length > 0 ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {upcoming.map((item) => (
-                <EventCard key={item.id} item={item} locale={typedLocale} />
-              ))}
-            </div>
+          {upcoming.length + sfo.length > 0 ? (
+            <ActivityGrid events={upcoming} sfo={sfo} locale={typedLocale} />
           ) : (
             <EmptyState message={t("emptyUpcoming")} />
           )}
         </div>
       </Section>
 
-      {sfo.length > 0 && (
-        <Section ariaLabelledby="sfo-heading">
-          <SectionHeading id="sfo-heading" align="left" title={t("sfoTitle")} />
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {sfo.map((item) => (
-              <SfoActivityCard key={item.id} item={item} locale={typedLocale} />
-            ))}
-          </div>
-        </Section>
-      )}
-
-      <Section className={sfo.length > 0 ? "bg-card" : undefined} ariaLabelledby="past-heading">
+      <Section ariaLabelledby="past-heading">
         <SectionHeading id="past-heading" align="left" title={t("past")} />
         <div className="mt-10">
           {past.length > 0 ? (

@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ArrowRightIcon } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
-import { getPublishedClasses, getPublishedEvents } from "@/lib/data";
+import { getPublicSfoActivities, getPublishedClasses, getPublishedEvents } from "@/lib/data";
 import { Hero } from "@/components/site/Hero";
 import { VisionPillars } from "@/components/site/VisionPillars";
 import { ValuesStrip } from "@/components/site/ValuesStrip";
@@ -12,7 +12,7 @@ import { EnrollCta } from "@/components/site/EnrollCta";
 import { DonateCta } from "@/components/site/DonateCta";
 import { ContactCard } from "@/components/site/ContactCard";
 import { ClassCard } from "@/components/site/ClassCard";
-import { EventCard } from "@/components/site/EventCard";
+import { ActivityGrid } from "@/components/site/ActivityGrid";
 import { FeaturedEvent } from "@/components/site/FeaturedEvent";
 import { EmptyState } from "@/components/site/EmptyState";
 import { Section, SectionHeading } from "@/components/site/Section";
@@ -34,19 +34,18 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
   setRequestLocale(locale);
   const typedLocale = locale as Locale;
 
-  const [t, classes, events] = await Promise.all([
+  const [t, classes, events, sfo] = await Promise.all([
     getTranslations(),
     getPublishedClasses(),
     getPublishedEvents(),
+    getPublicSfoActivities(),
   ]);
 
   const previewClasses = classes.slice(0, 3);
   const upcoming = events.filter((e) => isUpcoming(e.starts_at, e.ends_at));
   const featured = upcoming.find((e) => isThisWeek(e.starts_at)) ?? null;
-  const hasUpcoming = upcoming.length > 0;
-  const upcomingPreview = upcoming
-    .filter((e) => e.id !== featured?.id)
-    .slice(0, 3);
+  const hasUpcoming = upcoming.length + sfo.length > 0;
+  const upcomingPreview = upcoming.filter((e) => e.id !== featured?.id);
   const recentPast = hasUpcoming
     ? []
     : events
@@ -54,8 +53,9 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
         .reverse()
         .slice(0, 3);
   const previewEvents = hasUpcoming ? upcomingPreview : recentPast;
+  const previewCount = previewEvents.length + (hasUpcoming ? sfo.length : 0);
   const showEventsTop = hasUpcoming && !featured;
-  const showEventsBottom = !showEventsTop && previewEvents.length > 0;
+  const showEventsBottom = !showEventsTop && previewCount > 0;
 
   const eventsSection = (
     <Section className="bg-card" ariaLabelledby="home-events-heading">
@@ -81,11 +81,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
             {t("events.recentTitle")}
           </p>
         ) : null}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {previewEvents.map((item) => (
-            <EventCard key={item.id} item={item} locale={typedLocale} />
-          ))}
-        </div>
+        <ActivityGrid events={previewEvents} sfo={hasUpcoming ? sfo : []} locale={typedLocale} limit={3} />
       </div>
     </Section>
   );

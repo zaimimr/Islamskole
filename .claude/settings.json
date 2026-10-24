@@ -1,0 +1,9 @@
+{
+  "enabledPlugins": {
+    "web@zaim": true,
+    "impeccable@impeccable": true
+  },
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
+}

@@ -131,6 +131,35 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
     );
   }
 
+  const viewNav = (
+    <nav aria-label="Dagsplanvisning" className="flex gap-1 border-b border-[#E3DED3]">
+      {[
+        { label: "Timeplan", view: null, active: !attendanceView && !totalsView },
+        { label: "Oppmøte", view: "oppmote", active: attendanceView },
+        { label: "Totalt", view: "totalt", active: totalsView },
+      ].map((view) => (
+        <Link
+          key={view.label}
+          href={`${basePath}/dagsplan?dag=${day.id}${view.view ? `&visning=${view.view}` : ""}`}
+          aria-current={view.active ? "page" : undefined}
+          className={`-mb-px inline-flex min-h-11 items-center border-b-2 px-3 text-sm font-bold outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${view.active ? "border-[#2F7938] text-[#1D4E24]" : "border-transparent text-admin-muted hover:text-foreground"}`}
+        >
+          {view.label}
+        </Link>
+      ))}
+    </nav>
+  );
+
+  if (totalsView) {
+    return (
+      <div className="grid gap-6 lg:gap-7">
+        {header}
+        {viewNav}
+        <AttendanceTotals yearId={year.id} />
+      </div>
+    );
+  }
+
   const [{ data: lessonData }, { data: attendanceData }, { data: noteData }, { data: absenceData }, enrollmentResult] = await Promise.all([
     supabase
       .from("lessons")
@@ -277,7 +306,7 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
     <div className="grid gap-6 lg:gap-7">
       <div className="flex flex-wrap items-end justify-between gap-4">
         {header}
-        {totalsView ? null : <DayPicker
+        <DayPicker
           basePath={`${basePath}/dagsplan`}
           selectedId={day.id}
           days={days.map((item) => ({
@@ -286,29 +315,11 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
               item.cancelled ? " (avlyst)" : item.date === today ? " (i dag)" : ""
             }`,
           }))}
-        />}
+        />
       </div>
 
-      <nav aria-label="Dagsplanvisning" className="flex gap-1 border-b border-[#E3DED3]">
-        {[
-          { label: "Timeplan", view: null, active: !attendanceView && !totalsView },
-          { label: "Oppmøte", view: "oppmote", active: attendanceView },
-          { label: "Totalt", view: "totalt", active: totalsView },
-        ].map((view) => (
-          <Link
-            key={view.label}
-            href={`${basePath}/dagsplan?dag=${day.id}${view.view ? `&visning=${view.view}` : ""}`}
-            aria-current={view.active ? "page" : undefined}
-            className={`-mb-px inline-flex min-h-11 items-center border-b-2 px-3 text-sm font-bold outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${view.active ? "border-[#2F7938] text-[#1D4E24]" : "border-transparent text-admin-muted hover:text-foreground"}`}
-          >
-            {view.label}
-          </Link>
-        ))}
-      </nav>
+      {viewNav}
 
-      {totalsView ? (
-        <AttendanceTotals yearId={year.id} />
-      ) : <>
       {day.cancelled ? (
         <p role="status" className="flex gap-2 rounded-2xl bg-[#FFF8E9] p-4 text-sm ring-1 ring-[#ECDCB9]">
           <CalendarX aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
@@ -361,7 +372,6 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
           <EnsureLessonsButton schoolDayId={day.id} />
         </section>
       )}
-      </>}
     </div>
   );
 }

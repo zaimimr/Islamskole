@@ -70,7 +70,7 @@ export default async function ClassDetailPage({
         <div className="section-shell relative pt-10 pb-16 sm:pt-14">
           <Link
             href="/klasser"
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-green-dark outline-none hover:underline focus-visible:underline"
+            className="-my-2.5 inline-flex items-center gap-1.5 py-2.5 text-sm font-semibold text-brand-green-dark outline-none hover:underline focus-visible:underline"
           >
             <ArrowLeftIcon className="size-4" aria-hidden="true" />
             {tCommon("backToClasses")}

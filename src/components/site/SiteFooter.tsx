@@ -94,7 +94,7 @@ export async function SiteFooter() {
                 <MailIcon className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
                 <a
                   href={`mailto:${email}`}
-                  className="hover:text-primary-foreground focus-visible:underline outline-none"
+                  className="-my-1 py-1 hover:text-primary-foreground focus-visible:underline outline-none"
                 >
                   {email}
                 </a>
@@ -103,7 +103,7 @@ export async function SiteFooter() {
                 <MailIcon className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
                 <a
                   href={`mailto:${enrollEmail}`}
-                  className="hover:text-primary-foreground focus-visible:underline outline-none"
+                  className="-my-1 py-1 hover:text-primary-foreground focus-visible:underline outline-none"
                 >
                   {enrollEmail}
                 </a>

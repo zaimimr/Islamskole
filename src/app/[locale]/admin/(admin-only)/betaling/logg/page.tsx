@@ -482,7 +482,7 @@ export default async function PaymentLogPage({
   );
 
   const fieldClass =
-    "min-h-11 w-full rounded-xl border border-[#DCD7CC] bg-white px-3 text-base sm:text-sm outline-none focus-visible:border-[#3C8F44] focus-visible:ring-3 focus-visible:ring-ring/30";
+    "min-h-11 w-full min-w-0 rounded-xl border border-[#DCD7CC] bg-white px-3 text-base sm:text-sm outline-none focus-visible:border-[#3C8F44] focus-visible:ring-3 focus-visible:ring-ring/30";
 
   return (
     <div className="grid gap-6 lg:gap-7">

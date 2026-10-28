@@ -460,7 +460,7 @@ export function FamilyEconomy({
                     value={option.value}
                     checked={planType === option.value}
                     onChange={() => setPlanType(option.value)}
-                    className="mt-1 size-4 accent-[#3C8F44]"
+                    className="mt-1 size-4 shrink-0 accent-[#3C8F44]"
                   />
                   <span>
                     <span className="block font-bold">{option.title}</span>

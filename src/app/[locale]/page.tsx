@@ -69,7 +69,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
         />
         <Link
           href="/aktiviteter"
-          className="inline-flex shrink-0 items-center gap-1.5 text-base font-bold text-brand-green-dark outline-none focus-visible:underline"
+          className="-my-1 inline-flex shrink-0 items-center gap-1.5 py-1 text-base font-bold text-brand-green-dark outline-none focus-visible:underline"
         >
           {t("events.viewAll")}
           <ArrowRightIcon className="size-4" aria-hidden="true" />
@@ -110,7 +110,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
           />
           <Link
             href="/klasser"
-            className="inline-flex shrink-0 items-center gap-1.5 text-base font-bold text-brand-green-dark outline-none focus-visible:underline"
+            className="-my-1 inline-flex shrink-0 items-center gap-1.5 py-1 text-base font-bold text-brand-green-dark outline-none focus-visible:underline"
           >
             {t("classes.viewAll")}
             <ArrowRightIcon className="size-4" aria-hidden="true" />

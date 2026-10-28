@@ -249,7 +249,7 @@ export function SadaqaCoverDialog({
             </DialogFooter>
           </div>
         ) : !family ? (
-          <div className="grid gap-3 py-1">
+          <div className="grid grid-cols-1 gap-3 py-1">
             <div className="grid gap-1.5">
               <Label htmlFor="sadaqa-family-search">Finn familie eller barn</Label>
               <div className="relative">
@@ -278,7 +278,7 @@ export function SadaqaCoverDialog({
                   : "Ingen familier har noe igjen å betale."}
               </p>
             ) : (
-              <ul className="grid gap-1.5">
+              <ul className="grid grid-cols-1 gap-1.5">
                 {matches.map((option) => {
                   const remaining = option.children.reduce(
                     (sum, child) => sum + Math.max(child.remainingOre, 0),

@@ -170,7 +170,7 @@ export async function FamilyEconomy({
                         {payment.children.map((child) => (
                           <li key={child.name} className="flex justify-between gap-3">
                             <span>{child.name}</span>
-                            <span className="tabular-nums">{formatNok(child.amount)}</span>
+                            <span className="shrink-0 whitespace-nowrap tabular-nums">{formatNok(child.amount)}</span>
                           </li>
                         ))}
                       </ul>

@@ -101,4 +101,43 @@ test.describe("teacher absence", () => {
     await expect(rowWith(page, teacher.name)).toContainText("Borte 1 gang");
     await expect(rowWith(page, teacher.name)).toContainText("1 ikke varslet");
   });
+
+  test("admin registers absence and sets up substitute right away", async ({ page, context }) => {
+    const year = await activeYear();
+    const day = await seedFutureDay(year.id);
+    const schoolClass = await seedClass();
+    const family = await seedFamily();
+    await enroll(family.students[0].id, schoolClass.id, year.id);
+    const teacher = await seedTeacher();
+    const substitute = await seedTeacher();
+    await assignTeacher(teacher.id, schoolClass.id, year.id);
+    const { error: deleteError } = await db().from("lessons").delete().eq("school_day_id", day.id).eq("class_id", schoolClass.id);
+    if (deleteError) throw deleteError;
+    const { data: lesson, error } = await db().from("lessons")
+      .insert({ class_id: schoolClass.id, school_day_id: day.id, start_position: 1, end_position: 1, subject: "Islam" })
+      .select("id").single();
+    if (error) throw error;
+
+    const admin = await seedAdmin();
+    await loginAs(context, admin.email);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/admin/dagsplan?dag=${day.id}`);
+    await page.getByRole("button", { name: "Registrer fravær" }).click();
+    const register = page.getByRole("dialog", { name: "Lærer borte" });
+    await pickOption(page, register, "Lærer", teacher.name);
+    await register.getByRole("button", { name: "Lagre" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Sett opp vikar" });
+    await expect(dialog).toContainText(schoolClass.name);
+    await page.screenshot({ path: "test-results/substitute-mobile.png" });
+    await pickOption(page, dialog, new RegExp(schoolClass.name), substitute.name);
+    await dialog.getByRole("button", { name: "Lagre" }).click();
+    await expect(dialog).toBeHidden();
+    await expect.poll(async () => {
+      const { data } = await db().from("lessons").select("teacher_guardian_id, is_substitute").eq("id", lesson.id).single();
+      return data;
+    }).toEqual({ teacher_guardian_id: substitute.id, is_substitute: true });
+    await expect(page.getByRole("region", { name: /Lærere borte/ }).locator("li").filter({ hasText: teacher.name }))
+      .not.toContainText("mangler vikar");
+  });
 });

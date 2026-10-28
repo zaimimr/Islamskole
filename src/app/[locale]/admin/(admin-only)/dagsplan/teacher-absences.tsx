@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { BellOff, BellRing, Loader2, Pencil, Trash2, UserRoundX } from "lucide-react";
-import { removeTeacherAbsence, saveTeacherAbsence } from "@/app/[locale]/admin/lesson-actions";
+import { BellOff, BellRing, Loader2, Pencil, Trash2, UserRoundPlus, UserRoundX } from "lucide-react";
+import { removeTeacherAbsence, saveTeacherAbsence, updateLesson } from "@/app/[locale]/admin/lesson-actions";
 import { NoticeBadge } from "@/components/admin/notice-badge";
 import { RowActionsMenu } from "@/components/admin/row-actions-menu";
 import { Button } from "@/components/ui/button";
@@ -27,8 +27,20 @@ export type TeacherAbsenceRow = {
   notified: boolean;
   reason: string | null;
   byTeacher: boolean;
-  missingLessons: number;
+  uncovered: UncoveredLesson[];
 };
+
+export type UncoveredLesson = {
+  id: string;
+  label: string;
+  subject: string | null;
+  teacherId: string | null;
+  coTeacherId: string | null;
+  note: string | null;
+  busy: Record<string, string>;
+};
+
+const CANCEL = "cancel";
 
 type Draft = { guardianId: string; notified: boolean; reason: string };
 
@@ -44,8 +56,10 @@ export function TeacherAbsences({
   teachers: { id: string; name: string }[];
 }) {
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [substituteFor, setSubstituteFor] = useState<string | null>(null);
   const absentIds = new Set(absences.map((row) => row.guardianId));
   const editing = draft ? absentIds.has(draft.guardianId) : false;
+  const substituteRow = absences.find((row) => row.guardianId === substituteFor);
 
   return (
     <section aria-labelledby="teacher-absences-title" className="rounded-2xl bg-white ring-1 ring-[#E3DED3]">
@@ -72,15 +86,25 @@ export function TeacherAbsences({
                 <p className="flex flex-wrap items-center gap-2">
                   <span className="font-bold">{row.name}</span>
                   <NoticeBadge notified={row.notified} />
-                  {row.missingLessons ? (
+                  {row.uncovered.length ? (
                     <span className="rounded-full bg-[#F9DEDB] px-2 py-0.5 text-xs font-bold text-[#8B2F2B]">
-                      {row.missingLessons} {row.missingLessons === 1 ? "time" : "timer"} mangler vikar
+                      {row.uncovered.length} {row.uncovered.length === 1 ? "time" : "timer"} mangler vikar
                     </span>
                   ) : null}
                 </p>
                 <p className="mt-0.5 text-sm text-admin-muted empty:hidden">
                   {[row.byTeacher ? "Meldt av læreren" : null, row.reason].filter(Boolean).join(" · ")}
                 </p>
+                {row.uncovered.length ? (
+                  <Button
+                    type="button"
+                    className="mt-2 min-h-11 rounded-xl bg-admin-action px-4 font-bold text-white hover:bg-[#245E2B]"
+                    onClick={() => setSubstituteFor(row.guardianId)}
+                  >
+                    <UserRoundPlus aria-hidden="true" className="size-4" />
+                    Sett opp vikar
+                  </Button>
+                ) : null}
               </div>
               <Button
                 type="button"
@@ -141,6 +165,16 @@ export function TeacherAbsences({
             disabled: !editing && absentIds.has(teacher.id),
           }))}
           onClose={() => setDraft(null)}
+          onCreated={setSubstituteFor}
+        />
+      ) : null}
+      {substituteRow?.uncovered.length ? (
+        <SubstituteDialog
+          key={substituteRow.id}
+          absence={substituteRow}
+          teachers={teachers.filter((teacher) => !absentIds.has(teacher.id))}
+          absentIds={absentIds}
+          onClose={() => setSubstituteFor(null)}
         />
       ) : null}
     </section>
@@ -154,6 +188,7 @@ function AbsenceDialog({
   editing,
   teacherOptions,
   onClose,
+  onCreated,
 }: {
   dayId: string;
   dayLabel: string;
@@ -161,6 +196,7 @@ function AbsenceDialog({
   editing: boolean;
   teacherOptions: { value: string; label: string; disabled?: boolean }[];
   onClose: () => void;
+  onCreated: (guardianId: string) => void;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -187,6 +223,7 @@ function AbsenceDialog({
       }
       toast.success("Fraværet er registrert");
       onClose();
+      if (!editing) onCreated(guardianId);
       router.refresh();
     });
   }
@@ -247,6 +284,96 @@ function AbsenceDialog({
           <DialogFooter className="[&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:rounded-xl [&_[data-slot=button]]:px-4">
             <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
               Avbryt
+            </Button>
+            <Button type="submit" disabled={pending} className="bg-admin-action font-bold text-white hover:bg-[#245E2B]">
+              {pending ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : null}
+              Lagre
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SubstituteDialog({
+  absence,
+  teachers,
+  absentIds,
+  onClose,
+}: {
+  absence: TeacherAbsenceRow;
+  teachers: { id: string; name: string }[];
+  absentIds: Set<string>;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [choices, setChoices] = useState<Record<string, string>>({});
+
+  function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const chosen = absence.uncovered.filter((lesson) => choices[lesson.id]);
+    if (!chosen.length) {
+      toast.error("Velg vikar.");
+      return;
+    }
+    startTransition(async () => {
+      for (const lesson of chosen) {
+        const choice = choices[lesson.id];
+        const result = await updateLesson(lesson.id, {
+          subject: lesson.subject,
+          teacherGuardianId: choice === CANCEL ? lesson.teacherId : choice,
+          coTeacherGuardianId:
+            choice === CANCEL || (lesson.coTeacherId && !absentIds.has(lesson.coTeacherId) && lesson.coTeacherId !== choice)
+              ? lesson.coTeacherId
+              : null,
+          cancelled: choice === CANCEL,
+          note: lesson.note,
+        });
+        if (!result.ok) {
+          toast.error(result.error);
+          router.refresh();
+          return;
+        }
+      }
+      toast.success(chosen.length === 1 ? "Timen er oppdatert" : "Timene er oppdatert");
+      onClose();
+      router.refresh();
+    });
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => (open ? null : onClose())}>
+      <DialogContent className="sm:max-w-md">
+        <form onSubmit={save} className="grid gap-4">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-2xl">Sett opp vikar</DialogTitle>
+            <DialogDescription>{absence.name}</DialogDescription>
+          </DialogHeader>
+          {absence.uncovered.map((lesson) => (
+            <div key={lesson.id} className="grid gap-1.5">
+              <Label id={`substitute-${lesson.id}`}>{lesson.label}</Label>
+              <SelectField
+                aria-labelledby={`substitute-${lesson.id}`}
+                options={[
+                  ...teachers.map((teacher) => ({
+                    value: teacher.id,
+                    label: teacher.name,
+                    description: lesson.busy[teacher.id] ? `Underviser i ${lesson.busy[teacher.id]}` : undefined,
+                  })),
+                  { value: CANCEL, label: "Avlys timen" },
+                ]}
+                value={choices[lesson.id] ?? ""}
+                onValueChange={(value) => setChoices((current) => ({ ...current, [lesson.id]: value }))}
+                placeholder="Velg vikar"
+                triggerClassName="min-h-11 rounded-xl"
+              />
+            </div>
+          ))}
+          <DialogFooter className="[&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:rounded-xl [&_[data-slot=button]]:px-4">
+            <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+              Senere
             </Button>
             <Button type="submit" disabled={pending} className="bg-admin-action font-bold text-white hover:bg-[#245E2B]">
               {pending ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : null}

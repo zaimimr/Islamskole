@@ -3,13 +3,23 @@ import Link from "next/link";
 import { CalendarX } from "lucide-react";
 import { adminBasePath } from "@/components/admin/paths";
 import { formatOsloDate, osloToday } from "@/lib/dates";
-import { findDoubleBookings, joinTeacherNames, lessonTeacherIds, needsSubstitute, type TimeSlot } from "@/lib/lessons";
+import {
+  findDoubleBookings,
+  joinTeacherNames,
+  lessonTeacherIds,
+  lessonTitle,
+  needsSubstitute,
+  rangesOverlap,
+  slotRangeTimes,
+  type TimeSlot,
+} from "@/lib/lessons";
 import { createClient } from "@/lib/supabase/server";
 import { DayPicker } from "./day-picker";
 import { DayPlanGrid, type DayPlanClass, type DayPlanTeacher } from "./day-plan-grid";
 import { EnsureLessonsButton } from "./ensure-lessons-button";
 import { TeacherAbsences, type TeacherAbsenceRow } from "./teacher-absences";
 import { DayAttendance } from "./day-attendance";
+import { AttendanceTotals } from "./attendance-totals";
 
 export const metadata: Metadata = { title: "Dagsplan" };
 
@@ -43,6 +53,7 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
   const [{ locale }, query] = await Promise.all([params, searchParams]);
   const basePath = adminBasePath(locale);
   const attendanceView = query.visning === "oppmote";
+  const totalsView = query.visning === "totalt";
   const supabase = await createClient();
   const { data: year } = await supabase
     .from("school_years")
@@ -55,7 +66,7 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
       <h1 className="text-balance font-heading text-[2rem] leading-tight font-bold tracking-[-0.02em] sm:text-4xl">
         Dagsplan
       </h1>
-      {attendanceView ? null : <p className="mt-1 max-w-2xl text-admin-muted">
+      {attendanceView || totalsView ? null : <p className="mt-1 max-w-2xl text-admin-muted">
         Hvem underviser hvilken klasse i hver time. Bytt inn vikar, slå sammen eller avlys timer for én dag.
         Fast oppsett endres under hver klasse.
       </p>}
@@ -235,14 +246,30 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
     notified: row.notified,
     reason: row.reason,
     byTeacher: row.source === "laerer",
-    missingLessons: lessons.filter(
-      (lesson) =>
-        uncovered.has(lesson.id) &&
-        (lessonTeacherIds(lesson).length
-          ? lessonTeacherIds(lesson)
-          : classTeacherIds.get(lesson.class_id) ?? []
-        ).includes(row.guardian_id),
-    ).length,
+    uncovered: lessons
+      .filter(
+        (lesson) =>
+          uncovered.has(lesson.id) &&
+          (lessonTeacherIds(lesson).length
+            ? lessonTeacherIds(lesson)
+            : classTeacherIds.get(lesson.class_id) ?? []
+          ).includes(row.guardian_id),
+      )
+      .map((lesson) => ({
+        id: lesson.id,
+        label: `${lesson.class?.name_no ?? "Klasse uten navn"} · ${lessonTitle(lesson, slots, "Hele dagen")} · ${slotRangeTimes(slots, lesson)}`,
+        subject: lesson.subject,
+        teacherId: lesson.teacher_guardian_id,
+        coTeacherId: lesson.co_teacher_guardian_id,
+        note: lesson.note,
+        busy: Object.fromEntries(
+          lessons
+            .filter((other) => other.id !== lesson.id && !other.cancelled && rangesOverlap(other, lesson))
+            .flatMap((other) =>
+              lessonTeacherIds(other).map((id) => [id, other.class?.name_no ?? "en annen klasse"] as const),
+            ),
+        ),
+      })),
   }));
   const dayLabel = formatOsloDate(day.date, { weekday: "long", day: "numeric", month: "long" });
 
@@ -250,7 +277,7 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
     <div className="grid gap-6 lg:gap-7">
       <div className="flex flex-wrap items-end justify-between gap-4">
         {header}
-        <DayPicker
+        {totalsView ? null : <DayPicker
           basePath={`${basePath}/dagsplan`}
           selectedId={day.id}
           days={days.map((item) => ({
@@ -259,25 +286,29 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
               item.cancelled ? " (avlyst)" : item.date === today ? " (i dag)" : ""
             }`,
           }))}
-        />
+        />}
       </div>
 
       <nav aria-label="Dagsplanvisning" className="flex gap-1 border-b border-[#E3DED3]">
         {[
-          { label: "Timeplan", attendance: false },
-          { label: "Oppmøte", attendance: true },
+          { label: "Timeplan", view: null, active: !attendanceView && !totalsView },
+          { label: "Oppmøte", view: "oppmote", active: attendanceView },
+          { label: "Totalt", view: "totalt", active: totalsView },
         ].map((view) => (
           <Link
             key={view.label}
-            href={`${basePath}/dagsplan?dag=${day.id}${view.attendance ? "&visning=oppmote" : ""}`}
-            aria-current={attendanceView === view.attendance ? "page" : undefined}
-            className={`-mb-px inline-flex min-h-11 items-center border-b-2 px-3 text-sm font-bold outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${attendanceView === view.attendance ? "border-[#2F7938] text-[#1D4E24]" : "border-transparent text-admin-muted hover:text-foreground"}`}
+            href={`${basePath}/dagsplan?dag=${day.id}${view.view ? `&visning=${view.view}` : ""}`}
+            aria-current={view.active ? "page" : undefined}
+            className={`-mb-px inline-flex min-h-11 items-center border-b-2 px-3 text-sm font-bold outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${view.active ? "border-[#2F7938] text-[#1D4E24]" : "border-transparent text-admin-muted hover:text-foreground"}`}
           >
             {view.label}
           </Link>
         ))}
       </nav>
 
+      {totalsView ? (
+        <AttendanceTotals yearId={year.id} />
+      ) : <>
       {day.cancelled ? (
         <p role="status" className="flex gap-2 rounded-2xl bg-[#FFF8E9] p-4 text-sm ring-1 ring-[#ECDCB9]">
           <CalendarX aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
@@ -330,6 +361,7 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
           <EnsureLessonsButton schoolDayId={day.id} />
         </section>
       )}
+      </>}
     </div>
   );
 }

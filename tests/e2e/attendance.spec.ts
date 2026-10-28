@@ -93,3 +93,29 @@ test("admin takes attendance across classes and teachers correct later lessons",
   expect((await attendance(firstChild.id, day.id)).find((row) => row.lesson_id === firstLessons[1].id)?.status).toBe("fravaer");
   expect((await attendance(firstChild.id, day.id)).find((row) => row.lesson_id === firstLessons[2].id)?.status).toBe("fravaer");
 });
+
+test("admin sees attendance totals per class", async ({ page, context }) => {
+  const year = await activeYear();
+  const [first, second] = await seedSchoolDays(year, 2);
+  const schoolClass = await seedClass();
+  const family = await seedFamily({ students: [{}, {}] });
+  for (const student of family.students) await enroll(student.id, schoolClass.id, year.id);
+  const [one, two] = family.students;
+  const { error } = await db().from("attendance").insert([
+    { student_id: one.id, school_day_id: first.id, status: "til_stede" },
+    { student_id: one.id, school_day_id: second.id, status: "sent" },
+    { student_id: two.id, school_day_id: first.id, status: "meldt_fravaer" },
+    { student_id: two.id, school_day_id: second.id, status: "fravaer" },
+  ]);
+  if (error) throw error;
+
+  const admin = await seedAdmin();
+  await loginAs(context, admin.email);
+  await page.goto("/admin/dagsplan");
+  await page.getByRole("link", { name: "Totalt", exact: true }).click();
+  const row = page.getByRole("row", { name: new RegExp(schoolClass.name) });
+  await expect(row.getByRole("cell")).toHaveText(["1", "1", "1", "1"]);
+  await expect(page.getByRole("row", { name: /Totalt/ })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: "test-results/attendance-totals-mobile.png", fullPage: true });
+});

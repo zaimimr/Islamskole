@@ -14,7 +14,8 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { adminBasePath } from "@/components/admin/paths";
 import { DeleteButton } from "@/components/admin/delete-button";
-import { BatchSendButton } from "@/components/admin/batch-send-button";
+import { BulkRequestButton } from "@/components/admin/payment-request";
+import { loadBulkCounts } from "@/lib/payment-requests";
 import { YearActions } from "@/components/admin/year-actions";
 import {
   SchoolYearForm,
@@ -121,6 +122,7 @@ export default async function SkolearDetailPage({
     ? 0
     : await countCopyableAssignments(activeYear?.id);
   const balances = (balanceData as BalanceRow[] | null) ?? [];
+  const bulk = await loadBulkCounts(supabase, year.id).catch(() => null);
 
   const balanceByStudent = new Map<string, BalanceRow>();
   for (const balance of balances) {
@@ -350,10 +352,24 @@ export default async function SkolearDetailPage({
                 : `Videreføre elever til ${activeYearLabel}`}
             </Link>
           ) : null}
-          <BatchSendButton
-            schoolYearId={year.id}
-            yearLabel={year.label ?? "skoleåret"}
-          />
+          {bulk ? (
+            <>
+              <BulkRequestButton
+                schoolYearId={year.id}
+                studentIds={bulk.studentIds}
+                count={bulk.krav}
+                mode="krav"
+                today={osloToday()}
+              />
+              <BulkRequestButton
+                schoolYearId={year.id}
+                studentIds={bulk.studentIds}
+                count={bulk.paminnelse}
+                mode="paminnelse"
+                today={osloToday()}
+              />
+            </>
+          ) : null}
           <YearActions schoolYearId={year.id} />
         </div>
       </section>

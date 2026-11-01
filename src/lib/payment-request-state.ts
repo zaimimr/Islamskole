@@ -53,6 +53,38 @@ function kr(ore: number): string {
   );
 }
 
+export function defaultRequestDueDate(today: string): string {
+  const date = new Date(`${today}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + 5);
+  date.setUTCDate(date.getUTCDate() + ((6 - date.getUTCDay() + 7) % 7));
+  return date.toISOString().slice(0, 10);
+}
+
+export function requestLine(request: OpenRequest, remaining: number): string {
+  const amount = request.amount < remaining ? ` ${kr(request.amount)} kr` : "";
+  return [
+    request.status === "avbrutt"
+      ? `Vipps-krav${amount} utløpt`
+      : `Vipps-krav${amount} sendt ${shortDate(request.sentAt)}`,
+    request.dueDate ? `frist ${shortDate(request.dueDate)}` : null,
+    request.status !== "avbrutt" && request.reminderCount > 0
+      ? `påminnet ${request.reminderCount}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+export function newestRequest(
+  requests: (OpenRequest | null | undefined)[],
+): OpenRequest | null {
+  let newest: OpenRequest | null = null;
+  for (const request of requests) {
+    if (request && (!newest || newest.sentAt < request.sentAt)) newest = request;
+  }
+  return newest;
+}
+
 export function describeRequest(
   balance: BalanceLike | null,
   request: OpenRequest | null,
@@ -67,52 +99,28 @@ export function describeRequest(
   const partial =
     balance.paid > 0 ? `${kr(balance.paid)} av ${kr(balance.owed)} kr` : null;
   if (request) {
-    const krav = `Krav ${kr(Math.min(request.amount, balance.remaining))} kr`;
-    const sentLabel =
-      request.reminderCount > 0
-        ? `Påminnelse sendt ${shortDate(request.lastSentAt)}`
-        : `${krav} sendt ${shortDate(request.lastSentAt)}`;
     if (request.status === "autorisert") {
       return { kind: "venter", tone: "info", label: "Betaling venter", detail: partial };
     }
+    const line = requestLine(request, balance.remaining);
     if (request.status === "avbrutt") {
-      return {
-        kind: "utlopt",
-        tone: "danger",
-        label: "Utløpt, ikke betalt",
-        detail: `${krav} sendt ${shortDate(request.lastSentAt)}`,
-      };
+      return { kind: "utlopt", tone: "danger", label: "Utløpt", detail: line };
     }
     if (!request.sent) {
       return {
         kind: "lenke",
         tone: "info",
-        label: `Lenke laget ${shortDate(request.sentAt)}`,
-        detail: partial,
+        label: "Lenke laget",
+        detail: `Vipps-lenke laget ${shortDate(request.sentAt)}`,
       };
     }
     if (request.dueDate && request.dueDate < today) {
-      return {
-        kind: "forfalt",
-        tone: "danger",
-        label: `Forfalt ${shortDate(request.dueDate)}`,
-        detail: sentLabel,
-      };
+      return { kind: "forfalt", tone: "danger", label: "Forfalt", detail: line };
     }
-    return {
-      kind: "sendt",
-      tone: "info",
-      label: sentLabel,
-      detail: [
-        request.reminderCount > 0 ? krav : null,
-        request.dueDate ? `Frist ${shortDate(request.dueDate)}` : partial,
-      ]
-        .filter(Boolean)
-        .join(" · "),
-    };
+    return { kind: "sendt", tone: "info", label: "Krav sendt", detail: line };
   }
   if (partial) {
-    return { kind: "delvis", tone: "warn", label: partial, detail: null };
+    return { kind: "delvis", tone: "warn", label: partial, detail: "Ikke betalt" };
   }
   return { kind: "ubetalt", tone: "warn", label: "Ikke betalt", detail: null };
 }
@@ -216,7 +224,8 @@ export type FamilyRequestCandidate = {
 
 export type BulkPlan = {
   create: string[][];
-  resend: string[];
+  renew: string[];
+  remind: string[];
   skipped: number;
 };
 
@@ -231,7 +240,8 @@ export function planBulkRequests(
     families.set(key, [...(families.get(key) ?? []), status]);
   }
   const create: string[][] = [];
-  const resend = new Set<string>();
+  const renew = new Set<string>();
+  const remind = new Set<string>();
   let skipped = 0;
   for (const members of families.values()) {
     if (members.some((member) => member.paused)) {
@@ -243,15 +253,42 @@ export function planBulkRequests(
     for (const member of members) {
       const request = member.request;
       if (!request || request.status === "autorisert") continue;
-      if (request.status === "avbrutt" || reminderDue(request, options.now, options.reminderDays, Infinity)) {
-        resend.add(request.paymentId);
+      if (request.status === "avbrutt") renew.add(request.paymentId);
+      else if (reminderDue(request, options.now, options.reminderDays, Infinity)) {
+        remind.add(request.paymentId);
       }
     }
-    if (uncovered.length === 0 && !members.some((member) => member.request && resend.has(member.request.paymentId))) {
-      skipped += 1;
-    }
+    const touched = members.some(
+      (member) =>
+        member.request &&
+        (renew.has(member.request.paymentId) || remind.has(member.request.paymentId)),
+    );
+    if (uncovered.length === 0 && !touched) skipped += 1;
   }
-  return { create, resend: [...resend], skipped };
+  return { create, renew: [...renew], remind: [...remind], skipped };
+}
+
+export type PlannedInstallment = {
+  id: string;
+  studentId: string;
+  amount: number;
+  dueDate: string;
+};
+
+export function pickNextInstallment(
+  rows: PlannedInstallment[],
+  studentIds: string[],
+): { installmentId: string; amount: number; dueDate: string } | null {
+  const ids = new Set(studentIds);
+  const mine = rows
+    .filter((row) => ids.has(row.studentId) && row.amount > 0)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  const first = mine[0];
+  if (!first) return null;
+  const amount = mine
+    .filter((row) => row.dueDate === first.dueDate)
+    .reduce((sum, row) => sum + row.amount, 0);
+  return { installmentId: first.id, amount, dueDate: first.dueDate };
 }
 
 export function uncoveredRemaining(

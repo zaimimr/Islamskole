@@ -43,14 +43,22 @@ export function FamilyPaymentDialog({
   schoolYearId,
   familyChildren,
   triggerLabel = "Registrer betaling for familien",
+  open: openProp,
+  onOpenChange,
 }: {
   familyName: string;
   schoolYearId: string;
   familyChildren: FamilyPaymentChild[];
   triggerLabel?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [innerOpen, setInnerOpen] = useState(false);
+  const controlled = openProp !== undefined;
+  const open = controlled ? openProp : innerOpen;
+  const setOpen = (next: boolean) =>
+    controlled ? onOpenChange?.(next) : setInnerOpen(next);
   const [pending, startTransition] = useTransition();
   const remainingTotal = familyChildren.reduce(
     (sum, child) => sum + Math.max(child.remainingOre, 0),
@@ -129,6 +137,7 @@ export function FamilyPaymentDialog({
         if (next) reset();
       }}
     >
+{controlled ? null : (
       <DialogTrigger
         render={
           <Button
@@ -140,6 +149,7 @@ export function FamilyPaymentDialog({
           </Button>
         }
       />
+      )}
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Registrer betaling for {familyName}</DialogTitle>

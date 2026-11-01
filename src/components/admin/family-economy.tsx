@@ -1,9 +1,7 @@
 "use client";
 
-import { PaymentRequestActions } from "@/components/admin/payment-request";
-import { setFamilyRequestsPaused } from "@/app/[locale]/admin/payment-request-actions";
+import { VippsRequestBlock, type NextInstallment } from "@/components/admin/payment-request";
 import type { OpenRequest } from "@/lib/payment-request-state";
-import { Switch } from "@/components/ui/switch";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -33,11 +31,7 @@ import {
 } from "@/app/[locale]/admin/students-actions";
 import { formatNok, kronerToOre } from "@/lib/money";
 import { formatOsloDate } from "@/lib/dates";
-import {
-  FamilyPaymentDialog,
-  type FamilyPaymentChild,
-} from "@/app/[locale]/admin/(admin-only)/betaling/family-payment-dialog";
-import { SadaqaCoverDialog } from "@/components/admin/sadaqa";
+import type { FamilyPaymentChild } from "@/app/[locale]/admin/(admin-only)/betaling/family-payment-dialog";
 import { CustomPlanBuilder } from "@/components/admin/custom-plan-builder";
 import type { CustomPlanConfig } from "@/lib/custom-payment-plan";
 import { Button } from "@/components/ui/button";
@@ -162,8 +156,9 @@ export function FamilyEconomy({
   sem1DueOn,
   sem2DueOn,
   request = null,
-  suggestedRequest = null,
+  nextInstallment = null,
   requestsPaused = false,
+  autoEnabled = false,
   uncoveredOre = 0,
   today,
 }: {
@@ -181,8 +176,9 @@ export function FamilyEconomy({
   sem1DueOn?: string | null;
   sem2DueOn?: string | null;
   request?: OpenRequest | null;
-  suggestedRequest?: { amount: number; dueDate: string } | null;
+  nextInstallment?: NextInstallment | null;
   requestsPaused?: boolean;
+  autoEnabled?: boolean;
   uncoveredOre?: number;
   today: string;
 }) {
@@ -381,7 +377,7 @@ export function FamilyEconomy({
             </dl>
             {childrenOptions.length > 0 ? (
               <div className="flex flex-wrap gap-2">
-                <PaymentRequestActions
+                <VippsRequestBlock
                   schoolYearId={schoolYearId}
                   studentIds={owingChildIds}
                   balance={{
@@ -391,9 +387,11 @@ export function FamilyEconomy({
                   }}
                   request={request}
                   today={today}
-                  suggestedAmount={suggestedRequest?.amount ?? null}
-                  suggestedDueDate={suggestedRequest?.dueDate ?? null}
+                  nextInstallment={nextInstallment}
                   title={familyName}
+                  manualChildren={paymentChildren}
+                  sadaqa={{ id: familyId, name: familyName, children: paymentChildren }}
+                  auto={{ familyId, paused: requestsPaused, globalEnabled: autoEnabled }}
                   className="w-full"
                 />
                 {request && uncoveredOre > 0 ? (
@@ -401,34 +399,6 @@ export function FamilyEconomy({
                     Uten krav: {formatNok(uncoveredOre)}
                   </p>
                 ) : null}
-                <FamilyPaymentDialog
-                  familyName={familyName}
-                  schoolYearId={schoolYearId}
-                  familyChildren={paymentChildren}
-                />
-                <SadaqaCoverDialog
-                  schoolYearId={schoolYearId}
-                  families={[
-                    {
-                      id: familyId,
-                      name: familyName,
-                      children: paymentChildren,
-                    },
-                  ]}
-                />
-                <label className="flex min-h-11 items-center gap-2 text-sm font-bold">
-                  <Switch
-                    checked={!requestsPaused}
-                    disabled={pending}
-                    onCheckedChange={(checked) =>
-                      run(
-                        () => setFamilyRequestsPaused(familyId, !checked),
-                        checked ? "Automatiske krav på" : "Automatiske krav satt på pause",
-                      )
-                    }
-                  />
-                  Automatiske krav
-                </label>
               </div>
             ) : null}
           </CardContent>

@@ -32,7 +32,6 @@ import {
   syncPaymentStatus,
   captureVippsPayment,
   cancelVippsPayment,
-  sendPaymentLink,
   deletePayment,
   reallocatePayment,
 } from "@/app/[locale]/admin/students-actions";
@@ -40,14 +39,13 @@ import {
   RefundPaymentDialog,
   type RefundAllocation,
 } from "@/components/admin/refund-payment-dialog";
+import { OverpaymentToGiftButton } from "@/components/admin/sadaqa";
 import {
-  OverpaymentToGiftButton,
-  SadaqaCoverDialog,
-} from "@/components/admin/sadaqa";
-import {
-  PaymentRequestActions,
   RequestStatus,
+  VippsRequestBlock,
+  type NextInstallment,
 } from "@/components/admin/payment-request";
+import { resendRequest } from "@/app/[locale]/admin/payment-request-actions";
 import { shortDate, type OpenRequest } from "@/lib/payment-request-state";
 import { formatNok } from "@/lib/money";
 import { Button } from "@/components/ui/button";
@@ -243,7 +241,7 @@ export function PaymentManager({
   adjustments = [],
   teachers = [],
   requestsByYear = {},
-  suggestedByYear = {},
+  nextInstallmentByYear = {},
   today,
 }: {
   studentId: string;
@@ -258,7 +256,7 @@ export function PaymentManager({
   adjustments?: AdjustmentRow[];
   teachers?: TeacherOption[];
   requestsByYear?: Record<string, OpenRequest | null>;
-  suggestedByYear?: Record<string, { amount: number; dueDate: string } | null>;
+  nextInstallmentByYear?: Record<string, NextInstallment | null>;
   today: string;
 }) {
   const router = useRouter();
@@ -278,7 +276,7 @@ export function PaymentManager({
 
   const currentClass = classByYear[year] ?? null;
   const request = requestsByYear[year] ?? null;
-  const suggestion = suggestedByYear[year] ?? null;
+  const nextInstallment = nextInstallmentByYear[year] ?? null;
   const balance = balancesByYear[year] ?? null;
   const fee = feesByYear[year] ?? null;
   const remainingNok =
@@ -852,44 +850,31 @@ export function PaymentManager({
         ) : (
           <div className="flex flex-wrap gap-2">
             {year ? (
-              <PaymentRequestActions
+              <VippsRequestBlock
                 schoolYearId={year}
                 studentIds={[studentId]}
                 balance={balance}
                 request={request}
                 today={today}
-                suggestedAmount={suggestion?.amount ?? null}
-                suggestedDueDate={suggestion?.dueDate ?? null}
+                nextInstallment={nextInstallment}
                 title={studentName}
                 showStatus={false}
-              />
-            ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-xl px-4 font-bold"
-              onClick={() => setFormOpen(true)}
-            >
-              <Plus className="size-4" />
-              Registrer betaling
-            </Button>
-            {balance && balance.remaining > 0 ? (
-              <SadaqaCoverDialog
-                key={`sadaqa-${year}-${balance.remaining}`}
-                schoolYearId={year}
-                families={[
-                  {
-                    id: studentId,
-                    name: studentName,
-                    children: [
-                      {
+                onManual={() => setFormOpen(true)}
+                sadaqa={
+                  balance && balance.remaining > 0
+                    ? {
                         id: studentId,
                         name: studentName,
-                        remainingOre: balance.remaining,
-                      },
-                    ],
-                  },
-                ]}
+                        children: [
+                          {
+                            id: studentId,
+                            name: studentName,
+                            remainingOre: balance.remaining,
+                          },
+                        ],
+                      }
+                    : null
+                }
               />
             ) : null}
             {balance && balance.paid > balance.owed ? (
@@ -1046,17 +1031,20 @@ export function PaymentManager({
                                 <Link2 className="size-4" />
                                 Kopier betalingslenke
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  run(
-                                    () => sendPaymentLink(payment.id),
-                                    "Betalingslenke sendt",
-                                  )
-                                }
-                              >
-                                <Mail className="size-4" />
-                                Send på e-post
-                              </DropdownMenuItem>
+                              {payment.status === "opprettet" ||
+                              payment.status === "avbrutt" ? (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    run(
+                                      () => resendRequest(payment.id),
+                                      "Påminnelse sendt",
+                                    )
+                                  }
+                                >
+                                  <Mail className="size-4" />
+                                  Send påminnelse
+                                </DropdownMenuItem>
+                              ) : null}
                               <DropdownMenuItem
                                 onClick={() =>
                                   run(

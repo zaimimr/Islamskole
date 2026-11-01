@@ -9,21 +9,34 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function RequestSettings({
   enabled,
   leadDays,
   reminderDays,
   maxReminders,
+  affectedFamilies,
 }: {
   enabled: boolean;
   leadDays: number;
   reminderDays: number;
   maxReminders: number;
+  affectedFamilies: number;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [values, setValues] = useState({ leadDays, reminderDays, maxReminders });
+  const [confirming, setConfirming] = useState(false);
 
   function save(next: { enabled: boolean } & typeof values, success: string) {
     startTransition(async () => {
@@ -32,6 +45,7 @@ export function RequestSettings({
         toast.error(result.error);
         return;
       }
+      setConfirming(false);
       toast.success(success);
       router.refresh();
     });
@@ -61,20 +75,39 @@ export function RequestSettings({
   );
 
   return (
-    <section className="grid min-w-0 gap-3 rounded-2xl bg-white p-4 ring-1 ring-[#E3DED3] sm:p-5">
+    <section className="grid min-w-0 gap-1 rounded-2xl bg-white px-4 py-2 ring-1 ring-[#E3DED3] sm:px-5">
       <label className="flex min-h-11 items-center justify-between gap-3">
-        <span className="font-heading text-lg font-bold">Automatiske krav</span>
+        <span className="font-heading text-lg font-bold">Automatiske Vipps-krav</span>
         <Switch
           checked={enabled}
           disabled={pending}
           onCheckedChange={(checked) =>
-            save(
-              { enabled: checked, ...values },
-              checked ? "Automatiske krav er på" : "Automatiske krav er av",
-            )
+            checked
+              ? setConfirming(true)
+              : save({ enabled: false, ...values }, "Automatiske krav er av")
           }
         />
       </label>
+      <AlertDialog open={confirming} onOpenChange={setConfirming}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Slå på automatiske Vipps-krav?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {affectedFamilies} {affectedFamilies === 1 ? "familie" : "familier"} får Vipps-krav
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Avbryt</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={pending}
+              onClick={() => save({ enabled: true, ...values }, "Automatiske krav er på")}
+            >
+              {pending ? <Loader2 className="size-4 animate-spin" /> : null}
+              Slå på
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <details className="group">
         <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1 text-sm font-bold text-admin-muted">
           Innstillinger

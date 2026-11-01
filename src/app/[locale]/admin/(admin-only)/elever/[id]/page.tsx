@@ -359,7 +359,7 @@ export default async function ElevDetailPage({
     .filter(([, balance]) => balance.remaining > 0)
     .map(([yearId]) => yearId);
   const requestsByYear: Record<string, OpenRequest | null> = {};
-  const suggestedByYear: Record<string, { amount: number; dueDate: string } | null> = {};
+  const nextInstallmentByYear: Record<string, { installmentId: string; amount: number; dueDate: string } | null> = {};
   await Promise.all(
     owingYears.map(async (yearId) => {
       const [requests, next] = await Promise.all([
@@ -367,7 +367,7 @@ export default async function ElevDetailPage({
         nextPlanInstallment(supabase, yearId, [student.id]),
       ]);
       requestsByYear[yearId] = latestRequestByStudent(requests).get(student.id) ?? null;
-      suggestedByYear[yearId] = next;
+      nextInstallmentByYear[yearId] = next;
     }),
   );
 
@@ -695,7 +695,7 @@ export default async function ElevDetailPage({
         adjustments={adjustments}
         teachers={teachers}
         requestsByYear={requestsByYear}
-        suggestedByYear={suggestedByYear}
+        nextInstallmentByYear={nextInstallmentByYear}
         today={osloToday()}
       />
 

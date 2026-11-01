@@ -13,14 +13,32 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { studentDisplayName } from "@/lib/student-name";
 import { adminBasePath } from "@/components/admin/paths";
-import { BatchSendButton } from "@/components/admin/batch-send-button";
+import {
+  BulkRequestButton,
+  VippsRequestBlock,
+} from "@/components/admin/payment-request";
+import { StatusPill } from "@/components/admin/status-pill";
+import {
+  getRequestSettings,
+  loadBulkCounts,
+  loadOpenRequests,
+  loadPlannedInstallments,
+  pausedFamilies,
+} from "@/lib/payment-requests";
+import {
+  describeRequest,
+  latestRequestByStudent,
+  newestRequest,
+  pickNextInstallment,
+  type OpenRequest,
+  type PlannedInstallment,
+} from "@/lib/payment-request-state";
 import { ReallocateYearButton } from "@/components/admin/reallocate-year-button";
 import {
   getActiveYear,
   getOverdueSummary,
   getPayState,
   getYearBalances,
-  payStateLabels,
   payStateOrder,
   summarizeBalances,
   type BalanceSummary,
@@ -32,7 +50,6 @@ import { formatNok } from "@/lib/money";
 import { formatOsloDate, osloLocalToIso, osloToday } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { familyDisplayName } from "@/lib/families/naming";
-import { FamilyPaymentDialog } from "./family-payment-dialog";
 import { SelectField } from "@/components/ui/select-field";
 
 export const metadata: Metadata = { title: "Økonomi" };
@@ -50,23 +67,25 @@ type FamilyGroup = {
   overpaidOre: number;
   missingFee: boolean;
   state: PayState;
+  request: OpenRequest | null;
 };
 
 type YearData = {
   year: YearRow;
   rows: YearBalanceRow[];
   summary: BalanceSummary;
+  requests: Map<string, OpenRequest>;
+  planned: PlannedInstallment[];
+};
+
+type RequestContext = {
+  today: string;
+  autoEnabled: boolean;
+  paused: Set<string>;
+  bulk: { studentIds: string[]; krav: number; paminnelse: number } | null;
 };
 
 type RecentPayments = { amountOre: number; count: number; since: string };
-
-const stateClasses: Record<PayState, string> = {
-  betalt: "bg-[#DCEDDD] text-[#216A2B]",
-  delvis: "bg-[#FEEDCA] text-[#775108]",
-  venter: "bg-[#DDEEF9] text-[#245D84]",
-  ubetalt: "bg-[#F9DEDB] text-[#8B2F2B]",
-  fritatt: "bg-[#F0F0ED] text-[#4E5550]",
-};
 
 function eleverHref(basePath: string, filter: string) {
   return `${basePath}/elever?pay=${filter}&betaling=${filter}`;
@@ -84,6 +103,7 @@ function childName(row: YearBalanceRow) {
 function groupFamilies(
   rows: YearBalanceRow[],
   familyNames: Map<string, string | null>,
+  requests: Map<string, OpenRequest>,
 ): FamilyGroup[] {
   const groups = new Map<string, YearBalanceRow[]>();
   for (const row of rows) {
@@ -136,6 +156,7 @@ function groupFamilies(
         overpaidOre,
         missingFee,
         state: missingFee && state === "fritatt" ? "ubetalt" : state,
+        request: newestRequest(children.map((child) => requests.get(child.studentId))),
       };
     })
     .sort((a, b) => {
@@ -170,10 +191,25 @@ async function getData() {
   );
   const yearData: YearData[] = await Promise.all(
     years.map(async (year) => {
-      const rows = await getYearBalances(supabase, year.id);
-      return { year, rows, summary: summarizeBalances(rows, year) };
+      const [rows, openRequests, planned] = await Promise.all([
+        getYearBalances(supabase, year.id),
+        loadOpenRequests(supabase, year.id).catch(() => [] as OpenRequest[]),
+        loadPlannedInstallments(supabase, year.id).catch(() => []),
+      ]);
+      return {
+        year,
+        rows,
+        summary: summarizeBalances(rows, year),
+        requests: latestRequestByStudent(openRequests),
+        planned,
+      };
     }),
   );
+  const [settings, paused, bulk] = await Promise.all([
+    getRequestSettings(supabase),
+    pausedFamilies(supabase).catch(() => new Set<string>()),
+    activeYear ? loadBulkCounts(supabase, activeYear.id).catch(() => null) : null,
+  ]);
 
   const familyIds = [
     ...new Set(
@@ -240,7 +276,9 @@ async function getData() {
     : null;
   const overdue: OverdueSummary | null =
     activeYear && activeData
-      ? await getOverdueSummary(supabase, activeYear, activeData.rows)
+      ? await getOverdueSummary(supabase, activeYear, activeData.rows, [
+          ...new Set(activeData.requests.values()),
+        ])
       : null;
 
   let siblingEligibleCount = 0;
@@ -288,6 +326,12 @@ async function getData() {
     siblingEligibleCount,
     recent,
     overdue,
+    requestContext: {
+      today: osloToday(),
+      autoEnabled: settings.enabled,
+      paused,
+      bulk,
+    } satisfies RequestContext,
   };
 }
 
@@ -394,6 +438,7 @@ export default async function BetalingPage({
           basePath={basePath}
           familyNames={data.familyNames}
           showAllFamilies={showAllFamilies}
+          context={data.requestContext}
         />
       )}
 
@@ -429,10 +474,14 @@ export default async function BetalingPage({
                   groups={groupFamilies(
                     entry.rows.filter((row) => row.placed),
                     data.familyNames,
+                    entry.requests,
                   )}
                   basePath={basePath}
                   schoolYearId={entry.year.id}
                   showAll
+                  requests={entry.requests}
+                  planned={entry.planned}
+                  context={data.requestContext}
                   allowPayments={false}
                 />
               </div>
@@ -748,16 +797,19 @@ function YearWorkspace({
   basePath,
   familyNames,
   showAllFamilies,
+  context,
 }: {
   entry: YearData;
   basePath: string;
   familyNames: Map<string, string | null>;
   showAllFamilies: boolean;
+  context: RequestContext;
 }) {
   const { year, summary } = entry;
   const groups = groupFamilies(
     entry.rows.filter((row) => row.placed),
     familyNames,
+    entry.requests,
   );
   const unfinished = groups.filter((group) => isUnfinished(group.state));
 
@@ -796,8 +848,25 @@ function YearWorkspace({
           </p>
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto [&_[data-slot=button]]:min-h-11">
+          {year.is_active && context.bulk ? (
+            <>
+              <BulkRequestButton
+                schoolYearId={year.id}
+                studentIds={context.bulk.studentIds}
+                count={context.bulk.krav}
+                mode="krav"
+                today={context.today}
+              />
+              <BulkRequestButton
+                schoolYearId={year.id}
+                studentIds={context.bulk.studentIds}
+                count={context.bulk.paminnelse}
+                mode="paminnelse"
+                today={context.today}
+              />
+            </>
+          ) : null}
           <ReallocateYearButton schoolYearId={year.id} yearLabel={year.label} />
-          <BatchSendButton schoolYearId={year.id} yearLabel={year.label} />
         </div>
       </div>
 
@@ -813,10 +882,6 @@ function YearWorkspace({
               >
                 {showAllFamilies ? "Alle familier" : "Familier som ikke er ferdig"}
               </h3>
-              <p className="mt-0.5 text-sm text-admin-muted">
-                Åpne en familie for å se barna eller registrere en samlet
-                betaling.
-              </p>
             </div>
             <div className="flex flex-wrap gap-1">
               <Link
@@ -845,6 +910,9 @@ function YearWorkspace({
             basePath={basePath}
             schoolYearId={year.id}
             showAll={showAllFamilies}
+            requests={entry.requests}
+            planned={entry.planned}
+            context={context}
             allowPayments
           />
         </section>
@@ -858,12 +926,18 @@ function FamilyList({
   basePath,
   schoolYearId,
   showAll,
+  requests,
+  planned,
+  context,
   allowPayments,
 }: {
   groups: FamilyGroup[];
   basePath: string;
   schoolYearId: string;
   showAll: boolean;
+  requests: Map<string, OpenRequest>;
+  planned: PlannedInstallment[];
+  context: RequestContext;
   allowPayments: boolean;
 }) {
   if (groups.length === 0) {
@@ -899,7 +973,11 @@ function FamilyList({
               </span>
               <span className="flex items-center gap-2">
                 <span className="flex flex-col items-end gap-1">
-                  <StateChip state={group.state} />
+                  <RequestChip
+                    balance={{ owed: group.owedOre, paid: group.appliedOre, remaining: group.remainingOre }}
+                    request={group.request}
+                    today={context.today}
+                  />
                   {group.overpaidOre > 0 ? <OverpaidChip /> : null}
                   {group.missingFee ? <MissingFeeChip /> : null}
                 </span>
@@ -946,7 +1024,12 @@ function FamilyList({
                       {child.missingFee ? (
                         <MissingFeeChip />
                       ) : (
-                        <StateChip state={child.state} note={child.feeNote} />
+                        <RequestChip
+                          balance={{ owed: child.owedOre, paid: child.appliedOre, remaining: child.remainingOre }}
+                          request={requests.get(child.studentId) ?? null}
+                          today={context.today}
+                          note={child.feeNote}
+                        />
                       )}
                       {child.overpaidOre > 0 ? <OverpaidChip /> : null}
                     </span>
@@ -959,18 +1042,54 @@ function FamilyList({
                   </li>
                 ))}
               </ul>
-              <div className="flex flex-wrap items-center gap-2">
-                {allowPayments ? (
-                  <FamilyPaymentDialog
-                    familyName={group.name}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                {group.missingFee || !allowPayments ? null : (
+                  <VippsRequestBlock
                     schoolYearId={schoolYearId}
-                    familyChildren={group.children.map((child) => ({
+                    studentIds={group.children
+                      .filter((child) => child.remainingOre > 0)
+                      .map((child) => child.studentId)}
+                    balance={{
+                      owed: group.owedOre,
+                      paid: group.appliedOre,
+                      remaining: group.remainingOre,
+                    }}
+                    request={group.request}
+                    today={context.today}
+                    title={group.name}
+                    nextInstallment={pickNextInstallment(
+                      planned,
+                      group.children.map((child) => child.studentId),
+                    )}
+                    manualChildren={group.children.map((child) => ({
                       id: child.studentId,
                       name: childName(child),
                       remainingOre: child.remainingOre,
                     }))}
+                    sadaqa={
+                      group.familyId
+                        ? {
+                            id: group.familyId,
+                            name: group.name,
+                            children: group.children.map((child) => ({
+                              id: child.studentId,
+                              name: childName(child),
+                              remainingOre: child.remainingOre,
+                            })),
+                          }
+                        : null
+                    }
+                    auto={
+                      group.familyId
+                        ? {
+                            familyId: group.familyId,
+                            paused: context.paused.has(group.familyId),
+                            globalEnabled: context.autoEnabled,
+                          }
+                        : null
+                    }
                   />
-                ) : null}
+                )}
                 {group.familyId ? (
                   <Link
                     href={`${basePath}/familier/${group.familyId}`}
@@ -989,17 +1108,21 @@ function FamilyList({
   );
 }
 
-function StateChip({ state, note }: { state: PayState; note?: string | null }) {
+function RequestChip({
+  balance,
+  request,
+  today,
+  note,
+}: {
+  balance: { owed: number; paid: number; remaining: number };
+  request: OpenRequest | null;
+  today: string;
+  note?: string | null;
+}) {
+  const view = describeRequest(balance, request, today);
   return (
-    <span
-      className={cn(
-        "inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap",
-        stateClasses[state],
-      )}
-      title={state === "fritatt" ? (note ?? "Skal ikke betale") : undefined}
-    >
-      <span className="size-1.5 rounded-full bg-current" />
-      {payStateLabels[state]}
+    <span title={view.kind === "fritatt" ? (note ?? "Skal ikke betale") : (view.detail ?? undefined)}>
+      <StatusPill tone={view.tone}>{view.label}</StatusPill>
     </span>
   );
 }

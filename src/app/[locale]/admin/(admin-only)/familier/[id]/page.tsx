@@ -5,7 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdminFamilies, getAdminFamilyById } from "@/lib/families/service";
 import { formatNok } from "@/lib/money";
 import { formatOsloDate, osloToday } from "@/lib/dates";
-import { loadOpenRequests, nextPlanInstallment } from "@/lib/payment-requests";
+import {
+  getRequestSettings,
+  loadOpenRequests,
+  nextPlanInstallment,
+} from "@/lib/payment-requests";
+import { VippsRequestBlock } from "@/components/admin/payment-request";
 import { latestRequestByStudent } from "@/lib/payment-request-state";
 import { getLastParentChange } from "@/lib/parent-changes";
 import { findDuplicateFamilies } from "../duplicates";
@@ -525,7 +530,7 @@ export default async function FamilyPage({
     : new Set<string>();
 
   const familyIds = [...familyStudentIds];
-  const [openRequests, suggestedRequest, pausedRow] = activeYear
+  const [openRequests, nextInstallment, pausedRow, requestSettings] = activeYear
     ? await Promise.all([
         loadOpenRequests(supabase, activeYear.id).catch(() => []),
         nextPlanInstallment(supabase, activeYear.id, familyIds),
@@ -534,14 +539,48 @@ export default async function FamilyPage({
           .select("payment_requests_paused_at")
           .eq("id", family.id)
           .maybeSingle(),
+        getRequestSettings(supabase),
       ])
-    : [[], null, null];
+    : [[], null, null, null];
   const requestByStudent = latestRequestByStudent(openRequests);
   const familyRequest =
     familyIds
       .map((id) => requestByStudent.get(id))
       .filter((request) => request !== undefined)
       .sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0] ?? null;
+  const yearBalances = activeYear
+    ? balances.filter(
+        (row) =>
+          row.student_id &&
+          row.school_year_id === activeYear.id &&
+          familyStudentIds.has(row.student_id),
+      )
+    : [];
+  const familyBalance = {
+    owed: yearBalances.reduce((sum, row) => sum + (row.owed ?? 0), 0),
+    paid: yearBalances.reduce((sum, row) => sum + (row.paid ?? 0), 0),
+    remaining: yearBalances.reduce((sum, row) => sum + Math.max(row.remaining ?? 0, 0), 0),
+  };
+  if (activeYear && unpaid && nextAction?.href === unpaid.href && familyBalance.remaining > 0) {
+    nextAction = {
+      ...nextAction,
+      control: (
+        <VippsRequestBlock
+          schoolYearId={activeYear.id}
+          studentIds={yearBalances
+            .filter((row) => (row.remaining ?? 0) > 0)
+            .map((row) => row.student_id as string)}
+          balance={familyBalance}
+          request={familyRequest}
+          today={osloToday()}
+          title={family.displayName}
+          nextInstallment={nextInstallment}
+          showStatus={false}
+          showMenu={false}
+        />
+      ),
+    };
+  }
 
   const siblingSuggestion = Boolean(
     activeYear &&
@@ -600,8 +639,9 @@ export default async function FamilyPage({
               sem1DueOn={activeYear.sem1_due_on}
               sem2DueOn={activeYear.sem2_due_on}
               request={familyRequest}
-              suggestedRequest={suggestedRequest}
+              nextInstallment={nextInstallment}
               requestsPaused={Boolean(pausedRow?.data?.payment_requests_paused_at)}
+              autoEnabled={Boolean(requestSettings?.enabled)}
               uncoveredOre={balances
                 .filter(
                   (row) =>

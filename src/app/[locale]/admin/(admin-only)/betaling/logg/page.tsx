@@ -25,6 +25,7 @@ import {
   formatOsloDate,
   formatOsloDateTime,
   osloLocalToIso,
+  osloToday,
 } from "@/lib/dates";
 import { SelectField } from "@/components/ui/select-field";
 
@@ -77,7 +78,12 @@ type PaymentRow = {
   vipps_payment_method: string | null;
   voided_at: string | null;
   last_synced_at: string | null;
+  request_sent_at: string | null;
   school_years: { label: string } | null;
+  students: {
+    child_first_name: string | null;
+    child_last_name: string | null;
+  } | null;
 };
 
 type AllocationRow = {
@@ -233,7 +239,7 @@ async function getData(
       supabase
         .rpc("admin_search_payments", { p_query: term }, { count: "exact" })
         .select(
-          "id, reference, amount, status, method, description, paid_at, due_date, created_at, captured_amount, refunded_amount, payer_name, payer_phone, payer_email, vipps_payment_method, voided_at, last_synced_at, school_years(label)",
+          "id, reference, amount, status, method, description, paid_at, due_date, created_at, captured_amount, refunded_amount, payer_name, payer_phone, payer_email, vipps_payment_method, voided_at, last_synced_at, request_sent_at, school_years(label), students!payments_student_id_fkey(child_first_name, child_last_name)",
         ),
     )
       .order("paid_at", { ascending: false, nullsFirst: false })
@@ -397,6 +403,7 @@ export default async function PaymentLogPage({
   const page =
     Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1;
   const basePath = adminBasePath(locale);
+  const today = osloToday();
   const result = await getData(filters, page);
 
   if (!result.ok) {
@@ -694,7 +701,9 @@ export default async function PaymentLogPage({
                             studentDisplayName(application) || "Ukjent barn",
                         )
                         .join(", ")
-                    : null;
+                    : payment.students
+                      ? studentDisplayName(payment.students) || "Ukjent barn"
+                      : null;
 
               const actions = (
                 <>
@@ -713,7 +722,7 @@ export default async function PaymentLogPage({
                   (payment.status === "opprettet" ||
                     payment.status === "autorisert") &&
                   !voided ? (
-                    <PaymentLinkActions paymentId={payment.id} />
+                    <PaymentLinkActions paymentId={payment.id} status={payment.status} />
                   ) : null}
                   {hasMoney &&
                   payment.refunded_amount < payment.captured_amount ? (
@@ -799,6 +808,8 @@ export default async function PaymentLogPage({
                       <PaymentStatus
                         status={payment.status}
                         voided={voided}
+                        sent={Boolean(payment.request_sent_at)}
+                        overdue={Boolean(payment.due_date && payment.due_date < today)}
                         capturedAmount={payment.captured_amount}
                         refundedAmount={payment.refunded_amount}
                       />
@@ -814,7 +825,7 @@ export default async function PaymentLogPage({
                         </p>
                       ) : null}
                       {dueDate && payment.status !== "fanget" ? (
-                        <span className="mt-2 hidden rounded-full bg-[#FEEDCA] px-2.5 py-1 text-xs font-bold text-[#775108] xl:inline-flex">
+                        <span className="mt-2 ml-2 inline-flex rounded-full bg-[#FEEDCA] px-2.5 py-1 text-xs font-bold text-[#775108] xl:ml-0">
                           Frist {dueDate}
                         </span>
                       ) : null}
@@ -860,6 +871,8 @@ export default async function PaymentLogPage({
                             Påmelding ikke godkjent ennå
                           </p>
                         </div>
+                      ) : childSummary && !hasMoney ? (
+                        <p className="font-bold">{childSummary}</p>
                       ) : hasMoney ? (
                         <p className="text-sm font-semibold text-[#8B2F2B]">
                           Ikke fordelt
@@ -1011,12 +1024,16 @@ export default async function PaymentLogPage({
 function PaymentStatus({
   status,
   voided,
+  sent = false,
+  overdue = false,
   capturedAmount = 0,
   refundedAmount = 0,
   className,
 }: {
   status: string;
   voided: boolean;
+  sent?: boolean;
+  overdue?: boolean;
   capturedAmount?: number;
   refundedAmount?: number;
   className?: string;
@@ -1026,10 +1043,19 @@ function PaymentStatus({
     status === "fanget" &&
     refundedAmount > 0 &&
     refundedAmount < capturedAmount;
-  const label = voided ? "Annullert" : (statusLabels[status] ?? status);
+  const open = !voided && status === "opprettet";
+  const label = voided
+    ? "Annullert"
+    : open && overdue
+      ? "Forfalt"
+      : open && sent
+        ? "Krav sendt"
+        : (statusLabels[status] ?? status);
   const tone = voided
     ? "bg-[#F9DEDB] text-[#8B2F2B]"
-    : (statusClasses[status] ?? "bg-[#F0F0ED] text-[#4E5550]");
+    : open && overdue
+      ? "bg-[#FEEDCA] text-[#775108]"
+      : (statusClasses[status] ?? "bg-[#F0F0ED] text-[#4E5550]");
 
   return (
     <span className={cn("inline-flex flex-col items-start gap-1", className)}>

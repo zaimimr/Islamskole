@@ -6,12 +6,15 @@ import { createClient } from "@/lib/supabase/server";
 import { getIsAdmin } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
 import { toUserError } from "@/lib/action-errors";
+import { emailNotifications } from "@/flags";
 import { planBulkRequests } from "@/lib/payment-request-state";
 import {
   createPaymentRequest,
   getRequestSettings,
   loadPayStatuses,
+  requestRecipients,
   resendPaymentRequest,
+  type StudentPayStatus,
 } from "@/lib/payment-requests";
 
 export type RequestActionResult =
@@ -65,16 +68,150 @@ export async function sendPaymentRequest(input: {
   }
 }
 
-export async function resendRequest(paymentId: string): Promise<RequestActionResult> {
+const dateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .nullable()
+  .optional();
+
+export async function resendRequest(
+  paymentId: string,
+  dueDate?: string | null,
+): Promise<RequestActionResult> {
   if (!(await getIsAdmin())) return DENIED;
   if (!z.string().uuid().safeParse(paymentId).success) {
     return { ok: false, error: "Fant ikke kravet" };
   }
+  const due = dateSchema.safeParse(dueDate);
   const supabase = await createClient();
   try {
-    const result = await resendPaymentRequest(supabase, paymentId);
+    const result = await resendPaymentRequest(
+      supabase,
+      paymentId,
+      due.success ? due.data : null,
+    );
+    await writeAudit({
+      action: "payment.request_resend",
+      entityType: "payments",
+      entityId: paymentId,
+      metadata: { emailedTo: result.emailedTo },
+    });
     revalidatePath("/", "layout");
     return { ok: true, emailedTo: result.emailedTo, url: result.url };
+  } catch (error) {
+    return { ok: false, error: message(error) };
+  }
+}
+
+export async function loadRequestRecipients(studentIds: string[]): Promise<string[]> {
+  if (!(await getIsAdmin())) return [];
+  const parsed = z.array(z.string().uuid()).safeParse(studentIds);
+  if (!parsed.success) return [];
+  const supabase = await createClient();
+  return requestRecipients(supabase, parsed.data).catch(() => []);
+}
+
+export type BulkMode = "krav" | "paminnelse";
+
+export type BulkItem = {
+  key: string;
+  name: string;
+  children: string[];
+  amount: number;
+  recipients: string[];
+  renew: boolean;
+};
+
+const bulkSchema = z.object({
+  studentIds: z.array(z.string().uuid()).min(1, "Velg minst ett barn"),
+  schoolYearId: z.string().uuid("Velg et skoleår"),
+  mode: z.enum(["krav", "paminnelse"]),
+});
+
+type BulkJob = BulkItem & {
+  studentIds: string[];
+  run: () => Promise<{ emailedTo: number }>;
+};
+
+async function planBulkJobs(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  input: z.infer<typeof bulkSchema>,
+  dueDate: string | null,
+): Promise<BulkJob[]> {
+  const statuses = await loadPayStatuses(supabase, input.schoolYearId, input.studentIds);
+  const settings = await getRequestSettings(supabase);
+  const plan = planBulkRequests(statuses.values(), {
+    now: new Date(),
+    reminderDays: settings.reminderDays,
+  });
+  const all = [...statuses.values()];
+  const describe = (members: StudentPayStatus[]) => ({
+    name: members[0].familyName ?? members[0].name,
+    children: members.map((member) => member.name),
+  });
+  const jobs: BulkJob[] = [];
+  if (input.mode === "krav") {
+    for (const studentIds of plan.create) {
+      const members = studentIds
+        .map((id) => statuses.get(id))
+        .filter((row): row is StudentPayStatus => Boolean(row));
+      if (members.length === 0) continue;
+      jobs.push({
+        key: studentIds.join(","),
+        studentIds,
+        ...describe(members),
+        amount: members.reduce((sum, member) => sum + member.remaining, 0),
+        recipients: [],
+        renew: false,
+        run: () =>
+          createPaymentRequest(supabase, {
+            studentIds,
+            schoolYearId: input.schoolYearId,
+            dueDate,
+          }),
+      });
+    }
+  }
+  const paymentIds = input.mode === "krav" ? plan.renew : plan.remind;
+  for (const paymentId of paymentIds) {
+    const members = all.filter((row) => row.request?.paymentId === paymentId);
+    if (members.length === 0) continue;
+    const remaining = members.reduce((sum, member) => sum + member.remaining, 0);
+    jobs.push({
+      key: paymentId,
+      studentIds: members.map((member) => member.studentId),
+      ...describe(members),
+      amount: Math.min(members[0].request?.amount ?? remaining, remaining),
+      recipients: [],
+      renew: input.mode === "krav",
+      run: () => resendPaymentRequest(supabase, paymentId, dueDate),
+    });
+  }
+  return jobs;
+}
+
+export async function previewPaymentRequests(input: {
+  studentIds: string[];
+  schoolYearId: string;
+  mode: BulkMode;
+}): Promise<{ ok: true; items: BulkItem[]; emailEnabled: boolean } | { ok: false; error: string }> {
+  if (!(await getIsAdmin())) return DENIED;
+  const parsed = bulkSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  const supabase = await createClient();
+  try {
+    const jobs = await planBulkJobs(supabase, parsed.data, null);
+    const items: BulkItem[] = await Promise.all(
+      jobs.map(async (job) => ({
+        key: job.key,
+        name: job.name,
+        children: job.children,
+        amount: job.amount,
+        renew: job.renew,
+        recipients: await requestRecipients(supabase, job.studentIds).catch(() => []),
+      })),
+    );
+    return { ok: true, items, emailEnabled: await emailNotifications() };
   } catch (error) {
     return { ok: false, error: message(error) };
   }
@@ -83,43 +220,28 @@ export async function resendRequest(paymentId: string): Promise<RequestActionRes
 export async function sendPaymentRequests(input: {
   studentIds: string[];
   schoolYearId: string;
-  mode: "krav" | "paminnelse";
+  mode: BulkMode;
+  keys?: string[];
+  dueDate?: string | null;
 }): Promise<RequestActionResult> {
   if (!(await getIsAdmin())) return DENIED;
-  const parsed = requestSchema
-    .pick({ studentIds: true, schoolYearId: true })
-    .extend({ mode: z.enum(["krav", "paminnelse"]) })
+  const parsed = bulkSchema
+    .extend({ keys: z.array(z.string()).optional(), dueDate: dateSchema })
     .safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
 
   const supabase = await createClient();
   try {
-    const statuses = await loadPayStatuses(
-      supabase,
-      parsed.data.schoolYearId,
-      parsed.data.studentIds,
+    const keys = parsed.data.keys ? new Set(parsed.data.keys) : null;
+    const jobs = (await planBulkJobs(supabase, parsed.data, parsed.data.dueDate ?? null)).filter(
+      (job) => !keys || keys.has(job.key),
     );
-    const settings = await getRequestSettings(supabase);
-    const plan = planBulkRequests(statuses.values(), {
-      now: new Date(),
-      reminderDays: settings.reminderDays,
-    });
-    const reminders = parsed.data.mode === "paminnelse";
     let count = 0;
     let emailedTo = 0;
     const errors: string[] = [];
-    const jobs = reminders
-      ? plan.resend.map((paymentId) => () => resendPaymentRequest(supabase, paymentId))
-      : plan.create.map(
-        (studentIds) => () =>
-          createPaymentRequest(supabase, {
-            studentIds,
-            schoolYearId: parsed.data.schoolYearId,
-          }),
-      );
     for (const job of jobs) {
       try {
-        const result = await job();
+        const result = await job.run();
         count += 1;
         emailedTo += result.emailedTo;
       } catch (error) {

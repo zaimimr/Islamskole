@@ -10,6 +10,9 @@ import {
   uncoveredRemaining,
   reminderDue,
   splitAcross,
+  defaultRequestDueDate,
+  requestLine,
+  pickNextInstallment,
 } from "../src/lib/payment-request-state.ts";
 import { allocatePayment } from "../src/lib/payment-ledger.ts";
 
@@ -36,7 +39,8 @@ test("paid and exempt children never look like they owe", () => {
 
 test("expired request reads as not paid with a resend path", () => {
   const view = describeRequest(owing, request({ status: "avbrutt" }), "2026-11-02");
-  assert.equal(view.label, "Utløpt, ikke betalt");
+  assert.equal(view.label, "Utløpt");
+  assert.match(view.detail, /^Vipps-krav utløpt/);
   assert.equal(view.kind, "utlopt");
 });
 
@@ -157,7 +161,8 @@ test("bulk krav skips paused, plan, inactive and in-flight families", () => {
     bulkOptions,
   );
   assert.deepEqual(plan.create, [["a1", "a2"]]);
-  assert.deepEqual(plan.resend, []);
+  assert.deepEqual(plan.renew, []);
+  assert.deepEqual(plan.remind, []);
   assert.equal(plan.skipped, 3);
 });
 
@@ -171,10 +176,10 @@ test("bulk krav bills siblings the open krav does not cover", () => {
     bulkOptions,
   );
   assert.deepEqual(plan.create, [["z2", "z3"]]);
-  assert.deepEqual(plan.resend, []);
+  assert.deepEqual(plan.remind, []);
 });
 
-test("bulk reminders only for krav past the reminder interval or expired", () => {
+test("expired krav are renewed, reminders only past the reminder interval", () => {
   const old = { sentAt: "2026-10-20T10:00:00Z", lastSentAt: "2026-10-20T10:00:00Z" };
   const plan = planBulkRequests(
     [
@@ -185,7 +190,8 @@ test("bulk reminders only for krav past the reminder interval or expired", () =>
     ],
     bulkOptions,
   );
-  assert.deepEqual(plan.resend.sort(), ["due", "exp", "plan"]);
+  assert.deepEqual(plan.remind.sort(), ["due", "plan"]);
+  assert.deepEqual(plan.renew, ["exp"]);
   assert.deepEqual(plan.create, []);
   assert.equal(plan.skipped, 1);
 });
@@ -198,7 +204,7 @@ test("after sending, nothing is left to bulk send", () => {
     ],
     bulkOptions,
   );
-  assert.deepEqual(plan, { create: [], resend: [], skipped: 1 });
+  assert.deepEqual(plan, { create: [], renew: [], remind: [], skipped: 1 });
 });
 
 test("uncovered amount counts only children without a krav", () => {
@@ -218,9 +224,10 @@ test("krav label shows the krav amount and reminders", () => {
     request({ amount: 150000 }),
     "2026-11-02",
   );
-  assert.match(view.label, /^Krav 1.500 kr sendt/);
+  assert.equal(view.label, "Krav sendt");
+  assert.match(view.detail, /^Vipps-krav 1.500 kr sendt/);
   const reminded = describeRequest(owing, request({ reminderCount: 1 }), "2026-11-02");
-  assert.match(reminded.label, /^Påminnelse sendt/);
+  assert.match(reminded.detail, /påminnet 1$/);
 });
 
 test("a parent-started payment that was never emailed shows as a link, not a sent krav", () => {
@@ -237,4 +244,33 @@ test("a replaced krav is only voided when Vipps confirms nothing is paid", () =>
   assert.equal(supersedeAction({ state: "CREATED", capturedAmount: 0 }), "cancel");
   assert.equal(supersedeAction({ state: "EXPIRED", capturedAmount: 0 }), "void");
   assert.equal(supersedeAction({ state: "ABORTED", capturedAmount: 0 }), "void");
+});
+
+test("default frist is the first Saturday at least five days ahead", () => {
+  assert.equal(defaultRequestDueDate("2026-11-01"), "2026-11-07");
+  assert.equal(defaultRequestDueDate("2026-11-02"), "2026-11-07");
+  assert.equal(defaultRequestDueDate("2026-11-03"), "2026-11-14");
+  assert.equal(defaultRequestDueDate("2026-11-07"), "2026-11-14");
+  assert.equal(defaultRequestDueDate("2026-12-28"), "2027-01-02");
+});
+
+test("expired krav line never mentions reminders", () => {
+  const line = requestLine(request({ status: "avbrutt", reminderCount: 2 }), 500000);
+  assert.doesNotMatch(line, /påmin/i);
+  assert.match(line, /^Vipps-krav utløpt/);
+});
+
+test("next installment sums siblings on the earliest date", () => {
+  const next = pickNextInstallment(
+    [
+      { id: "i3", studentId: "a", amount: 100000, dueDate: "2027-01-10" },
+      { id: "i1", studentId: "a", amount: 100000, dueDate: "2026-12-10" },
+      { id: "i2", studentId: "b", amount: 50000, dueDate: "2026-12-10" },
+      { id: "i4", studentId: "c", amount: 70000, dueDate: "2026-11-10" },
+    ],
+    ["a", "b"],
+  );
+  assert.equal(next.amount, 150000);
+  assert.equal(next.dueDate, "2026-12-10");
+  assert.equal(pickNextInstallment([], ["a"]), null);
 });

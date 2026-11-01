@@ -14,11 +14,15 @@ import { allocatePayment } from "@/lib/payment-ledger";
 import { studentDisplayName } from "@/lib/student-name";
 import {
   autoRequestDue,
+  defaultRequestDueDate,
+  planBulkRequests,
   latestRequestByStudent,
+  pickNextInstallment,
   reminderDue,
   splitAcross,
   supersedeAction,
   type OpenRequest,
+  type PlannedInstallment,
 } from "@/lib/payment-request-state";
 
 type Client = SupabaseClient<Database>;
@@ -281,7 +285,7 @@ export async function createPaymentRequest(
     .maybeSingle();
   const today = osloToday();
   const dueDate =
-    input.dueDate && input.dueDate >= today ? input.dueDate : addCalendarDays(today, 14);
+    input.dueDate && input.dueDate >= today ? input.dueDate : defaultRequestDueDate(today);
   const names = owing.map((row) => row.name);
   const familyName =
     owing[0].familyName ?? owing[0].name.split(" ").slice(-1)[0] ?? null;
@@ -407,9 +411,25 @@ function renewedReference(reference: string | null): string {
     : `${reference.slice(0, 55)}-${suffix}`;
 }
 
+export async function requestRecipients(
+  client: Client,
+  studentIds: string[],
+): Promise<string[]> {
+  if (studentIds.length === 0) return [];
+  const { data: students } = await client
+    .from("students")
+    .select(GUARDIAN_FIELDS)
+    .in("id", studentIds)
+    .limit(1);
+  const first = students?.[0];
+  if (!first) return [];
+  return (await recipientsFor(client, first)).to;
+}
+
 export async function resendPaymentRequest(
   client: Client,
   paymentId: string,
+  dueDate?: string | null,
 ): Promise<RequestResult> {
   const { data: payment, error } = await client
     .from("payments")
@@ -421,7 +441,9 @@ export async function resendPaymentRequest(
   if (!["opprettet", "avbrutt"].includes(payment.status)) {
     throw new Error("Kravet er allerede betalt eller venter i Vipps");
   }
-  if (payment.status === "avbrutt") {
+  const today = osloToday();
+  const renewed = payment.status === "avbrutt";
+  if (renewed) {
     const { error: renewError } = await client
       .from("payments")
       .update({
@@ -429,22 +451,22 @@ export async function resendPaymentRequest(
         vipps_state: null,
         redirect_url: null,
         reference: renewedReference(payment.reference),
-        due_date:
-          payment.due_date && payment.due_date >= osloToday()
-            ? payment.due_date
-            : addCalendarDays(osloToday(), 14),
+        due_date: dueDate && dueDate >= today ? dueDate : defaultRequestDueDate(today),
+        reminder_count: 0,
+        last_reminder_at: null,
       })
       .eq("id", paymentId)
       .eq("status", "avbrutt");
     if (renewError) throw new Error(toUserError(renewError), { cause: renewError });
   }
 
-  const emailedTo = await sendRequestEmail(client, paymentId, true);
+  const reminder = Boolean(payment.request_sent_at) && !renewed;
+  const emailedTo = await sendRequestEmail(client, paymentId, reminder);
   if (emailedTo > 0) {
     const { error: updateError } = await client
       .from("payments")
       .update(
-        payment.request_sent_at
+        reminder
           ? {
               last_reminder_at: new Date().toISOString(),
               reminder_count: payment.reminder_count + 1,
@@ -597,27 +619,39 @@ export async function runPaymentRequestAutomation(
   return result;
 }
 
-export async function nextPlanInstallment(
+export async function loadPlannedInstallments(
   client: Client,
   schoolYearId: string,
-  studentIds: string[],
-): Promise<{ amount: number; dueDate: string } | null> {
-  if (studentIds.length === 0) return null;
-  const { data } = await client
+  studentIds?: string[],
+): Promise<PlannedInstallment[]> {
+  let query = client
     .from("installments")
-    .select("amount, due_date, payment_plans!inner(status)")
+    .select("id, student_id, amount, due_date, payment_plans!inner(status)")
     .eq("school_year_id", schoolYearId)
-    .in("student_id", studentIds)
     .eq("status", "planlagt")
     .eq("payment_plans.status", "aktiv")
     .gt("amount", 0)
     .order("due_date");
-  const first = data?.[0];
-  if (!first) return null;
-  const amount = (data ?? [])
-    .filter((row) => row.due_date === first.due_date)
-    .reduce((sum, row) => sum + row.amount, 0);
-  return { amount, dueDate: first.due_date };
+  if (studentIds) query = query.in("student_id", studentIds);
+  const { data } = await query;
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    studentId: row.student_id,
+    amount: row.amount,
+    dueDate: row.due_date,
+  }));
+}
+
+export async function nextPlanInstallment(
+  client: Client,
+  schoolYearId: string,
+  studentIds: string[],
+): Promise<{ installmentId: string; amount: number; dueDate: string } | null> {
+  if (studentIds.length === 0) return null;
+  return pickNextInstallment(
+    await loadPlannedInstallments(client, schoolYearId, studentIds),
+    studentIds,
+  );
 }
 
 export async function pausedFamilies(client: Client): Promise<Set<string>> {
@@ -626,4 +660,25 @@ export async function pausedFamilies(client: Client): Promise<Set<string>> {
     .select("id")
     .not("payment_requests_paused_at", "is", null);
   return new Set((data ?? []).map((row) => row.id));
+}
+
+export async function loadBulkCounts(
+  client: Client,
+  schoolYearId: string,
+): Promise<{ studentIds: string[]; krav: number; paminnelse: number }> {
+  const [statuses, settings] = await Promise.all([
+    loadPayStatuses(client, schoolYearId),
+    getRequestSettings(client),
+  ]);
+  const plan = planBulkRequests(statuses.values(), {
+    now: new Date(),
+    reminderDays: settings.reminderDays,
+  });
+  return {
+    studentIds: [...statuses.values()]
+      .filter((row) => row.remaining > 0 && row.active)
+      .map((row) => row.studentId),
+    krav: plan.create.length + plan.renew.length,
+    paminnelse: plan.remind.length,
+  };
 }

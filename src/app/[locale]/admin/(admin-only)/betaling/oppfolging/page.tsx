@@ -7,11 +7,13 @@ import { osloToday } from "@/lib/dates";
 import {
   getRequestSettings,
   loadPayStatuses,
+  loadPlannedInstallments,
   type StudentPayStatus,
 } from "@/lib/payment-requests";
 import {
   describeRequest,
   nextAutoStep,
+  pickNextInstallment,
   planBulkRequests,
   uncoveredRemaining,
   type OpenRequest,
@@ -19,8 +21,8 @@ import {
 } from "@/lib/payment-request-state";
 import {
   BulkRequestButton,
-  PaymentRequestActions,
   RequestStatus,
+  VippsRequestBlock,
 } from "@/components/admin/payment-request";
 import { FinanceLoadError } from "../load-error";
 import { RequestSettings } from "./request-settings";
@@ -29,6 +31,7 @@ export const metadata: Metadata = { title: "Oppfølging" };
 
 type FamilyGroup = {
   key: string;
+  familyId: string | null;
   href: string;
   name: string;
   children: StudentPayStatus[];
@@ -70,9 +73,10 @@ export default async function FollowUpPage({
     );
   }
 
-  const [settings, statuses] = await Promise.all([
+  const [settings, statuses, planned] = await Promise.all([
     getRequestSettings(supabase),
     loadPayStatuses(supabase, year.id).catch(() => null),
+    loadPlannedInstallments(supabase, year.id).catch(() => []),
   ]);
   if (!statuses) {
     return (
@@ -90,6 +94,7 @@ export default async function FollowUpPage({
     const key = status.familyId ?? status.studentId;
     const group = groups.get(key) ?? {
       key,
+      familyId: status.familyId,
       href: status.familyId
         ? `${basePath}/familier/${status.familyId}`
         : `${basePath}/elever/${status.studentId}`,
@@ -141,6 +146,23 @@ export default async function FollowUpPage({
     now: new Date(),
     reminderDays: settings.reminderDays,
   });
+  const autoTargets = families.filter(
+    (family) =>
+      nextAutoStep(
+        {
+          enabled: true,
+          paused: family.paused,
+          onPlan: family.onPlan,
+          remaining: family.balance.remaining,
+          request: family.request,
+          reminderDays: settings.reminderDays,
+          maxReminders: settings.maxReminders,
+          firstDueDate: year.sem1_due_on,
+          leadDays: settings.leadDays,
+        },
+        today,
+      ) === "Krav i dag",
+  ).length;
   const totalRemaining = families.reduce((sum, family) => sum + family.balance.remaining, 0);
   const needsAction = families.filter(
     (family) =>
@@ -149,39 +171,54 @@ export default async function FollowUpPage({
   ).length;
 
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
-      <div className="grid min-w-0 grid-cols-1 gap-4">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="font-heading text-3xl font-bold tracking-[-0.02em]">Oppfølging</h1>
-            <p className="mt-1 text-sm text-admin-muted tabular-nums">
-              {families.length} {families.length === 1 ? "familie" : "familier"} skylder{" "}
-              {formatNok(totalRemaining)} · {needsAction} trenger oppfølging
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <BulkRequestButton
-              schoolYearId={year.id}
-              studentIds={bulkIds}
-              count={bulk.create.length}
-              mode="krav"
-            />
-            <BulkRequestButton
-              schoolYearId={year.id}
-              studentIds={bulkIds}
-              count={bulk.resend.length}
-              mode="paminnelse"
-            />
-          </div>
-        </header>
-
-        {families.length === 0 ? (
-          <p className="rounded-2xl bg-white p-6 text-center font-heading text-xl font-bold ring-1 ring-[#E3DED3]">
-            Alle har betalt
+    <div className="grid min-w-0 grid-cols-1 gap-4">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="font-heading text-3xl font-bold tracking-[-0.02em]">Oppfølging</h1>
+          <p className="mt-1 text-sm text-admin-muted tabular-nums">
+            {families.length} {families.length === 1 ? "familie" : "familier"} skylder{" "}
+            {formatNok(totalRemaining)} · {needsAction} trenger oppfølging
           </p>
-        ) : (
-          <ul className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-2">
-            {families.map((family) => (
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <BulkRequestButton
+            schoolYearId={year.id}
+            studentIds={bulkIds}
+            count={bulk.create.length + bulk.renew.length}
+            mode="krav"
+            today={today}
+          />
+          <BulkRequestButton
+            schoolYearId={year.id}
+            studentIds={bulkIds}
+            count={bulk.remind.length}
+            mode="paminnelse"
+            today={today}
+          />
+        </div>
+      </header>
+
+      <RequestSettings
+        enabled={settings.enabled}
+        leadDays={settings.leadDays}
+        reminderDays={settings.reminderDays}
+        maxReminders={settings.maxReminders}
+        affectedFamilies={autoTargets}
+      />
+
+      {families.length === 0 ? (
+        <p className="rounded-2xl bg-white p-6 text-center font-heading text-xl font-bold ring-1 ring-[#E3DED3]">
+          Alle har betalt
+        </p>
+      ) : (
+        <ul className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-2">
+          {families.map((family) => {
+            const owing = family.children.map((child) => ({
+              id: child.studentId,
+              name: child.name,
+              remainingOre: child.remaining,
+            }));
+            return (
               <li
                 key={family.key}
                 className="grid min-w-0 grid-cols-1 gap-3 rounded-2xl bg-white p-4 ring-1 ring-[#E3DED3]"
@@ -224,7 +261,7 @@ export default async function FollowUpPage({
                     · {formatNok(family.uncovered)}
                   </p>
                 ) : null}
-                <PaymentRequestActions
+                <VippsRequestBlock
                   schoolYearId={year.id}
                   studentIds={family.children.map((child) => child.studentId)}
                   balance={family.balance}
@@ -232,19 +269,35 @@ export default async function FollowUpPage({
                   today={today}
                   title={family.name}
                   showStatus={false}
+                  nextInstallment={
+                    family.onPlan
+                      ? pickNextInstallment(
+                          planned,
+                          family.children.map((child) => child.studentId),
+                        )
+                      : null
+                  }
+                  manualChildren={owing}
+                  sadaqa={
+                    family.familyId
+                      ? { id: family.familyId, name: family.name, children: owing }
+                      : null
+                  }
+                  auto={
+                    family.familyId
+                      ? {
+                          familyId: family.familyId,
+                          paused: family.paused,
+                          globalEnabled: settings.enabled,
+                        }
+                      : null
+                  }
                 />
               </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <RequestSettings
-        enabled={settings.enabled}
-        leadDays={settings.leadDays}
-        reminderDays={settings.reminderDays}
-        maxReminders={settings.maxReminders}
-      />
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

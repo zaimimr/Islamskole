@@ -502,14 +502,16 @@ export default async function RegistrertePage({
               <BulkRequestButton
                 schoolYearId={realYear}
                 studentIds={owingStudents.map((student) => student.id)}
-                count={bulk.create.length}
+                count={bulk.create.length + bulk.renew.length}
                 mode="krav"
+                today={osloToday()}
               />
               <BulkRequestButton
                 schoolYearId={realYear}
                 studentIds={owingStudents.map((student) => student.id)}
-                count={bulk.resend.length}
+                count={bulk.remind.length}
                 mode="paminnelse"
+                today={osloToday()}
               />
             </div>
           ) : (

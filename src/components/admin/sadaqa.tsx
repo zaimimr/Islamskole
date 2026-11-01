@@ -99,15 +99,23 @@ export function SadaqaCoverDialog({
   families,
   triggerLabel = "Dekk med sadaqa",
   triggerVariant = "outline",
+  open: openProp,
+  onOpenChange,
 }: {
   schoolYearId: string;
   families: SadaqaFamily[];
   triggerLabel?: string;
   triggerVariant?: "default" | "outline";
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const router = useRouter();
   const single = families.length === 1 ? families[0] : null;
-  const [open, setOpen] = useState(false);
+  const [innerOpen, setInnerOpen] = useState(false);
+  const controlled = openProp !== undefined;
+  const open = controlled ? openProp : innerOpen;
+  const setOpen = (next: boolean) =>
+    controlled ? onOpenChange?.(next) : setInnerOpen(next);
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
   const [family, setFamily] = useState<SadaqaFamily | null>(single);
@@ -205,6 +213,7 @@ export function SadaqaCoverDialog({
         if (next) reset();
       }}
     >
+{controlled ? null : (
       <DialogTrigger
         render={
           <Button
@@ -216,6 +225,7 @@ export function SadaqaCoverDialog({
           </Button>
         }
       />
+      )}
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>

@@ -102,6 +102,7 @@ export type FamilyNextAction = {
   href: string;
   label: string;
   tone: "warning" | "danger" | "info";
+  control?: ReactNode;
 };
 
 export type FamilyWorkbenchProps = {
@@ -356,6 +357,11 @@ function NextActionCard({ action }: { action?: FamilyNextAction }) {
     >
       <h3 className="font-bold">{action.title}</h3>
       <p className="mt-1 text-sm text-admin-muted">{action.description}</p>
+      {action.control ? (
+        <div className="mt-4 [&_[data-slot=button]]:w-full [&>div]:w-full [&>div>div]:w-full">
+          {action.control}
+        </div>
+      ) : (
       <Link
         href={action.href}
         className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#E9B63B] px-3 text-sm font-bold text-[#392B08] outline-none transition-colors hover:bg-[#DDA726] focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -363,6 +369,7 @@ function NextActionCard({ action }: { action?: FamilyNextAction }) {
         {action.label}
         <ArrowRight aria-hidden="true" className="size-4" />
       </Link>
+      )}
     </div>
   );
 }

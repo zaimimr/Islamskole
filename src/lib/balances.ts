@@ -1,4 +1,5 @@
 import "server-only";
+import { splitAcross, type OpenRequest } from "@/lib/payment-request-state";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { osloToday } from "@/lib/dates";
@@ -12,14 +13,6 @@ export type PayStateInput = {
   paid: number | null;
   remaining: number | null;
   hasOpenLink?: boolean;
-};
-
-export const payStateLabels: Record<PayState, string> = {
-  betalt: "Betalt",
-  delvis: "Delvis betalt",
-  venter: "Lenke sendt",
-  ubetalt: "Ikke betalt",
-  fritatt: "Fritatt",
 };
 
 export const payStateOrder: Record<PayState, number> = {
@@ -308,6 +301,7 @@ export async function getOverdueSummary(
   supabase: Client,
   year: ActiveYear,
   rows: YearBalanceRow[],
+  requests: OpenRequest[] = [],
 ): Promise<OverdueSummary> {
   const today = osloToday();
   const [planResult, installmentResult] = await Promise.all([
@@ -371,6 +365,25 @@ export async function getOverdueSummary(
       row.remainingOre,
     );
     if (overdue > 0) overdueByStudent.set(row.studentId, overdue);
+  }
+
+  for (const request of requests) {
+    if (request.status !== "opprettet" || !request.sent || !request.dueDate) continue;
+    if (request.dueDate >= today) {
+      if (!nextDueDate || request.dueDate < nextDueDate) nextDueDate = request.dueDate;
+      continue;
+    }
+    const shares = splitAcross(
+      request.amount,
+      request.studentIds.map((studentId) => ({
+        studentId,
+        remaining: rowByStudent.get(studentId)?.remainingOre ?? 0,
+      })),
+    );
+    for (const share of shares) {
+      const current = overdueByStudent.get(share.studentId) ?? 0;
+      overdueByStudent.set(share.studentId, Math.max(current, share.amount));
+    }
   }
 
   for (const due of [year.sem1_due_on, year.sem2_due_on]) {

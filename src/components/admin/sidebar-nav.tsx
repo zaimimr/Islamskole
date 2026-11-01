@@ -4,6 +4,7 @@ import { Suspense, createContext, use, useContext, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Backpack,
   CalendarClock,
   CalendarDays,
   CalendarRange,
@@ -97,8 +98,8 @@ function buildNavigation(basePath: string, isAdmin: boolean) {
           href: `${basePath}/familier`,
           label: "Familier",
           icon: Users,
-          alsoMatches: [`${basePath}/elever`],
         },
+        { href: `${basePath}/elever`, label: "Elever", icon: Backpack },
         { href: `${basePath}/klasser`, label: "Klasser", icon: GraduationCap },
         { href: `${basePath}/dagsplan`, label: "Dagsplan", icon: CalendarClock },
         { href: `${basePath}/beskjeder`, label: "Beskjeder", icon: Megaphone },

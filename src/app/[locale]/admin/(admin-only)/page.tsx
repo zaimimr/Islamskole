@@ -591,10 +591,10 @@ export default async function AdminDashboardPage({
     data.outstandingAmount > 0 && {
       title: "Utestående",
       description: `${formatNok(data.outstandingAmount)} gjenstår i ${yearLabel}.`,
-      href: `${basePath}/elever?betaling=ikke_betalt`,
-      action: "Se hvem",
+      href: `${basePath}/betaling/oppfolging`,
+      action: "Følg opp",
       icon: Wallet,
-      tone: "blue",
+      tone: "yellow",
     },
   ];
   const attentionItems = candidates

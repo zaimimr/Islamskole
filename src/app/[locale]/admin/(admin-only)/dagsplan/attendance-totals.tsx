@@ -112,6 +112,7 @@ export async function AttendanceTotals({
           CSV
         </a>
       </div>
+      <p className="text-sm text-admin-muted">Oppmøte = (møtt + forsinket) / registrerte dager. Gyldig og ugyldig fravær teller som fravær.</p>
       <MobileRows rows={tableRows} />
       <div className="hidden overflow-x-auto rounded-2xl bg-white ring-1 ring-[#E3DED3] sm:block">
         <table className="w-full text-sm">

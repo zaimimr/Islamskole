@@ -525,6 +525,7 @@ export function toast(page: Page, text: string | RegExp) {
 
 const CLEANUP_SQL = `
 begin;
+alter table public.person_roles disable trigger person_roles_keep_last_admin;
 create temp table zz_years on commit drop as
   select id from public.school_years where label like 'ZZTEST%';
 create temp table zz_classes on commit drop as
@@ -607,6 +608,7 @@ delete from public.school_years where id in (select id from zz_years) and not is
 alter table public.profiles disable trigger user;
 delete from auth.users where lower(coalesce(email, '')) like '%@zztest.local';
 alter table public.profiles enable trigger user;
+alter table public.person_roles enable trigger person_roles_keep_last_admin;
 commit;
 `;
 

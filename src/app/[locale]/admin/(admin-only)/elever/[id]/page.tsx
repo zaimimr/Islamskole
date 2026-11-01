@@ -29,7 +29,12 @@ import { getStudentDeleteBlockers } from "@/app/[locale]/admin/students-actions"
 import { suggestPlacements } from "@/app/[locale]/admin/(admin-only)/register/placement";
 import { studentDisplayName } from "@/lib/student-name";
 import { ageInYear, formatAge, schoolYearStart } from "@/lib/age";
-import { formatOsloDate, formatOsloDateTime } from "@/lib/dates";
+import { formatOsloDate, formatOsloDateTime, osloToday } from "@/lib/dates";
+import { loadOpenRequests, nextPlanInstallment } from "@/lib/payment-requests";
+import {
+  latestRequestByStudent,
+  type OpenRequest,
+} from "@/lib/payment-request-state";
 import { getLastParentChange } from "@/lib/parent-changes";
 import { formatNok } from "@/lib/money";
 import { StudentExitPanel } from "./student-exit-panel";
@@ -350,6 +355,22 @@ export default async function ElevDetailPage({
     };
   }
 
+  const owingYears = Object.entries(balancesByYear)
+    .filter(([, balance]) => balance.remaining > 0)
+    .map(([yearId]) => yearId);
+  const requestsByYear: Record<string, OpenRequest | null> = {};
+  const suggestedByYear: Record<string, { amount: number; dueDate: string } | null> = {};
+  await Promise.all(
+    owingYears.map(async (yearId) => {
+      const [requests, next] = await Promise.all([
+        loadOpenRequests(supabase, yearId).catch(() => []),
+        nextPlanInstallment(supabase, yearId, [student.id]),
+      ]);
+      requestsByYear[yearId] = latestRequestByStudent(requests).get(student.id) ?? null;
+      suggestedByYear[yearId] = next;
+    }),
+  );
+
   const feesByYear: Record<string, YearFee> = {};
   for (const row of (feeData as
     | {
@@ -574,7 +595,7 @@ export default async function ElevDetailPage({
     <header>
       <Link
         href={editing ? studentHref : listHref}
-        className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-bold text-[#277A31] outline-none hover:bg-[#F2F7F2] focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-bold text-[#277A31] outline-none hover:bg-[#F2F7F2] focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <ArrowLeft aria-hidden="true" className="size-4" />
         {editing ? "Tilbake til eleven" : "Tilbake til elever"}
@@ -660,6 +681,23 @@ export default async function ElevDetailPage({
   return (
     <div className="grid gap-5 sm:gap-6">
       {header}
+
+      <PaymentManager
+        studentId={student.id}
+        studentName={name}
+        classByYear={classByYear}
+        schoolYears={schoolYears}
+        defaultSchoolYearId={defaultSchoolYearId}
+        defaultAmount={defaultAmount}
+        balancesByYear={balancesByYear}
+        feesByYear={feesByYear}
+        payments={payments}
+        adjustments={adjustments}
+        teachers={teachers}
+        requestsByYear={requestsByYear}
+        suggestedByYear={suggestedByYear}
+        today={osloToday()}
+      />
 
       <section
         aria-label="Aktiv elevstatus"
@@ -877,20 +915,6 @@ export default async function ElevDetailPage({
         defaultSchoolYearId={defaultSchoolYearId}
         activeSchoolYearId={trulyActiveYear?.id ?? null}
         suggestedClassId={suggestedClassId}
-      />
-
-      <PaymentManager
-        studentId={student.id}
-        studentName={name}
-        classByYear={classByYear}
-        schoolYears={schoolYears}
-        defaultSchoolYearId={defaultSchoolYearId}
-        defaultAmount={defaultAmount}
-        balancesByYear={balancesByYear}
-        feesByYear={feesByYear}
-        payments={payments}
-        adjustments={adjustments}
-        teachers={teachers}
       />
 
       <LearningProgressSection

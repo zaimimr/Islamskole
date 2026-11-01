@@ -319,6 +319,7 @@ export async function sendInstallmentBatch(
       status: "opprettet",
       method: "vipps",
       due_date: batch.dueDate,
+      request_sent_at: new Date().toISOString(),
       description: `Avdrag ${batch.dueDate} - Skolepenger${year?.label ? ` ${year.label}` : ""} - ${childNames.join(", ")}`,
     })
     .select("id")

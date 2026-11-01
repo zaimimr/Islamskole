@@ -6,7 +6,7 @@ import type { Json, Database } from "@/lib/supabase/types";
 type Client = SupabaseClient<Database>;
 type FamilyRow = Omit<
   Database["public"]["Tables"]["families"]["Row"],
-  "preferred_language"
+  "preferred_language" | "payment_requests_paused_at"
 >;
 type GuardianRow = Database["public"]["Tables"]["guardians"]["Row"];
 

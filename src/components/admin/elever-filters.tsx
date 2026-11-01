@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 
 const paymentStatuses = [
   { value: "alle", label: "Alle betalingsstatuser" },
-  { value: "ikke_betalt", label: "Ikke ferdig betalt" },
+  { value: "ikke_betalt", label: "Skylder" },
   { value: "betalt", label: "Betalt" },
   { value: "fritatt", label: "Fritatt" },
   { value: "delvis", label: "Delvis betalt" },

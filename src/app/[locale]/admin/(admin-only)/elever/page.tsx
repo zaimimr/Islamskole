@@ -14,6 +14,14 @@ import { guardianName, studentDisplayName } from "@/lib/student-name";
 import { formatAge, schoolYearStart } from "@/lib/age";
 import { formatNok } from "@/lib/money";
 import { adminBasePath } from "@/components/admin/paths";
+import { BulkRequestButton, RequestStatus } from "@/components/admin/payment-request";
+import { getRequestSettings, loadOpenRequests, loadPayStatuses } from "@/lib/payment-requests";
+import {
+  describeRequest,
+  latestRequestByStudent,
+  planBulkRequests,
+} from "@/lib/payment-request-state";
+import { osloToday } from "@/lib/dates";
 import { EleverFilters } from "@/components/admin/elever-filters";
 import { Pagination } from "@/components/admin/pagination";
 import { ExportButton } from "@/components/admin/export-button";
@@ -38,6 +46,7 @@ type StudentRow = {
   father_first_name: string | null;
   father_last_name: string | null;
   child_birth_date: string | null;
+  family_id: string | null;
   enrollments: {
     school_year_id: string;
     status: string;
@@ -60,7 +69,7 @@ async function getRegister(q: string) {
   const studentQuery = supabase
     .rpc("admin_search_students", { p_query: q })
     .select(
-      "id, created_at, child_first_name, child_last_name, mother_first_name, mother_last_name, father_first_name, father_last_name, child_birth_date, enrollments(school_year_id, status, school_years(label), classes(id, name_no)), payments!payments_student_id_fkey(status, amount, school_year_id)",
+      "id, created_at, child_first_name, child_last_name, mother_first_name, mother_last_name, father_first_name, father_last_name, child_birth_date, family_id, enrollments(school_year_id, status, school_years(label), classes(id, name_no)), payments!payments_student_id_fkey(status, amount, school_year_id)",
     )
     .order("created_at", { ascending: false });
 
@@ -320,6 +329,39 @@ export default async function RegistrertePage({
     return true;
   });
 
+  const today = osloToday();
+  const requestByStudent = realYear
+    ? latestRequestByStudent(
+        await loadOpenRequests(await createClient(), realYear).catch(() => []),
+      )
+    : new Map();
+  const requestFor = (studentId: string) => requestByStudent.get(studentId) ?? null;
+  const owingStudents = realYear
+    ? students.filter(
+        (student) =>
+          ledgerFor(student.id).remaining > 0 &&
+          requestFor(student.id)?.status !== "autorisert",
+      )
+    : [];
+  const bulk =
+    realYear && payFilter === "ikke_betalt" && owingStudents.length > 0
+      ? await (async () => {
+          const client = await createClient();
+          const [statuses, settings] = await Promise.all([
+            loadPayStatuses(
+              client,
+              realYear,
+              owingStudents.map((student) => student.id),
+            ),
+            getRequestSettings(client),
+          ]);
+          return planBulkRequests(statuses.values(), {
+            now: new Date(),
+            reminderDays: settings.reminderDays,
+          });
+        })().catch(() => null)
+      : null;
+
   const ledgerTotals = sumLedger(students.map((st) => ledgerFor(st.id)));
 
   const total = students.length;
@@ -366,9 +408,6 @@ export default async function RegistrertePage({
           <h1 className="text-balance font-heading text-3xl font-bold tracking-[-0.02em] sm:text-4xl">
             Elever
           </h1>
-          <p className="mt-1 max-w-2xl text-sm text-admin-muted sm:mt-2 sm:text-base">
-            Klasseplassering og betaling for hver elev, samlet i ett register.
-          </p>
         </div>
         <Link
           href={`${basePath}/elever/ny`}
@@ -458,10 +497,27 @@ export default async function RegistrertePage({
               {total} {total === 1 ? "elev" : "elever"}, {scopeLabel}
             </p>
           </div>
-          <CircleUserRound
-            aria-hidden="true"
-            className="size-5 text-admin-muted"
-          />
+          {realYear && bulk ? (
+            <div className="flex flex-wrap justify-end gap-2">
+              <BulkRequestButton
+                schoolYearId={realYear}
+                studentIds={owingStudents.map((student) => student.id)}
+                count={bulk.create.length}
+                mode="krav"
+              />
+              <BulkRequestButton
+                schoolYearId={realYear}
+                studentIds={owingStudents.map((student) => student.id)}
+                count={bulk.resend.length}
+                mode="paminnelse"
+              />
+            </div>
+          ) : (
+            <CircleUserRound
+              aria-hidden="true"
+              className="size-5 text-admin-muted"
+            />
+          )}
         </div>
         {pageStudents.length === 0 ? (
           <div className="flex min-h-56 flex-col items-center justify-center px-6 py-10 text-center">
@@ -557,8 +613,17 @@ export default async function RegistrertePage({
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap items-center gap-1">
-                            <PayBadge state={state} ledger={ledger} />
+                            {requestFor(student.id) && ledger.remaining > 0 ? (
+                              <RequestStatus
+                                balance={ledger}
+                                request={requestFor(student.id)}
+                                today={today}
+                              />
+                            ) : (
+                              <PayBadge state={state} ledger={ledger} />
+                            )}
                             {state === "delvis" &&
+                            !requestFor(student.id) &&
                             hasPendingLink(studentPayments) ? (
                               <Badge variant="outline">Lenke ute</Badge>
                             ) : null}
@@ -595,9 +660,11 @@ export default async function RegistrertePage({
                       </span>
                       <span className="flex shrink-0 items-center gap-2">
                         <span className="text-right text-xs font-bold">
-                          {state === "delvis"
-                            ? `${formatNok(ledger.remaining)} igjen`
-                            : payStateLabel[state]}
+                          {requestFor(student.id) && ledger.remaining > 0
+                            ? describeRequest(ledger, requestFor(student.id), today).label
+                            : state === "delvis"
+                              ? `${formatNok(ledger.remaining)} igjen`
+                              : payStateLabel[state]}
                         </span>
                         <ArrowRight
                           aria-hidden="true"

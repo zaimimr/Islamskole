@@ -2074,6 +2074,7 @@ export type Database = {
       }
       families: {
         Row: {
+          payment_requests_paused_at: string | null
           address: string | null
           city: string | null
           created_at: string
@@ -2085,6 +2086,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          payment_requests_paused_at?: string | null
           address?: string | null
           city?: string | null
           created_at?: string
@@ -2096,6 +2098,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          payment_requests_paused_at?: string | null
           address?: string | null
           city?: string | null
           created_at?: string
@@ -2997,8 +3000,41 @@ export type Database = {
           },
         ]
       }
+      payment_request_settings: {
+        Row: {
+          enabled: boolean
+          id: boolean
+          lead_days: number
+          max_reminders: number
+          reminder_days: number
+          run_started_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          enabled?: boolean
+          id?: boolean
+          lead_days?: number
+          max_reminders?: number
+          reminder_days?: number
+          run_started_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          enabled?: boolean
+          id?: boolean
+          lead_days?: number
+          max_reminders?: number
+          reminder_days?: number
+          run_started_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
+          last_reminder_at: string | null
+          reminder_count: number
+          request_sent_at: string | null
           amount: number
           authorized_amount: number
           captured_amount: number
@@ -3033,6 +3069,9 @@ export type Database = {
           voided_at: string | null
         }
         Insert: {
+          last_reminder_at?: string | null
+          reminder_count?: number
+          request_sent_at?: string | null
           amount: number
           authorized_amount?: number
           captured_amount?: number
@@ -3067,6 +3106,9 @@ export type Database = {
           voided_at?: string | null
         }
         Update: {
+          last_reminder_at?: string | null
+          reminder_count?: number
+          request_sent_at?: string | null
           amount?: number
           authorized_amount?: number
           captured_amount?: number
@@ -4298,6 +4340,8 @@ export type Database = {
         }[]
       }
       record_activity_payment: { Args: { p_payment: string }; Returns: number }
+      claim_payment_request_run: { Args: never; Returns: boolean }
+      release_payment_request_run: { Args: never; Returns: undefined }
       create_activity_payment: {
         Args: { p_id: string; p_students: string[] }
         Returns: {

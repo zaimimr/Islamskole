@@ -17,6 +17,7 @@ export function FinanceTabs({
   const root = `${basePath}/betaling`;
   const tabs = [
     { href: root, label: "Oversikt" },
+    { href: `${root}/oppfolging`, label: "Oppfølging" },
     { href: `${root}/logg`, label: "Betalingslogg" },
     { href: `${root}/avdrag`, label: "Avdrag" },
     { href: `${root}/rabatter`, label: "Rabatter" },

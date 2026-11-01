@@ -168,6 +168,15 @@ type SyncedPayment = {
   student_applications: (NamedRecord & { id: string })[] | null;
 };
 
+export function storedVippsState(
+  state: string,
+  capturedAmount: number,
+  refundedAmount: number,
+): string {
+  if (state !== "AUTHORIZED" || capturedAmount <= 0) return state;
+  return refundedAmount >= capturedAmount ? "REFUNDED" : "CAPTURED";
+}
+
 export async function syncPaymentByReference(
   reference: string,
 ): Promise<string | null> {
@@ -211,7 +220,7 @@ export async function syncPaymentByReference(
   const now = new Date().toISOString();
   const update: Record<string, unknown> = {
     status,
-    vipps_state: result.state,
+    vipps_state: storedVippsState(result.state, capturedAmount, result.refundedAmount),
     authorized_amount: result.authorizedAmount,
     captured_amount: capturedAmount,
     last_synced_at: now,
@@ -272,7 +281,11 @@ export async function syncPaymentByReference(
     try {
       await allocatePayment(admin, payment.id);
     } catch (error) {
-      console.error("Payment allocation failed", { reference, error });
+      console.error("Payment allocation failed", {
+        reference,
+        paymentId: payment.id,
+        message: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 

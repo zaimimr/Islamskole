@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -133,6 +134,7 @@ export type FamilyWorkbenchProps = {
   allAttentionHref?: string;
   duplicateFamilies?: FamilyDuplicate[];
   mergeOptions?: FamilyOption[];
+  economy?: ReactNode;
 };
 
 export type FamilyDuplicate = {
@@ -380,6 +382,7 @@ export function FamilyWorkbench({
   allAttentionHref,
   duplicateFamilies = [],
   mergeOptions = [],
+  economy,
 }: FamilyWorkbenchProps) {
   const primaryGuardian =
     family.guardians.find((guardian) => guardian.isPrimary) ??
@@ -530,6 +533,8 @@ export function FamilyWorkbench({
             ) : null}
           </div>
         </header>
+
+        {economy ? <div className="grid gap-4 px-5 pt-5 sm:px-6">{economy}</div> : null}
 
         <section
           className="px-5 pt-5 sm:px-6 xl:hidden"

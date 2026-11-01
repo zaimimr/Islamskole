@@ -549,7 +549,20 @@ create temp table zz_payments on commit drop as
      or reference like 'ZZTEST%'
      or lower(coalesce(payer_email, '')) like '%@zztest.local'
      or id in (select payment_id from public.payment_allocations where student_id in (select id from zz_students))
-     or id in (select payment_id from public.activity_payment_targets where student_id in (select id from zz_students));
+     or id in (select payment_id from public.activity_payment_targets where student_id in (select id from zz_students))
+     or id in (select payment_id from public.payment_targets where student_id in (select id from zz_students))
+     or id in (select payment_id from public.student_applications where payment_id is not null and family_id in (select id from zz_families))
+     or school_year_id in (select id from zz_years)
+     or (
+       student_id is null
+       and reference like 'isk-%'
+       and status in ('opprettet', 'avbrutt')
+       and not exists (select 1 from public.payment_targets t where t.payment_id = payments.id)
+       and not exists (select 1 from public.payment_allocations a where a.payment_id = payments.id)
+       and not exists (select 1 from public.activity_payment_targets t where t.payment_id = payments.id)
+       and not exists (select 1 from public.student_applications a where a.payment_id = payments.id)
+       and not exists (select 1 from public.installments i where i.payment_id = payments.id)
+     );
 create temp table zz_activities on commit drop as
   select id from public.school_activities where class_id in (select id from zz_classes) or school_year_id in (select id from zz_years) or title like 'ZZTEST%';
 delete from public.sadaqa_gifts where activity_id in (select id from zz_activities) or student_id in (select id from zz_students);

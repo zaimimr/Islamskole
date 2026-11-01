@@ -32,10 +32,7 @@ export function SubstitutePicker({ options }: { options: { value: string; label:
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-3 rounded-2xl bg-card p-4 ring-1 ring-foreground/8 sm:p-5">
-      <div className="grid gap-1">
-        <h3 className="font-heading text-lg font-semibold">{t("title")}</h3>
-        <p className="text-sm text-pretty text-muted-foreground">{t("intro")}</p>
-      </div>
+      <h3 className="font-heading text-lg font-semibold">{t("title")}</h3>
       <div className="grid gap-2">
         <Label htmlFor="substitute-class">{t("classLabel")}</Label>
         <SelectField

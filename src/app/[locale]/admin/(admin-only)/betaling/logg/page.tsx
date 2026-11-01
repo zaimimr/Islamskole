@@ -34,10 +34,10 @@ const PAGE_SIZE = 50;
 const SUM_PAGE_SIZE = 1000;
 
 const statusLabels: Record<string, string> = {
-  opprettet: "Venter",
-  autorisert: "Autorisert",
+  opprettet: "Ikke betalt",
+  autorisert: "Betaling venter",
   fanget: "Betalt",
-  avbrutt: "Avbrutt",
+  avbrutt: "Utløpt",
   refundert: "Refundert",
   feilet: "Feilet",
 };

@@ -10,7 +10,6 @@ import { writeAudit } from "@/lib/audit";
 import {
   capturePayment,
   cancelPayment,
-  createPayment,
   getPayment,
   refundPayment,
 } from "@/lib/vipps";
@@ -30,7 +29,7 @@ import {
   replacePaymentAllocations,
   setStudentFee,
 } from "@/lib/payment-ledger";
-import { buildReference, describeForStudent } from "@/lib/payment-descriptor";
+import { buildReference } from "@/lib/payment-descriptor";
 import { rebuildPendingInstallmentsForStudent } from "@/lib/payment-plans";
 import {
   sendPaymentLinkEmail,
@@ -64,15 +63,6 @@ import { emailNotifications } from "@/flags";
 
 type ActionResult =
   { ok: true; id?: string; note?: string } | { ok: false; error: string };
-type PaymentResult =
-  | {
-      ok: true;
-      redirectUrl: string;
-      reference: string;
-      emailed?: boolean;
-      emailedTo?: number;
-    }
-  | { ok: false; error: string };
 type BatchResult =
   | { ok: true; sent: number; skipped: number; failed: number; note?: string }
   | { ok: false; error: string };
@@ -460,16 +450,25 @@ export async function createStudentFromApplication(
     applicationId,
     Boolean(returning),
   );
-  await allocatePaymentsForStudent(supabase, studentId, applicationId);
+  const allocationError = await allocatePaymentsForStudent(
+    supabase,
+    studentId,
+    applicationId,
+  ).then(
+    () => null,
+    (error: unknown) => allocationFailure(error),
+  );
 
   revalidate();
   if (placementError) return { ok: false, error: placementError };
   return {
     ok: true,
     id: studentId,
-    note: returning
-      ? `${name ?? "Eleven"} var allerede elev og er koblet til den eksisterende elevoppføringen.`
-      : undefined,
+    note: allocationError
+      ? `Eleven er opprettet, men betalingen ble ikke ført: ${allocationError}`
+      : returning
+        ? `${name ?? "Eleven"} var allerede elev og er koblet til den eksisterende elevoppføringen.`
+        : undefined,
   };
 }
 
@@ -1126,169 +1125,6 @@ export async function removeEnrollment(id: string): Promise<ActionResult> {
   return { ok: true, id };
 }
 
-const paymentSchema = z.object({
-  student_id: z.string().min(1),
-  amount_nok: z.number().positive("Beløp må være større enn 0"),
-});
-
-export async function createVippsPayment(
-  formData: FormData,
-): Promise<PaymentResult> {
-  const denied = await requireAdmin();
-  if (denied) return denied;
-
-  const studentId = readString(formData, "student_id");
-  const schoolYearId = readOptionalString(formData, "school_year_id");
-  const amountNok = readNumber(formData, "amount_nok");
-
-  const parsed = paymentSchema.safeParse({
-    student_id: studentId,
-    amount_nok: amountNok ?? 0,
-  });
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0].message };
-  }
-
-  if (!schoolYearId) {
-    return { ok: false, error: "Velg et skoleår for betalingen" };
-  }
-
-  const supabase = await createClient();
-
-  const { data: enrollmentRow } = await supabase
-    .from("enrollments")
-    .select("id, price_snapshot, classes(name_no)")
-    .eq("student_id", studentId)
-    .eq("school_year_id", schoolYearId)
-    .eq("status", "aktiv")
-    .limit(1)
-    .maybeSingle();
-  const enrollment = enrollmentRow as unknown as {
-    id: string;
-    price_snapshot: number | null;
-    classes: { name_no: string | null } | null;
-  } | null;
-  const className = enrollment?.classes?.name_no ?? null;
-  const enrollmentId = enrollment?.id ?? null;
-
-  await ensureStudentFee(supabase, studentId, schoolYearId);
-
-  const amount = Math.round((amountNok as number) * 100);
-  const dueDate = readOptionalString(formData, "due_date") ?? addCalendarDays(osloToday(), 14);
-
-  const { data: student } = await supabase
-    .from("students")
-    .select(
-      "family_id, child_phone, child_first_name, child_last_name, mother_first_name, mother_last_name, father_first_name, father_last_name, mother_email, father_email",
-    )
-    .eq("id", studentId)
-    .maybeSingle();
-  const studentRow = student as unknown as {
-    family_id: string | null;
-    child_phone: string | null;
-    child_first_name: string | null;
-    child_last_name: string | null;
-    mother_first_name: string | null;
-    mother_last_name: string | null;
-    father_first_name: string | null;
-    father_last_name: string | null;
-    mother_email: string | null;
-    father_email: string | null;
-  } | null;
-  const phone = studentRow?.child_phone;
-  const recipients: MoneyRecipients = studentRow
-    ? await recipientsFor(supabase, studentRow)
-    : { to: [], lang: "no", familyId: null };
-
-  const { data: year } = await supabase
-    .from("school_years")
-    .select("label")
-    .eq("id", schoolYearId)
-    .maybeSingle();
-  const yearLabel =
-    (year as unknown as { label: string } | null)?.label ?? null;
-
-  const descriptor = studentRow
-    ? describeForStudent(studentRow, yearLabel, amount)
-    : null;
-
-  const description =
-    readOptionalString(formData, "description") ??
-    descriptor?.description ??
-    `Skolepenger${yearLabel ? ` ${yearLabel}` : ""}`;
-
-  const reference = buildReference(
-    yearLabel,
-    descriptor?.familyName ?? null,
-    1,
-  );
-  const returnUrl = `${siteUrl()}/api/vipps/return?reference=${reference}&locale=${recipients.lang}`;
-
-  let redirectUrl: string;
-  try {
-    const result = await createPayment({
-      reference,
-      amount,
-      description,
-      returnUrl,
-      phoneNumber: phone,
-      metadata: descriptor?.metadata ?? null,
-      orderLines: descriptor?.orderLines ?? null,
-    });
-    redirectUrl = result.redirectUrl;
-  } catch (error) {
-    return { ok: false, error: vippsError(error) };
-  }
-
-  const { data: inserted, error: insertError } = await supabase
-    .from("payments")
-    .insert({
-      student_id: studentId,
-      enrollment_id: enrollmentId,
-      school_year_id: schoolYearId,
-      reference,
-      amount,
-      description,
-      due_date: dueDate,
-      status: "opprettet",
-      vipps_state: "CREATED",
-      redirect_url: redirectUrl,
-    } as never)
-    .select("id")
-    .single();
-
-  if (insertError) return { ok: false, error: toUserError(insertError) };
-
-  const paymentId = (inserted as unknown as { id: string }).id;
-  const payLink = `${siteUrl()}/api/vipps/pay/${paymentId}`;
-
-  let emailed = false;
-  if (recipients.to.length && (await emailNotifications())) {
-    emailed = await sendPaymentLinkEmail({
-      to: recipients.to,
-      lang: recipients.lang,
-      children: [
-        { name: studentRow ? studentDisplayName(studentRow) : "", amount },
-      ],
-      amount,
-      schoolYear: yearLabel,
-      className,
-      dueDate,
-      remaining: await remainingFor(supabase, [studentId], schoolYearId),
-      url: payLink,
-    });
-  }
-
-  revalidate();
-  return {
-    ok: true,
-    redirectUrl: payLink,
-    reference,
-    emailed,
-    emailedTo: emailed ? recipients.to.length : 0,
-  };
-}
-
 const manualPaymentSchema = z.object({
   student_id: z.string().min(1),
   school_year_id: z.string().min(1, "Velg et skoleår"),
@@ -1386,13 +1222,27 @@ export async function registerManualPayment(
   if (error) return { ok: false, error: toUserError(error) };
 
   const paymentId = (inserted as unknown as { id: string }).id;
-  await allocatePayment(supabase, paymentId);
+  const allocationError = await allocatePayment(supabase, paymentId).then(
+    () => null,
+    (error: unknown) => allocationFailure(error),
+  );
   await rebuildInstallmentsForPayment(supabase, paymentId);
 
   const receipt = await receiptNote(supabase, paymentId, formData);
 
   revalidate();
-  return { ok: true, id: paymentId, note: receipt };
+  return {
+    ok: true,
+    id: paymentId,
+    note: allocationError
+      ? `Betalingen er lagret, men ikke fordelt på elev: ${allocationError}`
+      : receipt,
+  };
+}
+
+function allocationFailure(error: unknown): string {
+  console.error("Payment allocation failed", error);
+  return error instanceof Error ? error.message : "ukjent feil";
 }
 
 function wantsReceipt(formData: FormData) {
@@ -1693,6 +1543,7 @@ export async function batchSendPaymentLinks(
         status: "opprettet",
         method: "vipps",
         due_date: dueDate,
+        request_sent_at: new Date().toISOString(),
       })
       .select("id")
       .single();
@@ -2422,6 +2273,11 @@ export async function sendPaymentLink(
   if (!ok) {
     return { ok: false, error: "E-posten kunne ikke sendes" };
   }
+  await supabase
+    .from("payments")
+    .update({ request_sent_at: new Date().toISOString() })
+    .eq("id", paymentId)
+    .is("request_sent_at", null);
 
   return { ok: true, id: paymentId };
 }

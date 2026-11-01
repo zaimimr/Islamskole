@@ -48,6 +48,10 @@ const STRINGS = {
         `Hei, her er betalingslenken for ${child}. Trykk på knappen for å betale med Vipps.`,
       cta: "Betal med Vipps",
       totalLabel: "Totalt å betale",
+      reminderSubject: (child: string) => `Påminnelse: betaling for ${child}`,
+      reminderBadge: "Påminnelse",
+      reminderIntro: (child: string) =>
+        `Hei, vi har ikke mottatt betalingen for ${child} ennå. Trykk på knappen for å betale med Vipps.`,
     },
     installment: {
       subject: (dueDate: string) => `Betalingsfrist ${dueDate} - skoleavgift`,
@@ -151,6 +155,10 @@ const STRINGS = {
         `Hi, here is the payment link for ${child}. Tap the button to pay with Vipps.`,
       cta: "Pay with Vipps",
       totalLabel: "Total to pay",
+      reminderSubject: (child: string) => `Reminder: payment for ${child}`,
+      reminderBadge: "Reminder",
+      reminderIntro: (child: string) =>
+        `Hi, we have not received the payment for ${child} yet. Tap the button to pay with Vipps.`,
     },
     installment: {
       subject: (dueDate: string) => `Payment due ${dueDate} - school fee`,
@@ -481,6 +489,7 @@ export async function sendPaymentLinkEmail(opts: {
   remaining?: number | null;
   url: string;
   lang?: EmailLang;
+  reminder?: boolean;
 }): Promise<boolean> {
   const lang = opts.lang ?? "no";
   const t = strings(lang);
@@ -489,10 +498,14 @@ export async function sendPaymentLinkEmail(opts: {
   return await send({
     lang,
     to: opts.to,
-    subject: t.paymentLink.subject(names),
-    badge: t.paymentLink.badge,
+    subject: opts.reminder
+      ? t.paymentLink.reminderSubject(names)
+      : t.paymentLink.subject(names),
+    badge: opts.reminder ? t.paymentLink.reminderBadge : t.paymentLink.badge,
     title: t.paymentLink.title,
-    intro: t.paymentLink.intro(names),
+    intro: opts.reminder
+      ? t.paymentLink.reminderIntro(names)
+      : t.paymentLink.intro(names),
     cta: { label: t.paymentLink.cta, url: opts.url, tone: "vipps" },
     rows: [
       ...(several

@@ -46,7 +46,6 @@ export function StudentLoginEmail({
           name="child_email"
           type="email"
           defaultValue={email ?? ""}
-          aria-describedby="student_login_email_hint"
           className="min-h-11 rounded-xl border-[#CFC9BD] shadow-none sm:max-w-sm"
         />
         <Button
@@ -62,10 +61,6 @@ export function StudentLoginEmail({
           Lagre endringer
         </Button>
       </div>
-      <p id="student_login_email_hint" className="text-xs text-admin-muted">
-        Eleven kan logge inn på Min side med denne adressen og se sin egen
-        klasse, ukenotater og oppmøte.
-      </p>
     </form>
   );
 }

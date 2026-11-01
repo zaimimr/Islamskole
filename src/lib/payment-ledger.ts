@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
+import type { Database, Json } from "@/lib/supabase/types";
 
 type Client = SupabaseClient<Database>;
 
@@ -152,11 +152,6 @@ export async function setStudentFee(
     .eq("school_year_id", schoolYearId);
 }
 
-type AllocationRpcResult = {
-  data: number | null;
-  error: { message: string } | null;
-};
-
 type AllocationInput = {
   studentId: string;
   amount: number;
@@ -167,16 +162,12 @@ async function callAllocationRpc(
   paymentId: string,
   allocations: AllocationInput[] | null,
 ): Promise<number> {
-  const rpc = client.rpc as unknown as (
-    name: string,
-    args: Record<string, unknown>,
-  ) => Promise<AllocationRpcResult>;
-  const { data, error } = await rpc("replace_payment_allocations", {
+  const { data, error } = await client.rpc("replace_payment_allocations", {
     p_payment_id: paymentId,
-    p_allocations: allocations?.map((row) => ({
+    p_allocations: (allocations?.map((row) => ({
       student_id: row.studentId,
       amount: row.amount,
-    })) ?? null,
+    })) ?? null) as unknown as Json,
   });
 
   if (error) throw new Error(error.message);

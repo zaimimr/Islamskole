@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { CameraOff, Check, CheckCheck, Clock, HeartPulse, Loader2, MessageSquareText, Phone, X } from "lucide-react";
+import { CameraOff, Check, CheckCheck, ChevronDown, Clock, HeartPulse, Loader2, MessageSquareText, Phone, X } from "lucide-react";
 import {
   markAttendance,
   markAttendanceMany,
@@ -30,8 +30,10 @@ const MARK_OPTIONS: { status: AttendanceStatus; icon: typeof Check; active: stri
 ];
 
 const optionClass =
-  "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-bold ring-1 transition-colors outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl px-1 text-sm font-bold ring-1 transition-colors outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50";
 const idleClass = "bg-background text-foreground ring-foreground/12 hover:bg-muted";
+const callClass =
+  "inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50";
 
 function fullName(row: { first_name: string | null; last_name: string | null }) {
   return [row.first_name, row.last_name].filter(Boolean).join(" ");
@@ -166,7 +168,7 @@ export function AttendanceRoster({
           const status = entry.status;
           const source = entry.source;
           return (
-            <li key={row.student_id} className="grid gap-3 p-4">
+            <li key={row.student_id} className="grid gap-2 px-3 py-3 sm:gap-3 sm:p-4">
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 <p className="text-lg font-bold">{name}</p>
                 {row.age !== null ? (
@@ -217,7 +219,7 @@ export function AttendanceRoster({
                           if (!result.ok) toast.error(tErrors(result.error));
                         });
                       }}
-                      className="min-h-9 min-w-0 flex-1 rounded-lg bg-background px-2 text-sm text-foreground ring-1 ring-foreground/12 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                      className="min-h-11 min-w-0 flex-1 rounded-lg bg-background px-3 text-base text-foreground ring-1 ring-foreground/12 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                     />
                   ) : row.absence_reason && row.absence_source === source ? (
                     <span>{row.absence_reason}</span>
@@ -230,7 +232,7 @@ export function AttendanceRoster({
                   role="group"
                   aria-label={t("roster.statusGroup", { name })}
                   aria-busy={Boolean(inFlight[row.student_id])}
-                  className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+                  className="grid grid-cols-4 gap-1.5 sm:gap-2"
                 >
                   {MARK_OPTIONS.map((option) => {
                     const Icon = option.icon;
@@ -240,13 +242,15 @@ export function AttendanceRoster({
                         key={option.status}
                         type="button"
                         aria-pressed={selected}
+                        aria-label={t(`status.${option.status}`)}
                         onClick={() => {
                           if (!selected) mark([row.student_id], option.status);
                         }}
-                        className={cn(optionClass, selected ? option.active : idleClass)}
+                        className={cn(optionClass, "flex-col gap-0.5 sm:flex-row sm:gap-1.5", selected ? option.active : idleClass)}
                       >
                         <Icon aria-hidden="true" className="size-4 shrink-0" />
-                        {t(`status.${option.status}`)}
+                        <span className="max-w-full truncate sm:hidden">{t(`statusShort.${option.status}`)}</span>
+                        <span className="hidden truncate sm:inline">{t(`status.${option.status}`)}</span>
                       </button>
                     );
                   })}
@@ -269,7 +273,7 @@ export function AttendanceRoster({
               ) : null}
 
               {row.guardians.some((guardian) => guardian.phone) ? (
-                <ul className="flex flex-wrap gap-2">
+                <ul className="-mx-1 flex flex-wrap gap-x-1">
                   {row.guardians
                     .filter((guardian) => guardian.phone)
                     .map((guardian) => {
@@ -279,24 +283,27 @@ export function AttendanceRoster({
                           <a
                             href={`tel:${guardian.phone!.replace(/[^\d+]/g, "")}`}
                             aria-label={t("roster.call", { name: guardianName ?? "" })}
-                            className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-brand-green-dark ring-1 ring-foreground/10 outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
+                            className={callClass}
                           >
-                            <Phone aria-hidden="true" className="size-4 shrink-0" />
+                            <Phone aria-hidden="true" className="size-3.5 shrink-0" />
                             <span>{guardian.first_name ?? guardianName}</span>
-                            <span className="font-normal text-muted-foreground tabular-nums">{guardian.phone}</span>
+                            <span className="hidden tabular-nums sm:inline">{guardian.phone}</span>
                           </a>
                         </li>
                       );
                     })}
                 </ul>
               ) : (
-                <p className="text-sm text-muted-foreground">{t("roster.noPhone")}</p>
+                <p className="text-xs text-muted-foreground">{t("roster.noPhone")}</p>
               )}
 
               {row.pickup.length ? (
-                <div className="grid gap-1.5">
-                  <p className="text-xs font-bold text-muted-foreground">{t("roster.pickup")}</p>
-                  <ul className="flex flex-wrap gap-2">
+                <details className="group">
+                  <summary className="-mx-1 inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-lg px-1 text-sm font-semibold text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
+                    {t("roster.pickup")} ({row.pickup.length})
+                    <ChevronDown aria-hidden="true" className="size-4 transition-transform group-open:rotate-180" />
+                  </summary>
+                  <ul className="flex flex-wrap gap-2 pt-1">
                     {row.pickup.map((person) =>
                       person.phone ? (
                         <li key={`${person.name}-${person.phone}`}>
@@ -326,7 +333,7 @@ export function AttendanceRoster({
                       ),
                     )}
                   </ul>
-                </div>
+                </details>
               ) : null}
             </li>
           );

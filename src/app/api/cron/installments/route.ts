@@ -3,6 +3,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { findDueInstallmentBatches } from "@/lib/payment-plans";
 import { sendInstallmentBatch } from "@/lib/installment-billing";
 import { deliverSchoolEmails } from "@/lib/school-emails/delivery";
+import {
+  healAllocations,
+  loadOpenRequests,
+  pausedFamilies,
+  runPaymentRequestAutomation,
+} from "@/lib/payment-requests";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -28,8 +34,25 @@ async function sendBatches(admin: Admin) {
   let sent = 0;
   let skipped = 0;
   let failed = 0;
+  const paused = await pausedFamilies(admin);
+  const coveredByYear = new Map<string, Set<string>>();
 
   for (const batch of batches) {
+    if (!coveredByYear.has(batch.schoolYearId)) {
+      const open = await loadOpenRequests(admin, batch.schoolYearId);
+      coveredByYear.set(
+        batch.schoolYearId,
+        new Set(open.filter((row) => !row.fromPlan).flatMap((row) => row.studentIds)),
+      );
+    }
+    const covered = coveredByYear.get(batch.schoolYearId) ?? new Set<string>();
+    if (
+      paused.has(batch.familyId) ||
+      batch.installments.some((row) => covered.has(row.studentId))
+    ) {
+      skipped += 1;
+      continue;
+    }
     try {
       const outcome = await sendInstallmentBatch(admin, batch);
       if (outcome === "sent") sent += 1;
@@ -62,14 +85,30 @@ export async function GET(request: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const batchResult = await sendBatches(admin);
-  const { error } = await admin.rpc("queue_overdue_payment_emails");
-  if (error) throw new Error("Could not queue payment reminders", { cause: error });
-  const reminderResult = await deliverSchoolEmails(undefined, deadline);
+  const { data: claimed, error: claimError } = await admin.rpc("claim_payment_request_run");
+  if (claimError) throw new Error("Could not claim cron run", { cause: claimError });
+  if (!claimed) return NextResponse.json({ ok: true, running: true });
 
-  return NextResponse.json({
-    ok: true,
-    ...batchResult,
-    email: reminderResult,
-  });
+  try {
+    const healed = await healAllocations(admin);
+    const batchResult = await sendBatches(admin);
+    const requests = await runPaymentRequestAutomation(admin, {
+      deadline: deadline - 15_000,
+    });
+    if (!requests.enabled) {
+      const { error } = await admin.rpc("queue_overdue_payment_emails");
+      if (error) throw new Error("Could not queue payment reminders", { cause: error });
+    }
+    const reminderResult = await deliverSchoolEmails(undefined, deadline);
+
+    return NextResponse.json({
+      ok: true,
+      healed,
+      ...batchResult,
+      requests,
+      email: reminderResult,
+    });
+  } finally {
+    await admin.rpc("release_payment_request_run");
+  }
 }

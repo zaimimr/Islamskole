@@ -806,6 +806,12 @@
         "sent": "Forsinket",
         "meldt_fravaer": "Gyldig fravær"
       },
+      "statusShort": {
+        "til_stede": "Møtt",
+        "fravaer": "Ugyldig",
+        "sent": "Sent",
+        "meldt_fravaer": "Gyldig"
+      },
       "summary": {
         "present": "møtt",
         "late": "forsinket",
@@ -833,7 +839,6 @@
       "backToAdmin": "Tilbake til klassen i admin",
       "substitute": {
         "title": "Vikar i en annen klasse",
-        "intro": "Skal du ta over en klasse for en annen lærer? Velg klassen, så får du tilgang til oppmøte og notater i 7 dager.",
         "classLabel": "Klasse",
         "placeholder": "Velg klasse",
         "start": "Bli vikar",

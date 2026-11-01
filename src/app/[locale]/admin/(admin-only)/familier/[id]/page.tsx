@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminFamilies, getAdminFamilyById } from "@/lib/families/service";
 import { formatNok } from "@/lib/money";
-import { formatOsloDate } from "@/lib/dates";
+import { formatOsloDate, osloToday } from "@/lib/dates";
+import { loadOpenRequests, nextPlanInstallment } from "@/lib/payment-requests";
+import { latestRequestByStudent } from "@/lib/payment-request-state";
 import { getLastParentChange } from "@/lib/parent-changes";
 import { findDuplicateFamilies } from "../duplicates";
 import { familyOptions } from "../family-options";
@@ -522,6 +524,25 @@ export default async function FamilyPage({
       )
     : new Set<string>();
 
+  const familyIds = [...familyStudentIds];
+  const [openRequests, suggestedRequest, pausedRow] = activeYear
+    ? await Promise.all([
+        loadOpenRequests(supabase, activeYear.id).catch(() => []),
+        nextPlanInstallment(supabase, activeYear.id, familyIds),
+        supabase
+          .from("families")
+          .select("payment_requests_paused_at")
+          .eq("id", family.id)
+          .maybeSingle(),
+      ])
+    : [[], null, null];
+  const requestByStudent = latestRequestByStudent(openRequests);
+  const familyRequest =
+    familyIds
+      .map((id) => requestByStudent.get(id))
+      .filter((request) => request !== undefined)
+      .sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0] ?? null;
+
   const siblingSuggestion = Boolean(
     activeYear &&
       enrolledStudentIds.size >= 3 &&
@@ -569,75 +590,91 @@ export default async function FamilyPage({
       recentActivity={recentActivity}
       duplicateFamilies={duplicateFamilies}
       mergeOptions={familyOptions(allFamilies, family.id)}
-      />
-      {activeYear ? (
-        <FamilyEconomy
-          familyId={family.id}
-          familyName={family.displayName}
-          schoolYearId={activeYear.id}
-          schoolYearLabel={activeYear.label}
-          sem1DueOn={activeYear.sem1_due_on}
-          sem2DueOn={activeYear.sem2_due_on}
-          childBalances={balances
-            .filter(
-              (row) =>
-                row.student_id &&
-                row.school_year_id === activeYear.id &&
-                familyStudentIds.has(row.student_id),
-            )
-            .map((row) => ({
-              id: row.student_id as string,
-              owedOre: row.owed ?? 0,
-              paidOre: row.paid ?? 0,
-              remainingOre: row.remaining ?? 0,
-            }))}
-          plan={
-            activePlan
-              ? {
-                  id: activePlan.id,
-                  planType: activePlan.plan_type,
-                  monthlyAmount: activePlan.monthly_amount,
-                  customConfig: activePlan.custom_config,
-                  pausedAt: activePlan.paused_at,
-                }
-              : null
-          }
-          installments={(installmentRows as {
-            id: string;
-            student_id: string;
-            due_date: string;
-            amount: number;
-            status: string;
-          }[]).map((installment) => ({
-            id: installment.id,
-            studentName:
-              studentNameById.get(installment.student_id) ?? "Ukjent barn",
-            dueDate: installment.due_date,
-            amount: installment.amount,
-            status: installment.status,
-          }))}
-          childrenOptions={family.students.map((student) => ({
-            id: student.id,
-            name: fullName(student.firstName, student.lastName),
-          }))}
-          siblingSuggestion={siblingSuggestion}
-          adjustments={yearAdjustments.map((adjustment) => ({
-            id: adjustment.id,
-            studentName:
-              studentNameById.get(adjustment.student_id) ?? "Ukjent barn",
-            type: adjustment.type,
-            amount: adjustment.amount,
-            note: adjustment.note,
-            teacherName: adjustment.guardians
-              ? fullName(
-                  adjustment.guardians.first_name,
-                  adjustment.guardians.last_name,
+      economy={
+        activeYear ? (
+            <FamilyEconomy
+              familyId={family.id}
+              familyName={family.displayName}
+              schoolYearId={activeYear.id}
+              schoolYearLabel={activeYear.label}
+              sem1DueOn={activeYear.sem1_due_on}
+              sem2DueOn={activeYear.sem2_due_on}
+              request={familyRequest}
+              suggestedRequest={suggestedRequest}
+              requestsPaused={Boolean(pausedRow?.data?.payment_requests_paused_at)}
+              uncoveredOre={balances
+                .filter(
+                  (row) =>
+                    row.student_id &&
+                    row.school_year_id === activeYear.id &&
+                    familyStudentIds.has(row.student_id) &&
+                    !requestByStudent.has(row.student_id),
                 )
-              : null,
-          }))}
-          teachers={teacherOptions}
-        />
-      ) : null}
+                .reduce((sum, row) => sum + Math.max(row.remaining ?? 0, 0), 0)}
+              today={osloToday()}
+              childBalances={balances
+                .filter(
+                  (row) =>
+                    row.student_id &&
+                    row.school_year_id === activeYear.id &&
+                    familyStudentIds.has(row.student_id),
+                )
+                .map((row) => ({
+                  id: row.student_id as string,
+                  owedOre: row.owed ?? 0,
+                  paidOre: row.paid ?? 0,
+                  remainingOre: row.remaining ?? 0,
+                }))}
+              plan={
+                activePlan
+                  ? {
+                      id: activePlan.id,
+                      planType: activePlan.plan_type,
+                      monthlyAmount: activePlan.monthly_amount,
+                      customConfig: activePlan.custom_config,
+                      pausedAt: activePlan.paused_at,
+                    }
+                  : null
+              }
+              installments={(installmentRows as {
+                id: string;
+                student_id: string;
+                due_date: string;
+                amount: number;
+                status: string;
+              }[]).map((installment) => ({
+                id: installment.id,
+                studentName:
+                  studentNameById.get(installment.student_id) ?? "Ukjent barn",
+                dueDate: installment.due_date,
+                amount: installment.amount,
+                status: installment.status,
+              }))}
+              childrenOptions={family.students.map((student) => ({
+                id: student.id,
+                name: fullName(student.firstName, student.lastName),
+              }))}
+              siblingSuggestion={siblingSuggestion}
+              adjustments={yearAdjustments.map((adjustment) => ({
+                id: adjustment.id,
+                studentName:
+                  studentNameById.get(adjustment.student_id) ?? "Ukjent barn",
+                type: adjustment.type,
+                amount: adjustment.amount,
+                note: adjustment.note,
+                teacherName: adjustment.guardians
+                  ? fullName(
+                      adjustment.guardians.first_name,
+                      adjustment.guardians.last_name,
+                    )
+                  : null,
+              }))}
+              teachers={teacherOptions}
+            />
+        ) : null
+      }
+      />
+
     </div>
   );
 }

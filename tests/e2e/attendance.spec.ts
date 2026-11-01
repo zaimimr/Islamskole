@@ -134,9 +134,10 @@ test("admin sees attendance totals per class", async ({ page, context }) => {
   await page.getByRole("link", { name: "Neste skoledag" }).click();
   await expect(row.getByRole("cell")).toHaveText(["0", "1", "0", "1", "0"]);
   await page.getByRole("link", { name: "Hele året", exact: true }).click();
-  await expect(row.getByRole("cell")).toHaveText(["50 %", "1", "1", "1", "1"]);
-  await expect(page.getByRole("row", { name: /Totalt/ })).toBeVisible();
   const report = page.locator(`#klasse-${schoolClass.id}`);
+  await expect(report.locator("summary")).toContainText("50 %");
+  await expect(report.locator("summary")).toContainText("1 møtt1 forsinket1 gyldig fravær1 ugyldig fravær");
+  await expect(page.getByRole("row")).toHaveCount(0);
   await report.locator("summary").click();
   await expect(report).toContainText(`${one.name}100 %`);
   await expect(report).toContainText(`${two.name}0 %`);

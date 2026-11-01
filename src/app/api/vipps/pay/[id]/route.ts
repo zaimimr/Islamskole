@@ -7,6 +7,7 @@ import {
   type VippsPaymentState,
 } from "@/lib/vipps";
 import { buildPaymentDescriptor } from "@/lib/payment-descriptor";
+import { syncPaymentByReference } from "@/lib/payments-sync";
 import { familyLanguage, paymentFamilyId } from "@/lib/installment-billing";
 import {
   capTargetsAtRemaining,
@@ -166,7 +167,12 @@ export async function GET(
     try {
       const current = await getPayment(payment.reference);
       confirmedState = current.state;
-      if (current.capturedAmount > 0) return done("fanget");
+      if (current.capturedAmount > 0) {
+        await syncPaymentByReference(payment.reference).catch((error) =>
+          console.error("Sync after capture failed", { reference: payment.reference, error }),
+        );
+        return done("fanget");
+      }
       if (current.state === "AUTHORIZED") return done("autorisert");
     } catch (error) {
       console.error("Vipps lookup failed before re-issue", {

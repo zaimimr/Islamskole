@@ -14,11 +14,12 @@ import { AttendanceRoster } from "@/components/portal/teacher/attendance-roster"
 import { ClassNoteEditor } from "@/components/portal/teacher/class-note-editor";
 import { DaySwitcher } from "@/components/portal/teacher/day-switcher";
 import { EndSubstituteButton } from "@/components/portal/teacher/end-substitute-button";
-import { LessonTabs } from "@/components/portal/teacher/lesson-tabs";
+import { LessonDetails, LessonTabs } from "@/components/portal/teacher/lesson-tabs";
 import { WeekPlanSection } from "@/components/semester-plan/week-plan-section";
 import { WeekPlanView } from "@/components/semester-plan/week-plan-view";
 import { osloToday } from "@/lib/dates";
 import { lessonTitle } from "@/lib/lessons";
+import { cn } from "@/lib/utils";
 import {
   getClassForAdmin,
   getClassForLessonTeacher,
@@ -111,6 +112,11 @@ export default async function TeacherClassPage({
   const reportable = day && lesson ? !day.cancelled && !lesson.cancelled : false;
   const markable = reportable && !isFuture;
   const showTabs = lessons.some((row) => lessonTitle(row, slots, wholeDay) !== wholeDay);
+  const preparation = lesson && day ? (
+    <LessonPreparation classId={classId} schoolYearId={current.school_year_id}
+      lessonId={lesson.lesson_id} date={day.date} startPosition={lesson.start_position} endPosition={lesson.end_position}
+      entries={weekPlans} slots={slots} locale={locale} />
+  ) : null;
   const noteLesson = (row: (typeof previousNotes)[number]) =>
     row.start_position !== null && row.end_position !== null
       ? lessonTitle({ start_position: row.start_position, end_position: row.end_position, subject: row.subject }, slots, wholeDay)
@@ -186,14 +192,30 @@ export default async function TeacherClassPage({
                 ) : null}
               </div>
 
-              {showTabs ? (
-                <LessonTabs
-                  classId={classId}
-                  dayId={day.id}
-                  selectedId={lesson?.lesson_id ?? ""}
-                  lessons={lessons.map((row) => lessonView(row, slots, wholeDay, locale))}
-                />
-              ) : null}
+              <div
+                className={cn(
+                  "sticky top-[69px] z-20 -mx-4 -my-4 flex items-center gap-3 border-b border-foreground/8 bg-background/95 px-4 py-2 supports-backdrop-filter:backdrop-blur-md sm:-mx-6 sm:px-6 sm:top-[65px] lg:mx-0 lg:px-0",
+                  context.isGuardian && "sm:top-[117px]",
+                )}
+              >
+                <p className="shrink-0 font-bold">
+                  {capitalize(
+                    formatSchoolDay(day.date, locale, showTabs ? { day: "numeric", month: "short" } : { weekday: "long", day: "numeric", month: "long" }),
+                  )}
+                </p>
+                {showTabs ? (
+                  <LessonTabs
+                    classId={classId}
+                    dayId={day.id}
+                    selectedId={lesson?.lesson_id ?? ""}
+                    lessons={lessons.map((row) => lessonView(row, slots, wholeDay, locale))}
+                  />
+                ) : lesson ? (
+                  <p className="min-w-0 truncate text-sm text-muted-foreground">{lessonTitle(lesson, slots, wholeDay)}</p>
+                ) : null}
+              </div>
+
+              {showTabs && lesson ? <LessonDetails lesson={lessonView(lesson, slots, wholeDay, locale)} /> : null}
 
               {lesson?.cancelled && !day.cancelled ? (
                 <p role="status" className="flex gap-2 rounded-xl bg-secondary p-3 text-sm text-secondary-foreground">
@@ -202,23 +224,24 @@ export default async function TeacherClassPage({
                 </p>
               ) : null}
 
-              {lesson ? <LessonPreparation classId={classId} schoolYearId={current.school_year_id}
-                lessonId={lesson.lesson_id} date={day.date} startPosition={lesson.start_position} endPosition={lesson.end_position}
-                entries={weekPlans} slots={slots} locale={locale} /> : null}
+              {lesson && !markable ? preparation : null}
 
               {lesson ? (
-                <section aria-labelledby="attendance-title" className="grid gap-3">
-                  <h2 id="attendance-title" className="text-2xl font-bold">
-                    {t("roster.title")}
-                  </h2>
-                  <AttendanceRoster
-                    key={lesson.lesson_id}
-                    rows={roster}
-                    lessonId={lesson.lesson_id}
-                    markable={markable}
-                    reportable={reportable}
-                  />
-                </section>
+                <>
+                  <section aria-labelledby="attendance-title" className="grid gap-3">
+                    <h2 id="attendance-title" className="text-2xl font-bold">
+                      {t("roster.title")}
+                    </h2>
+                    <AttendanceRoster
+                      key={lesson.lesson_id}
+                      rows={roster}
+                      lessonId={lesson.lesson_id}
+                      markable={markable}
+                      reportable={reportable}
+                    />
+                  </section>
+                  {markable ? preparation : null}
+                </>
               ) : (
                 <p className="rounded-2xl bg-card p-5 text-muted-foreground ring-1 ring-foreground/8">{t("lessons.none")}</p>
               )}

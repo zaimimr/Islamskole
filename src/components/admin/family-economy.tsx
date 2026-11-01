@@ -1,5 +1,9 @@
 "use client";
 
+import { PaymentRequestActions } from "@/components/admin/payment-request";
+import { setFamilyRequestsPaused } from "@/app/[locale]/admin/payment-request-actions";
+import type { OpenRequest } from "@/lib/payment-request-state";
+import { Switch } from "@/components/ui/switch";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -157,6 +161,11 @@ export function FamilyEconomy({
   childBalances,
   sem1DueOn,
   sem2DueOn,
+  request = null,
+  suggestedRequest = null,
+  requestsPaused = false,
+  uncoveredOre = 0,
+  today,
 }: {
   familyId: string;
   familyName: string;
@@ -171,6 +180,11 @@ export function FamilyEconomy({
   childBalances?: FamilyChildBalance[];
   sem1DueOn?: string | null;
   sem2DueOn?: string | null;
+  request?: OpenRequest | null;
+  suggestedRequest?: { amount: number; dueDate: string } | null;
+  requestsPaused?: boolean;
+  uncoveredOre?: number;
+  today: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -205,6 +219,9 @@ export function FamilyEconomy({
     (sum, balance) => sum + Math.min(balance.paidOre, balance.owedOre),
     0,
   );
+  const owingChildIds = (childBalances ?? [])
+    .filter((balance) => balance.remainingOre > 0)
+    .map((balance) => balance.id);
   const paymentChildren: FamilyPaymentChild[] = childrenOptions.map(
     (child) => ({
       id: child.id,
@@ -364,6 +381,26 @@ export function FamilyEconomy({
             </dl>
             {childrenOptions.length > 0 ? (
               <div className="flex flex-wrap gap-2">
+                <PaymentRequestActions
+                  schoolYearId={schoolYearId}
+                  studentIds={owingChildIds}
+                  balance={{
+                    owed: familyOwed,
+                    paid: familyPaid,
+                    remaining: familyRemaining,
+                  }}
+                  request={request}
+                  today={today}
+                  suggestedAmount={suggestedRequest?.amount ?? null}
+                  suggestedDueDate={suggestedRequest?.dueDate ?? null}
+                  title={familyName}
+                  className="w-full"
+                />
+                {request && uncoveredOre > 0 ? (
+                  <p className="w-full text-sm font-bold text-[#775108] tabular-nums">
+                    Uten krav: {formatNok(uncoveredOre)}
+                  </p>
+                ) : null}
                 <FamilyPaymentDialog
                   familyName={familyName}
                   schoolYearId={schoolYearId}
@@ -379,6 +416,19 @@ export function FamilyEconomy({
                     },
                   ]}
                 />
+                <label className="flex min-h-11 items-center gap-2 text-sm font-bold">
+                  <Switch
+                    checked={!requestsPaused}
+                    disabled={pending}
+                    onCheckedChange={(checked) =>
+                      run(
+                        () => setFamilyRequestsPaused(familyId, !checked),
+                        checked ? "Automatiske krav på" : "Automatiske krav satt på pause",
+                      )
+                    }
+                  />
+                  Automatiske krav
+                </label>
               </div>
             ) : null}
           </CardContent>

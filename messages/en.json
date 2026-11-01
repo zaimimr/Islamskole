@@ -806,6 +806,12 @@
         "sent": "Late",
         "meldt_fravaer": "Excused absence"
       },
+      "statusShort": {
+        "til_stede": "Present",
+        "fravaer": "Unexcused",
+        "sent": "Late",
+        "meldt_fravaer": "Excused"
+      },
       "summary": {
         "present": "present",
         "late": "late",
@@ -833,7 +839,6 @@
       "backToAdmin": "Back to the class in admin",
       "substitute": {
         "title": "Substitute in another class",
-        "intro": "Covering a class for another teacher? Pick the class and you get access to attendance and notes for 7 days.",
         "classLabel": "Class",
         "placeholder": "Choose class",
         "start": "Become substitute",

@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  addAttendanceCounts,
+  attendancePercent,
   collapseDayStatus,
+  countStudentDays,
+  emptyAttendanceCounts,
   findDoubleBookings,
   joinTeacherNames,
   lessonTitle,
   mergeWithNext,
   needsSubstitute,
   planCells,
+  registeredDays,
   slotRangeLabel,
   slotRangeTimes,
   splitPlan,
@@ -149,4 +154,25 @@ test("needsSubstitute flags lessons whose teachers are all away", () => {
   assert.equal(needsSubstitute({ teacher_guardian_id: null, co_teacher_guardian_id: null, cancelled: false }, away, ["a"]), true);
   assert.equal(needsSubstitute({ teacher_guardian_id: null, co_teacher_guardian_id: null, cancelled: false }, away, ["a", "b"]), false);
   assert.equal(needsSubstitute({ teacher_guardian_id: null, co_teacher_guardian_id: null, cancelled: false }, away), false);
+});
+
+test("countStudentDays collapses lessons to one status per day and attendancePercent counts late as present", () => {
+  const counts = countStudentDays([
+    { student_id: "a", school_day_id: "d1", status: "til_stede" },
+    { student_id: "a", school_day_id: "d1", status: "sent" },
+    { student_id: "a", school_day_id: "d2", status: "til_stede" },
+    { student_id: "a", school_day_id: "d3", status: "fravaer" },
+    { student_id: "a", school_day_id: "d3", status: "til_stede" },
+    { student_id: "a", school_day_id: "d4", status: "meldt_fravaer" },
+    { student_id: "b", school_day_id: "d1", status: "til_stede" },
+  ]);
+  assert.deepEqual(counts.get("a"), { til_stede: 1, sent: 1, meldt_fravaer: 1, fravaer: 1 });
+  assert.equal(registeredDays(counts.get("a")), 4);
+  assert.equal(attendancePercent(counts.get("a")), 50);
+  assert.equal(attendancePercent(counts.get("b")), 100);
+  assert.equal(attendancePercent(emptyAttendanceCounts()), null);
+  assert.deepEqual(
+    addAttendanceCounts(emptyAttendanceCounts(), counts.get("a")),
+    { til_stede: 1, sent: 1, meldt_fravaer: 1, fravaer: 1 },
+  );
 });

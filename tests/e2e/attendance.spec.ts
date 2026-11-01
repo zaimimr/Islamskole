@@ -67,8 +67,23 @@ test("admin takes attendance across classes and teachers correct later lessons",
     "til_stede", "til_stede", "til_stede",
   ]);
   expect(await attendance(secondChild.id, day.id)).toHaveLength(0);
+  const firstStatus = firstRoster.getByRole("group", { name: `Oppmøte for ${firstChild.name}` });
+  await firstStatus.getByRole("button", { name: "Ugyldig fravær", exact: true }).click();
+  await expect.poll(async () => (await attendance(firstChild.id, day.id))
+    .find((row) => row.lesson_id === firstLessons[0].id)?.status).toBe("fravaer");
+  await firstStatus.getByRole("button", { name: "Forsinket", exact: true }).click();
+  await expect.poll(async () => (await attendance(firstChild.id, day.id))
+    .find((row) => row.lesson_id === firstLessons[0].id)?.status).toBe("sent");
+  await expect(firstStatus.getByRole("button", { name: "Forsinket", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await firstStatus.getByRole("button", { name: "Møtt", exact: true }).click();
+  await expect.poll(async () => (await attendance(firstChild.id, day.id))
+    .find((row) => row.lesson_id === firstLessons[0].id)?.status).toBe("til_stede");
+  await page.reload();
+  await expect(firstStatus.getByRole("button", { name: "Møtt", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(firstRoster).toContainText("1 møtt");
   await secondRoster.getByRole("button", { name: "Alle møtt", exact: true }).click();
   await expect.poll(async () => (await attendance(secondChild.id, day.id)).length).toBe(3);
+  await expect(secondRoster.getByRole("button", { name: "Møtt", exact: true })).toHaveAttribute("aria-pressed", "true");
 
   await pickOption(page, overview, "Time", "Time 2 · 11:00-12:00");
   await overview.getByRole("button", { name: "Vis", exact: true }).click();
@@ -111,11 +126,23 @@ test("admin sees attendance totals per class", async ({ page, context }) => {
 
   const admin = await seedAdmin();
   await loginAs(context, admin.email);
-  await page.goto("/admin/dagsplan");
-  await page.getByRole("link", { name: "Totalt", exact: true }).click();
+  await page.goto(`/admin/dagsplan?dag=${first.id}&visning=oppmote`);
+  await page.getByRole("link", { name: /^Totalt for / }).click();
+  await expect(page).toHaveURL(new RegExp(`dag=${first.id}.*visning=totalt`));
   const row = page.getByRole("row", { name: new RegExp(schoolClass.name) });
-  await expect(row.getByRole("cell")).toHaveText(["1", "1", "1", "1"]);
+  await expect(row.getByRole("cell")).toHaveText(["1", "0", "1", "0", "0"]);
+  await page.getByRole("link", { name: "Neste skoledag" }).click();
+  await expect(row.getByRole("cell")).toHaveText(["0", "1", "0", "1", "0"]);
+  await page.getByRole("link", { name: "Hele året", exact: true }).click();
+  await expect(row.getByRole("cell")).toHaveText(["50 %", "1", "1", "1", "1"]);
   await expect(page.getByRole("row", { name: /Totalt/ })).toBeVisible();
+  const report = page.locator(`#klasse-${schoolClass.id}`);
+  await report.locator("summary").click();
+  await expect(report).toContainText(`${one.name}100 %`);
+  await expect(report).toContainText(`${two.name}0 %`);
+  const csv = await (await page.request.get("/api/export/oppmote")).text();
+  expect(csv).toContain(`${schoolClass.name};${one.name};100;1;1;0;0;2`);
+  expect(csv).toContain(`${schoolClass.name};Hele klassen;50;1;1;1;1;4`);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: "test-results/attendance-totals-mobile.png", fullPage: true });
 });

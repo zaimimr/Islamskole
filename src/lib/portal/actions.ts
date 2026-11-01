@@ -46,7 +46,7 @@ function dbError(error: { code?: string } | null | undefined): PortalErrorCode {
 
 function refreshPortal() {
   revalidatePath("/[locale]/min-side", "layout");
-  revalidatePath("/[locale]/admin/dagsplan", "page");
+  revalidatePath("/[locale]/admin/(admin-only)/dagsplan", "page");
 }
 
 async function clientIp() {

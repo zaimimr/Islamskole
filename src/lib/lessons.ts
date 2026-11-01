@@ -214,3 +214,44 @@ export function lessonTitle(
   const label = slotRangeLabel(slots, range);
   return range.subject ? `${label} - ${range.subject}` : label;
 }
+
+export type AttendanceCounts = Record<DayStatus, number>;
+
+export function emptyAttendanceCounts(): AttendanceCounts {
+  return { til_stede: 0, sent: 0, meldt_fravaer: 0, fravaer: 0 };
+}
+
+export function registeredDays(counts: AttendanceCounts): number {
+  return counts.til_stede + counts.sent + counts.meldt_fravaer + counts.fravaer;
+}
+
+export function attendancePercent(counts: AttendanceCounts): number | null {
+  const registered = registeredDays(counts);
+  return registered ? Math.floor(((counts.til_stede + counts.sent) / registered) * 100) : null;
+}
+
+export function addAttendanceCounts(target: AttendanceCounts, source: AttendanceCounts): AttendanceCounts {
+  for (const status of Object.keys(target) as DayStatus[]) target[status] += source[status];
+  return target;
+}
+
+export function countStudentDays(
+  rows: { student_id: string; school_day_id: string; status: DayStatus }[],
+): Map<string, AttendanceCounts> {
+  const grouped = new Map<string, Map<string, DayStatus[]>>();
+  for (const row of rows) {
+    const days = grouped.get(row.student_id) ?? new Map<string, DayStatus[]>();
+    days.set(row.school_day_id, [...(days.get(row.school_day_id) ?? []), row.status]);
+    grouped.set(row.student_id, days);
+  }
+  const result = new Map<string, AttendanceCounts>();
+  for (const [studentId, days] of grouped) {
+    const counts = emptyAttendanceCounts();
+    for (const statuses of days.values()) {
+      const status = collapseDayStatus(statuses);
+      if (status) counts[status] += 1;
+    }
+    result.set(studentId, counts);
+  }
+  return result;
+}

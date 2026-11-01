@@ -1,10 +1,12 @@
-import { ChevronDown } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { AttendanceRoster } from "@/components/portal/teacher/attendance-roster";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { SelectField } from "@/components/ui/select-field";
 import { lessonTitle, slotRangeTimes, type TimeSlot } from "@/lib/lessons";
 import { getLessonRoster } from "@/lib/portal/data";
-import { osloToday } from "@/lib/dates";
+import { cn } from "@/lib/utils";
+import { formatOsloDate, osloToday } from "@/lib/dates";
 import type { DayPlanClass } from "./day-plan-grid";
 
 export async function DayAttendance({
@@ -29,6 +31,7 @@ export async function DayAttendance({
     const lesson = row.lessons.find((item) => item.start_position <= position && item.end_position >= position);
     return { row, lesson, students: lesson ? await getLessonRoster(lesson.id, yearLabel) : [] };
   }));
+  const dateLabel = formatOsloDate(day.date, { weekday: "short", day: "numeric", month: "short" });
 
   return (
     <section aria-label="Oppmøte" className="grid gap-4">
@@ -62,6 +65,8 @@ export async function DayAttendance({
           <summary className="flex min-h-12 cursor-pointer list-none flex-wrap items-center gap-2 rounded-lg py-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
             <h2 className="font-heading text-xl font-bold">{row.name}</h2>
             <span className="text-sm text-admin-muted">
+              <span className="font-bold text-foreground">{dateLabel}</span>
+              {" · "}
               {lesson ? lessonTitle(lesson, slots, "Hele dagen") : "Ingen time"}
             </span>
             <ChevronDown aria-hidden="true" className="ml-auto size-4 transition-transform group-open:rotate-180" />
@@ -78,6 +83,13 @@ export async function DayAttendance({
           {lesson?.cancelled ? <p className="py-2 text-sm text-admin-muted">Timen er avlyst.</p> : null}
         </details>
       ))}
+      <Link
+        href={`${basePath}/dagsplan?dag=${day.id}&visning=totalt`}
+        className={cn(buttonVariants({ size: "lg" }), "mt-2 justify-self-stretch sm:justify-self-start")}
+      >
+        Totalt for {dateLabel}
+        <ArrowRight aria-hidden="true" className="size-4" />
+      </Link>
     </section>
   );
 }

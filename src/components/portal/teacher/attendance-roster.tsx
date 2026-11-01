@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useTransition } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { CameraOff, Check, CheckCheck, Clock, HeartPulse, Loader2, MessageSquareText, Phone, X } from "lucide-react";
@@ -50,14 +50,21 @@ export function AttendanceRoster({
 }) {
   const t = useTranslations("portal.teacher");
   const tErrors = useTranslations("portal.errors");
-  const [pending, startTransition] = useTransition();
-  const base: EntryMap = Object.fromEntries(
-    rows.map((row) => [row.student_id, { status: row.attendance_status, source: row.absence_source }]),
-  );
-  const [entries, applyEntries] = useOptimistic(base, (state: EntryMap, update: EntryMap) => ({
-    ...state,
-    ...update,
-  }));
+  const [overrides, setOverrides] = useState<EntryMap>({});
+  const [inFlight, setInFlight] = useState<Record<string, number>>({});
+  const [bulkPending, setBulkPending] = useState(false);
+  const [seenRows, setSeenRows] = useState(rows);
+  const sequence = useRef<Record<string, number>>({});
+  if (seenRows !== rows) {
+    setSeenRows(rows);
+    setOverrides(Object.fromEntries(Object.entries(overrides).filter(([id]) => inFlight[id])));
+  }
+  const entries: EntryMap = {
+    ...Object.fromEntries(
+      rows.map((row) => [row.student_id, { status: row.attendance_status, source: row.absence_source }]),
+    ),
+    ...overrides,
+  };
 
   const counts = { til_stede: 0, sent: 0, meldt_fravaer: 0, fravaer: 0, unmarked: 0 };
   for (const row of rows) {
@@ -67,12 +74,39 @@ export function AttendanceRoster({
   }
   const unmarkedIds = rows.filter((row) => !entries[row.student_id]?.status).map((row) => row.student_id);
 
-  function run(update: EntryMap, action: () => Promise<PortalActionResult>) {
-    startTransition(async () => {
-      applyEntries(update);
-      const result = await action();
-      if (!result.ok) toast.error(tErrors(result.error));
+  function track(ids: string[], delta: number) {
+    setInFlight((current) => {
+      const next = { ...current };
+      for (const id of ids) {
+        const value = (next[id] ?? 0) + delta;
+        if (value > 0) next[id] = value;
+        else delete next[id];
+      }
+      return next;
     });
+  }
+
+  async function run(update: EntryMap, action: () => Promise<PortalActionResult>) {
+    const ids = Object.keys(update);
+    const previous = Object.fromEntries(ids.map((id) => [id, entries[id] ?? { status: null, source: null }]));
+    const tickets = Object.fromEntries(ids.map((id) => [id, (sequence.current[id] = (sequence.current[id] ?? 0) + 1)]));
+    setOverrides((current) => ({ ...current, ...update }));
+    track(ids, 1);
+    let result: PortalActionResult;
+    try {
+      result = await action();
+    } catch {
+      result = { ok: false, error: "unknown" };
+    }
+    if (!result.ok) {
+      toast.error(tErrors(result.error));
+      setOverrides((current) => {
+        const next = { ...current };
+        for (const id of ids) if (sequence.current[id] === tickets[id]) next[id] = previous[id];
+        return next;
+      });
+    }
+    track(ids, -1);
   }
 
   function mark(studentIds: string[], status: AttendanceStatus) {
@@ -83,13 +117,19 @@ export function AttendanceRoster({
         return [id, { status, source: keep }];
       }),
     );
-    run(update, () =>
+    return run(update, () =>
       status === "meldt_fravaer"
         ? reportAbsenceForStudent(studentIds[0], lessonId)
         : studentIds.length === 1
           ? markAttendance(studentIds[0], lessonId, status)
           : markAttendanceMany(studentIds, lessonId, status),
     );
+  }
+
+  async function markRest() {
+    setBulkPending(true);
+    await mark(unmarkedIds, "til_stede");
+    setBulkPending(false);
   }
 
   function toggleReport(studentId: string, on: boolean) {
@@ -104,24 +144,19 @@ export function AttendanceRoster({
 
   return (
     <div className="grid gap-3">
-      {markable ? (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <ul className="flex flex-1 flex-wrap gap-x-4 gap-y-1 text-sm tabular-nums">
-            <SummaryItem dot="bg-admin-action" value={counts.til_stede} label={t("summary.present")} />
-            <SummaryItem dot="bg-brand-sun" value={counts.sent} label={t("summary.late")} />
-            <SummaryItem dot="bg-brand-sky" value={counts.meldt_fravaer} label={t("summary.reported")} />
-            <SummaryItem dot="bg-destructive" value={counts.fravaer} label={t("summary.unreported")} />
-            <SummaryItem dot="bg-foreground/25" value={counts.unmarked} label={t("summary.unmarked")} />
-          </ul>
-          {unmarkedIds.length ? (
-            <Button type="button" variant="secondary" onClick={() => mark(unmarkedIds, "til_stede")} disabled={pending}>
-              {pending ? <Loader2 aria-hidden="true" className="animate-spin" /> : <CheckCheck aria-hidden="true" />}
-              {unmarkedIds.length === rows.length
-                ? t("roster.allPresent")
-                : t("roster.restPresent", { count: unmarkedIds.length })}
-            </Button>
-          ) : null}
-        </div>
+      {markable && unmarkedIds.length ? (
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={markRest}
+          disabled={bulkPending}
+          className="min-h-11 justify-self-stretch sm:justify-self-start"
+        >
+          {bulkPending ? <Loader2 aria-hidden="true" className="animate-spin" /> : <CheckCheck aria-hidden="true" />}
+          {unmarkedIds.length === rows.length
+            ? t("roster.allPresent")
+            : t("roster.restPresent", { count: unmarkedIds.length })}
+        </Button>
       ) : null}
 
       <ul className="divide-y divide-foreground/8 overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/8">
@@ -178,8 +213,7 @@ export function AttendanceRoster({
                       onBlur={(event) => {
                         const value = event.currentTarget.value.trim();
                         if (value === (row.absence_reason ?? "")) return;
-                        startTransition(async () => {
-                          const result = await saveAbsenceReason(row.absence_report_id!, value);
+                        void saveAbsenceReason(row.absence_report_id!, value).then((result) => {
                           if (!result.ok) toast.error(tErrors(result.error));
                         });
                       }}
@@ -192,7 +226,12 @@ export function AttendanceRoster({
               ) : null}
 
               {markable ? (
-                <div role="group" aria-label={t("roster.statusGroup", { name })} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div
+                  role="group"
+                  aria-label={t("roster.statusGroup", { name })}
+                  aria-busy={Boolean(inFlight[row.student_id])}
+                  className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+                >
                   {MARK_OPTIONS.map((option) => {
                     const Icon = option.icon;
                     const selected = status === option.status;
@@ -200,7 +239,6 @@ export function AttendanceRoster({
                       <button
                         key={option.status}
                         type="button"
-                        disabled={pending}
                         aria-pressed={selected}
                         onClick={() => {
                           if (!selected) mark([row.student_id], option.status);
@@ -294,6 +332,16 @@ export function AttendanceRoster({
           );
         })}
       </ul>
+
+      {markable ? (
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 px-1 text-sm tabular-nums">
+          <SummaryItem dot="bg-admin-action" value={counts.til_stede} label={t("summary.present")} />
+          <SummaryItem dot="bg-brand-sun" value={counts.sent} label={t("summary.late")} />
+          <SummaryItem dot="bg-brand-sky" value={counts.meldt_fravaer} label={t("summary.reported")} />
+          <SummaryItem dot="bg-destructive" value={counts.fravaer} label={t("summary.unreported")} />
+          <SummaryItem dot="bg-foreground/25" value={counts.unmarked} label={t("summary.unmarked")} />
+        </ul>
+      ) : null}
     </div>
   );
 }

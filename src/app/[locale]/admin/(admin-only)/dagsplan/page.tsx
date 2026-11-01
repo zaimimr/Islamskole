@@ -150,12 +150,48 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
     </nav>
   );
 
+  const dayPicker = (
+    <DayPicker
+      basePath={`${basePath}/dagsplan`}
+      selectedId={day.id}
+      days={days.map((item) => ({
+        id: item.id,
+        label: `${formatOsloDate(item.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}${
+          item.cancelled ? " (avlyst)" : item.date === today ? " (i dag)" : ""
+        }`,
+      }))}
+    />
+  );
+  const stickyDayPicker = (
+    <div className="sticky top-[3.8rem] z-20 -mx-4 -my-3 border-b border-[#E9E5DC] bg-[#FCFAF5]/95 px-4 py-2 supports-backdrop-filter:backdrop-blur-md sm:-mx-6 sm:px-6 lg:top-[4.3rem] lg:-mx-8 lg:px-8 print:static">
+      {dayPicker}
+    </div>
+  );
+  const cancelledNotice = day.cancelled ? (
+    <p role="status" className="flex gap-2 rounded-2xl bg-[#FFF8E9] p-4 text-sm ring-1 ring-[#ECDCB9]">
+      <CalendarX aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+      <span>
+        <span className="font-bold">Hele skoledagen er avlyst.</span>
+        {day.note ? ` ${day.note}` : null}
+      </span>
+    </p>
+  ) : null;
+
   if (totalsView) {
+    const wholeYear = query.periode === "aar";
     return (
       <div className="grid gap-6 lg:gap-7">
         {header}
         {viewNav}
-        <AttendanceTotals yearId={year.id} />
+        {wholeYear ? null : stickyDayPicker}
+        {wholeYear ? null : cancelledNotice}
+        <AttendanceTotals
+          basePath={basePath}
+          yearId={year.id}
+          yearLabel={year.label}
+          day={day}
+          wholeYear={wholeYear}
+        />
       </div>
     );
   }
@@ -304,31 +340,23 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
 
   return (
     <div className="grid gap-6 lg:gap-7">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        {header}
-        <DayPicker
-          basePath={`${basePath}/dagsplan`}
-          selectedId={day.id}
-          days={days.map((item) => ({
-            id: item.id,
-            label: `${formatOsloDate(item.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}${
-              item.cancelled ? " (avlyst)" : item.date === today ? " (i dag)" : ""
-            }`,
-          }))}
-        />
-      </div>
+      {attendanceView ? (
+        <>
+          {header}
+          {viewNav}
+          {stickyDayPicker}
+        </>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            {header}
+            {dayPicker}
+          </div>
+          {viewNav}
+        </>
+      )}
 
-      {viewNav}
-
-      {day.cancelled ? (
-        <p role="status" className="flex gap-2 rounded-2xl bg-[#FFF8E9] p-4 text-sm ring-1 ring-[#ECDCB9]">
-          <CalendarX aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-          <span>
-            <span className="font-bold">Hele skoledagen er avlyst.</span>
-            {day.note ? ` ${day.note}` : null}
-          </span>
-        </p>
-      ) : null}
+      {cancelledNotice}
 
       {day.cancelled || attendanceView ? null : (
         <TeacherAbsences

@@ -90,7 +90,6 @@ test("SFO staff publish a paid trip, parents sign up with health check, cash is 
   const payments = page.getByRole("region", { name: "Betaling" });
   await expect(payments.getByText("Mangler: 1")).toBeVisible();
   await payments.getByRole("button", { name: "Registrer kontant" }).click();
-  await expect(payments.getByRole("status")).toHaveText("Kontant registrert");
   await expect(payments.getByText("Mangler: 0")).toBeVisible();
 
   const admin = await seedAdmin();

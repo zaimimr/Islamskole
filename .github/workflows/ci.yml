@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: "2.117.0"
       - run: supabase db start
       - run: supabase test db
 
@@ -47,7 +47,7 @@ jobs:
           cache: npm
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: "2.117.0"
       - run: supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
       - run: npm ci
       - run: npx playwright install --with-deps chromium

@@ -74,6 +74,23 @@ export function FamilyPaymentHistory({
   today: string;
 }) {
   if (rows.length === 0) return null;
+  const grouped = new Map<string, { payment: FamilyHistoryPayment; shares: { child: FamilyHistoryChild; amountOre: number }[] }>();
+  for (const child of rows) {
+    for (const payment of child.payments) {
+      const entry = grouped.get(payment.id) ?? { payment, shares: [] };
+      entry.shares.push({ child, amountOre: payment.amountOre });
+      grouped.set(payment.id, entry);
+    }
+  }
+  const payments = [...grouped.values()].sort((a, b) =>
+    (b.payment.paidAt ?? b.payment.createdAt).localeCompare(a.payment.paidAt ?? a.payment.createdAt),
+  );
+  const withoutPayments = rows.filter((child) => child.payments.length === 0);
+  const childLink = (child: FamilyHistoryChild) => (
+    <Link href={child.href} className="font-bold text-[#216A2B] hover:underline">
+      {child.name}
+    </Link>
+  );
   return (
     <section
       aria-labelledby="family-payment-history"
@@ -86,60 +103,75 @@ export function FamilyPaymentHistory({
         <Table className="text-sm">
           <TableHeader className="bg-[#F7F6F1]">
             <TableRow>
-              <TableHead className="w-20 pl-5 sm:pl-6">Dato</TableHead>
-              <TableHead className="text-right sm:w-32">Beløp</TableHead>
+              <TableHead className="hidden w-20 pl-5 sm:table-cell sm:pl-6">Dato</TableHead>
+              <TableHead className="pl-5 sm:pl-2">Barn</TableHead>
+              <TableHead className="text-right">Beløp</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="hidden md:table-cell">Detaljer</TableHead>
             </TableRow>
           </TableHeader>
-          {rows.map((child) => (
-            <TableBody key={child.id} aria-label={child.name} className="border-t border-[#E8E3D9] first-of-type:border-t-0">
-              <TableRow className="bg-[#FBFAF7] hover:bg-[#FBFAF7]">
-                <TableCell colSpan={4} className="pl-5 sm:pl-6">
-                  <Link href={child.href} className="font-bold text-[#216A2B] hover:underline">
-                    {child.name}
-                  </Link>
-                </TableCell>
-              </TableRow>
-              {child.payments.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="pl-5 text-admin-muted sm:pl-6">
-                    Ingen betalinger
+          <TableBody>
+            {payments.map(({ payment, shares }) => {
+              const status = paymentStatus(payment, today);
+              const detail = paymentDetail(payment);
+              const date = shortDate(payment.paidAt ?? payment.createdAt);
+              const combined = shares.length > 1;
+              const total = shares.reduce((sum, share) => sum + share.amountOre, 0);
+              return (
+                <TableRow key={payment.id} className={payment.voided ? "text-admin-muted" : undefined}>
+                  <TableCell className="hidden pl-5 align-top tabular-nums sm:table-cell sm:pl-6">{date}</TableCell>
+                  <TableCell className="pl-5 align-top whitespace-normal sm:pl-2">
+                    {combined ? (
+                      <>
+                        <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-[#E4F1FA] px-2 py-0.5 text-[0.6875rem] font-bold text-[#245D7C]">
+                          <Users aria-hidden="true" className="size-3" />
+                          Samlet
+                        </span>
+                        <ul className="grid gap-0.5">
+                          {shares.map((share) => (
+                            <li key={share.child.id} className="flex flex-wrap items-baseline gap-x-2">
+                              {childLink(share.child)}
+                              <span className="text-xs text-admin-muted tabular-nums">{formatNok(share.amountOre)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : (
+                      childLink(shares[0].child)
+                    )}
+                    <span className="block text-xs text-admin-muted tabular-nums sm:hidden">{date}</span>
+                  </TableCell>
+                  <TableCell className="text-right align-top">
+                    <span className={`font-bold tabular-nums ${payment.voided ? "line-through" : ""}`}>
+                      {formatNok(total)}
+                    </span>
+                    {payment.sharedWith > shares.length ? (
+                      <span className="flex items-center justify-end gap-1 text-xs text-admin-muted">
+                        <Users aria-hidden="true" className="size-3" />
+                        {payment.sharedWith} barn
+                      </span>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="align-top whitespace-normal">
+                    <StatusPill tone={status.tone}>{status.label}</StatusPill>
+                    <span className="mt-1 block text-xs text-admin-muted md:hidden">{detail}</span>
+                  </TableCell>
+                  <TableCell className="hidden align-top whitespace-normal text-admin-muted md:table-cell">
+                    {detail}
                   </TableCell>
                 </TableRow>
-              ) : (
-                child.payments.map((payment) => {
-                  const status = paymentStatus(payment, today);
-                  const detail = paymentDetail(payment);
-                  return (
-                    <TableRow key={payment.id} className={payment.voided ? "text-admin-muted" : undefined}>
-                      <TableCell className="pl-5 align-top tabular-nums sm:pl-6">
-                        {shortDate(payment.paidAt ?? payment.createdAt)}
-                      </TableCell>
-                      <TableCell className="text-right align-top">
-                        <span className={`font-bold tabular-nums ${payment.voided ? "line-through" : ""}`}>
-                          {formatNok(payment.amountOre)}
-                        </span>
-                        {payment.sharedWith > 1 ? (
-                          <span className="flex items-center justify-end gap-1 text-xs text-admin-muted">
-                            <Users aria-hidden="true" className="size-3" />
-                            {payment.sharedWith} barn
-                          </span>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="align-top whitespace-normal">
-                        <StatusPill tone={status.tone}>{status.label}</StatusPill>
-                        <span className="mt-1 block text-xs text-admin-muted md:hidden">{detail}</span>
-                      </TableCell>
-                      <TableCell className="hidden align-top whitespace-normal text-admin-muted md:table-cell">
-                        {detail}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          ))}
+              );
+            })}
+            {withoutPayments.map((child) => (
+              <TableRow key={child.id}>
+                <TableCell className="hidden pl-5 sm:table-cell sm:pl-6" />
+                <TableCell className="pl-5 whitespace-normal sm:pl-2">{childLink(child)}</TableCell>
+                <TableCell colSpan={3} className="text-admin-muted">
+                  Ingen betalinger
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
         </Table>
       </div>
     </section>

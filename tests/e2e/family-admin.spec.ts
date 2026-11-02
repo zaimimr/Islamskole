@@ -167,11 +167,49 @@ test.describe("families and students", () => {
 
     await page.goto(`/admin/familier/${family.id}`);
     await expect(page.getByRole("heading", { name: /^Betalingshistorikk/ })).toBeVisible();
-    const paidSection = page.getByRole("rowgroup", { name: /ZZTEST Betalt/ });
+    const history = page.getByRole("region", { name: /^Betalingshistorikk/ });
+    const paidSection = history.getByRole("row").filter({ hasText: "ZZTEST Betalt" });
     await expect(paidSection).toContainText("Betalt");
     await expect(paidSection).toContainText(/1\s?000 kr/);
-    const waitingSection = page.getByRole("rowgroup", { name: /ZZTEST Venter/ });
+    const waitingSection = history.getByRole("row").filter({ hasText: "ZZTEST Venter" });
     await expect(waitingSection).toContainText("Ikke betalt");
     await expect(waitingSection).toContainText(/frist/);
+  });
+
+  test("FAM-PAY-HISTORY-SHARED one Vipps payment for several children is one marked row", async ({ page }) => {
+    const year = await activeYear();
+    const schoolClass = await seedClass();
+    const family = await seedFamily({
+      students: [{ firstName: "ZZTEST Eldst" }, { firstName: "ZZTEST Yngst" }],
+    });
+    const [first, second] = family.students;
+    await enroll(first.id, schoolClass.id, year.id);
+    await enroll(second.id, schoolClass.id, year.id);
+    const { data: shared, error } = await db()
+      .from("payments")
+      .insert({
+        student_id: first.id,
+        school_year_id: year.id,
+        reference: `ZZTEST-shared-${Date.now()}`,
+        amount: 400000,
+        status: "opprettet",
+        method: "vipps",
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    const { error: targetError } = await db().from("payment_targets").insert([
+      { payment_id: shared!.id, student_id: first.id, amount: 200000 },
+      { payment_id: shared!.id, student_id: second.id, amount: 200000 },
+    ]);
+    if (targetError) throw new Error(targetError.message);
+
+    await page.goto(`/admin/familier/${family.id}`);
+    const history = page.getByRole("region", { name: /^Betalingshistorikk/ });
+    const row = history.getByRole("row").filter({ hasText: "Samlet" });
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText("ZZTEST Eldst");
+    await expect(row).toContainText("ZZTEST Yngst");
+    await expect(row).toContainText(/4\s?000 kr/);
   });
 });

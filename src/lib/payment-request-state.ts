@@ -100,7 +100,7 @@ export function describeRequest(
     balance.paid > 0 ? `${kr(balance.paid)} av ${kr(balance.owed)} kr` : null;
   if (request) {
     if (request.status === "autorisert") {
-      return { kind: "venter", tone: "info", label: "Betaling venter", detail: partial };
+      return { kind: "venter", tone: "warn", label: "Betaling venter", detail: partial };
     }
     const line = requestLine(request, balance.remaining);
     if (request.status === "avbrutt") {
@@ -109,7 +109,7 @@ export function describeRequest(
     if (!request.sent) {
       return {
         kind: "lenke",
-        tone: "info",
+        tone: "warn",
         label: "Lenke laget",
         detail: `Vipps-lenke laget ${shortDate(request.sentAt)}`,
       };
@@ -117,12 +117,12 @@ export function describeRequest(
     if (request.dueDate && request.dueDate < today) {
       return { kind: "forfalt", tone: "danger", label: "Forfalt", detail: line };
     }
-    return { kind: "sendt", tone: "info", label: "Sendt i Vipps", detail: line };
+    return { kind: "sendt", tone: "warn", label: "Sendt i Vipps", detail: line };
   }
   if (partial) {
     return { kind: "delvis", tone: "warn", label: partial, detail: "Ikke betalt" };
   }
-  return { kind: "ubetalt", tone: "warn", label: "Ikke betalt", detail: null };
+  return { kind: "ubetalt", tone: "danger", label: "Ikke betalt", detail: null };
 }
 
 export function latestRequestByStudent(

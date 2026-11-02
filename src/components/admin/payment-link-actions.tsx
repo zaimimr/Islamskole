@@ -98,14 +98,14 @@ export function PaymentLinkActions({
             onClick={() => setConfirmCancel(true)}
           >
             <Ban className="size-4" />
-            Avbryt Vipps-krav
+            Avbryt forespørsel
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Avbryt Vipps-kravet?</AlertDialogTitle>
+            <AlertDialogTitle>Avbryt Vipps-forespørselen?</AlertDialogTitle>
             <AlertDialogDescription>Lenken slutter å virke</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -113,7 +113,7 @@ export function PaymentLinkActions({
             <AlertDialogAction
               variant="destructive"
               disabled={pending}
-              onClick={() => run(() => cancelVippsPayment(paymentId), "Vipps-krav avbrutt")}
+              onClick={() => run(() => cancelVippsPayment(paymentId), "Forespørsel avbrutt")}
             >
               Avbryt kravet
             </AlertDialogAction>

@@ -80,7 +80,7 @@ export async function resendRequest(
 ): Promise<RequestActionResult> {
   if (!(await getIsAdmin())) return DENIED;
   if (!z.string().uuid().safeParse(paymentId).success) {
-    return { ok: false, error: "Fant ikke kravet" };
+    return { ok: false, error: "Fant ikke forespørselen" };
   }
   const due = dateSchema.safeParse(dueDate);
   const supabase = await createClient();

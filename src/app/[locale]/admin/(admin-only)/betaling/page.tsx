@@ -1057,6 +1057,7 @@ function FamilyList({
                     request={group.request}
                     today={context.today}
                     title={group.name}
+                    showStatus="detail"
                     nextInstallment={pickNextInstallment(
                       planned,
                       group.children.map((child) => child.studentId),

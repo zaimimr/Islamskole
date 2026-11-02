@@ -1049,7 +1049,7 @@ function PaymentStatus({
     : open && overdue
       ? "Forfalt"
       : open && sent
-        ? "Krav sendt"
+        ? "Sendt i Vipps"
         : (statusLabels[status] ?? status);
   const tone = voided
     ? "bg-[#F9DEDB] text-[#8B2F2B]"

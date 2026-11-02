@@ -204,11 +204,11 @@ async function supersede(client: Client, paymentIds: string[]): Promise<void> {
   for (const row of data ?? []) {
     if (!row.reference || !row.vipps_state) continue;
     const current = await getPayment(row.reference).catch(() => null);
-    if (!current) throw new Error("Kunne ikke sjekke forrige krav i Vipps. Prøv igjen.");
+    if (!current) throw new Error("Kunne ikke sjekke forrige forespørsel i Vipps. Prøv igjen.");
     const action = supersedeAction(current);
     if (action === "keep") {
       await syncPaymentByReference(row.reference).catch(() => null);
-      throw new Error("Forrige krav er betalt eller venter i Vipps");
+      throw new Error("Forrige forespørsel er betalt eller venter i Vipps");
     }
     if (action === "cancel") {
       try {
@@ -218,7 +218,7 @@ async function supersede(client: Client, paymentIds: string[]): Promise<void> {
           paymentId: row.id,
           message: error instanceof Error ? error.message : String(error),
         });
-        throw new Error("Kunne ikke stoppe forrige krav i Vipps. Prøv igjen.");
+        throw new Error("Kunne ikke stoppe forrige forespørsel i Vipps. Prøv igjen.");
       }
     }
   }
@@ -230,7 +230,7 @@ async function supersede(client: Client, paymentIds: string[]): Promise<void> {
   if (unlinkError) throw new Error(toUserError(unlinkError), { cause: unlinkError });
   const { error } = await client
     .from("payments")
-    .update({ voided_at: new Date().toISOString(), void_reason: "Erstattet av nytt krav" })
+    .update({ voided_at: new Date().toISOString(), void_reason: "Erstattet av ny forespørsel" })
     .in("id", paymentIds)
     .in("status", ["opprettet", "avbrutt"]);
   if (error) throw new Error(toUserError(error), { cause: error });
@@ -335,7 +335,7 @@ async function discardPayment(client: Client, paymentId: string): Promise<void> 
   if (!error) return;
   await client
     .from("payments")
-    .update({ voided_at: new Date().toISOString(), void_reason: "Krav kunne ikke opprettes" })
+    .update({ voided_at: new Date().toISOString(), void_reason: "Forespørselen kunne ikke opprettes" })
     .eq("id", paymentId);
 }
 
@@ -437,9 +437,9 @@ export async function resendPaymentRequest(
     .eq("id", paymentId)
     .maybeSingle();
   if (error) throw new Error(toUserError(error), { cause: error });
-  if (!payment || payment.voided_at) throw new Error("Fant ikke kravet");
+  if (!payment || payment.voided_at) throw new Error("Fant ikke forespørselen");
   if (!["opprettet", "avbrutt"].includes(payment.status)) {
-    throw new Error("Kravet er allerede betalt eller venter i Vipps");
+    throw new Error("Forespørselen er allerede betalt eller venter i Vipps");
   }
   const today = osloToday();
   const renewed = payment.status === "avbrutt";

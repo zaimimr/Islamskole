@@ -70,7 +70,7 @@ export function sentToast(result: RequestActionResult, success: string) {
     );
     return;
   }
-  toast.warning("Vipps-krav opprettet, men e-post ble ikke sendt", {
+  toast.warning("Forespørsel opprettet, men e-post ble ikke sendt", {
     action: result.url
       ? {
           label: "Kopier lenke",
@@ -85,16 +85,19 @@ export function RequestStatus({
   request,
   today,
   className,
+  hidePill = false,
 }: {
   balance: BalanceLike | null;
   request: OpenRequest | null;
   today: string;
   className?: string;
+  hidePill?: boolean;
 }) {
   const view = describeRequest(balance, request, today);
+  if (hidePill && !view.detail) return null;
   return (
     <span className={cn("inline-flex flex-wrap items-center gap-x-2 gap-y-1", className)}>
-      <StatusPill tone={view.tone}>{view.label}</StatusPill>
+      {hidePill ? null : <StatusPill tone={view.tone}>{view.label}</StatusPill>}
       {view.detail ? (
         <span className="text-xs text-admin-muted">{view.detail}</span>
       ) : null}
@@ -173,7 +176,7 @@ export function VippsRequestDialog({
         amountNok: Number.isFinite(amountNok) && amountNok > 0 ? amountNok : null,
         dueDate: due || null,
       });
-      sentToast(result, "Vipps-krav sendt");
+      sentToast(result, "Forespørsel sendt i Vipps");
       if (result.ok) {
         onOpenChange(false);
         router.refresh();
@@ -186,7 +189,7 @@ export function VippsRequestDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-heading text-2xl">
-            {title ? `Send Vipps-krav, ${title}` : "Send Vipps-krav"}
+            {title ? `Be om Vipps-betaling, ${title}` : "Be om Vipps-betaling"}
           </DialogTitle>
         </DialogHeader>
         <form
@@ -233,7 +236,7 @@ export function VippsRequestDialog({
           <DialogFooter>
             <Button type="submit" disabled={pending} className="min-h-11 rounded-xl px-4 font-bold">
               {pending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-              Send Vipps-krav
+              Be om Vipps-betaling
             </Button>
           </DialogFooter>
         </form>
@@ -269,7 +272,7 @@ export function VippsRequestBlock({
   onManual?: () => void;
   sadaqa?: SadaqaFamily | null;
   auto?: AutoRequestOption | null;
-  showStatus?: boolean;
+  showStatus?: boolean | "detail";
   showMenu?: boolean;
   className?: string;
 }) {
@@ -318,7 +321,7 @@ export function VippsRequestBlock({
         toast.error(result.error);
         return;
       }
-      toast.success(on ? "Automatiske krav på" : "Automatiske krav av");
+      toast.success(on ? "Automatiske forespørsler på" : "Automatiske forespørsler av");
       router.refresh();
     });
   }
@@ -327,10 +330,10 @@ export function VippsRequestBlock({
     confirm === "paminnelse"
       ? "Send påminnelse?"
       : confirm === "nytt"
-        ? "Send nytt Vipps-krav?"
+        ? "Send ny forespørsel?"
         : confirm === "avdrag" && planStep
           ? `Send avdrag, ${kr(planStep.amount)}?`
-          : "Send Vipps-krav?";
+          : "Be om Vipps-betaling?";
   const confirmAmount =
     confirm === "avdrag" && planStep ? planStep.amount : Math.min(request?.amount ?? remaining, remaining);
 
@@ -338,7 +341,7 @@ export function VippsRequestBlock({
 
   return (
     <div className={cn("flex flex-wrap items-center gap-2", className)}>
-      {showStatus ? <RequestStatus balance={balance} request={request} today={today} /> : null}
+      {showStatus ? <RequestStatus balance={balance} request={request} today={today} hidePill={showStatus === "detail"} /> : null}
       <div className="flex flex-wrap items-center gap-2">
         {canAct && planStep ? (
           <Button type="button" disabled={pending} onClick={() => setConfirm("avdrag")} className={primary}>
@@ -349,7 +352,7 @@ export function VippsRequestBlock({
         ) : canAct && !request ? (
           <Button type="button" disabled={pending} onClick={() => setDialog("krav")} className={primary}>
             <Send className="size-4" />
-            Send Vipps-krav
+            Be om Vipps-betaling
           </Button>
         ) : canAct && expired ? (
           <Button
@@ -362,12 +365,12 @@ export function VippsRequestBlock({
             className={primary}
           >
             <Send className="size-4" />
-            Send nytt Vipps-krav
+            Send ny forespørsel
           </Button>
         ) : canAct && request && !request.sent ? (
           <Button type="button" disabled={pending} onClick={() => setConfirm("forste")} className={primary}>
             <Send className="size-4" />
-            Send Vipps-krav
+            Be om Vipps-betaling
           </Button>
         ) : canAct && request ? (
           <Button
@@ -411,12 +414,12 @@ export function VippsRequestBlock({
             <DropdownMenuContent align="end" className="w-auto min-w-56">
               {canAct && request && !expired ? (
                 <DropdownMenuItem className="min-h-11" onClick={() => setDialog("endre")}>
-                  Endre krav
+                  Endre forespørsel
                 </DropdownMenuItem>
               ) : null}
               {planStep ? (
                 <DropdownMenuItem className="min-h-11" onClick={() => setDialog("hele")}>
-                  Send Vipps-krav for hele beløpet
+                  Be om hele beløpet
                 </DropdownMenuItem>
               ) : null}
               {hasManual ? (
@@ -440,8 +443,8 @@ export function VippsRequestBlock({
                   onCheckedChange={(checked) => toggleAuto(checked)}
                 >
                   {auto.globalEnabled
-                    ? "Automatiske krav for familien"
-                    : "Automatiske krav er av for skolen"}
+                    ? "Automatiske forespørsler for familien"
+                    : "Automatiske forespørsler er av for skolen"}
                 </DropdownMenuCheckboxItem>
               ) : null}
             </DropdownMenuContent>
@@ -477,9 +480,9 @@ export function VippsRequestBlock({
               onClick={() => {
                 if (confirm === "avdrag" && planStep) sendInstallment(planStep);
                 else if (request && confirm === "nytt") {
-                  run(() => resendRequest(request.paymentId, renewDue || null), "Nytt Vipps-krav sendt");
+                  run(() => resendRequest(request.paymentId, renewDue || null), "Ny forespørsel sendt");
                 } else if (request && confirm === "forste") {
-                  run(() => resendRequest(request.paymentId), "Vipps-krav sendt");
+                  run(() => resendRequest(request.paymentId), "Forespørsel sendt i Vipps");
                 } else if (request) {
                   run(() => resendRequest(request.paymentId), "Påminnelse sendt");
                 }
@@ -551,7 +554,7 @@ export function BulkRequestButton({
   const [dueDate, setDueDate] = useState(() => defaultRequestDueDate(today));
   if (count === 0) return null;
   const reminders = mode === "paminnelse";
-  const label = reminders ? `Send påminnelse (${count})` : `Send Vipps-krav (${count})`;
+  const label = reminders ? `Send påminnelse (${count})` : `Be om Vipps-betaling (${count})`;
 
   function load() {
     setLoading(true);
@@ -594,7 +597,7 @@ export function BulkRequestButton({
       }
       const failed = result.skipped ? ` · ${result.skipped} feilet` : "";
       toast.success(
-        `${reminders ? "Påminnelse" : "Vipps-krav"} sendt til ${result.emailedTo} foresatt${result.emailedTo === 1 ? "" : "e"}${failed}`,
+        `${reminders ? "Påminnelse" : "Forespørsel"} sendt til ${result.emailedTo} foresatt${result.emailedTo === 1 ? "" : "e"}${failed}`,
       );
       setOpen(false);
       router.refresh();
@@ -622,7 +625,7 @@ export function BulkRequestButton({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="font-heading text-2xl">
-            {reminders ? "Send påminnelse" : "Send Vipps-krav"}
+            {reminders ? "Send påminnelse" : "Be om Vipps-betaling"}
           </DialogTitle>
         </DialogHeader>
         {loading ? (
@@ -735,7 +738,7 @@ export function BulkRequestButton({
             className="font-bold"
           >
             {pending && !loading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-            {reminders ? `Send påminnelse (${chosen.length})` : `Send Vipps-krav (${chosen.length})`}
+            {reminders ? `Send påminnelse (${chosen.length})` : `Be om Vipps-betaling (${chosen.length})`}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -64,8 +64,8 @@ export function requestLine(request: OpenRequest, remaining: number): string {
   const amount = request.amount < remaining ? ` ${kr(request.amount)} kr` : "";
   return [
     request.status === "avbrutt"
-      ? `Vipps-krav${amount} utløpt`
-      : `Vipps-krav${amount} sendt ${shortDate(request.sentAt)}`,
+      ? `Vipps-forespørsel${amount} utløpt`
+      : `Vipps-forespørsel${amount} sendt ${shortDate(request.sentAt)}`,
     request.dueDate ? `frist ${shortDate(request.dueDate)}` : null,
     request.status !== "avbrutt" && request.reminderCount > 0
       ? `påminnet ${request.reminderCount}`
@@ -117,7 +117,7 @@ export function describeRequest(
     if (request.dueDate && request.dueDate < today) {
       return { kind: "forfalt", tone: "danger", label: "Forfalt", detail: line };
     }
-    return { kind: "sendt", tone: "info", label: "Krav sendt", detail: line };
+    return { kind: "sendt", tone: "info", label: "Sendt i Vipps", detail: line };
   }
   if (partial) {
     return { kind: "delvis", tone: "warn", label: partial, detail: "Ikke betalt" };
@@ -205,11 +205,11 @@ export function nextAutoStep(
     const date = next.toISOString().slice(0, 10);
     return `Påminnelse ${date <= today ? "i dag" : shortDate(date)}`;
   }
-  if (!input.firstDueDate) return "Krav i dag";
+  if (!input.firstDueDate) return "Sendes i dag";
   const start = new Date(`${input.firstDueDate}T12:00:00Z`);
   start.setUTCDate(start.getUTCDate() - input.leadDays);
   const date = start.toISOString().slice(0, 10);
-  return `Krav ${date <= today ? "i dag" : shortDate(date)}`;
+  return `Sendes ${date <= today ? "i dag" : shortDate(date)}`;
 }
 
 export type FamilyRequestCandidate = {

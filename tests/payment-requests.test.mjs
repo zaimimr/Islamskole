@@ -40,7 +40,7 @@ test("paid and exempt children never look like they owe", () => {
 test("expired request reads as not paid with a resend path", () => {
   const view = describeRequest(owing, request({ status: "avbrutt" }), "2026-11-02");
   assert.equal(view.label, "Utløpt");
-  assert.match(view.detail, /^Vipps-krav utløpt/);
+  assert.match(view.detail, /^Vipps-forespørsel utløpt/);
   assert.equal(view.kind, "utlopt");
 });
 
@@ -108,7 +108,7 @@ test("next automatic step", () => {
     firstDueDate: "2026-12-15",
     leadDays: 14,
   };
-  assert.equal(nextAutoStep(base, "2026-11-01"), "Krav 1. des");
+  assert.equal(nextAutoStep(base, "2026-11-01"), "Sendes 1. des");
   assert.equal(nextAutoStep({ ...base, paused: true }, "2026-11-01"), "Pause");
   assert.equal(nextAutoStep({ ...base, enabled: false }, "2026-11-01"), null);
   assert.equal(nextAutoStep({ ...base, request: request() }, "2026-11-01"), "Påminnelse 8. nov");
@@ -224,8 +224,8 @@ test("krav label shows the krav amount and reminders", () => {
     request({ amount: 150000 }),
     "2026-11-02",
   );
-  assert.equal(view.label, "Krav sendt");
-  assert.match(view.detail, /^Vipps-krav 1.500 kr sendt/);
+  assert.equal(view.label, "Sendt i Vipps");
+  assert.match(view.detail, /^Vipps-forespørsel 1.500 kr sendt/);
   const reminded = describeRequest(owing, request({ reminderCount: 1 }), "2026-11-02");
   assert.match(reminded.detail, /påminnet 1$/);
 });
@@ -257,7 +257,7 @@ test("default frist is the first Saturday at least five days ahead", () => {
 test("expired krav line never mentions reminders", () => {
   const line = requestLine(request({ status: "avbrutt", reminderCount: 2 }), 500000);
   assert.doesNotMatch(line, /påmin/i);
-  assert.match(line, /^Vipps-krav utløpt/);
+  assert.match(line, /^Vipps-forespørsel utløpt/);
 });
 
 test("next installment sums siblings on the earliest date", () => {

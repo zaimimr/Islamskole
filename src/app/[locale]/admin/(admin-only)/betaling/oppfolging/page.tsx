@@ -161,7 +161,7 @@ export default async function FollowUpPage({
           leadDays: settings.leadDays,
         },
         today,
-      ) === "Krav i dag",
+      ) === "Sendes i dag",
   ).length;
   const totalRemaining = families.reduce((sum, family) => sum + family.balance.remaining, 0);
   const needsAction = families.filter(

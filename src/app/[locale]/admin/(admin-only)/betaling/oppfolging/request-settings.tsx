@@ -77,30 +77,30 @@ export function RequestSettings({
   return (
     <section className="grid min-w-0 gap-1 rounded-2xl bg-white px-4 py-2 ring-1 ring-[#E3DED3] sm:px-5">
       <label className="flex min-h-11 items-center justify-between gap-3">
-        <span className="font-heading text-lg font-bold">Automatiske Vipps-krav</span>
+        <span className="font-heading text-lg font-bold">Automatiske Vipps-forespørsler</span>
         <Switch
           checked={enabled}
           disabled={pending}
           onCheckedChange={(checked) =>
             checked
               ? setConfirming(true)
-              : save({ enabled: false, ...values }, "Automatiske krav er av")
+              : save({ enabled: false, ...values }, "Automatiske forespørsler er av")
           }
         />
       </label>
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Slå på automatiske Vipps-krav?</AlertDialogTitle>
+            <AlertDialogTitle>Slå på automatiske Vipps-forespørsler?</AlertDialogTitle>
             <AlertDialogDescription>
-              {affectedFamilies} {affectedFamilies === 1 ? "familie" : "familier"} får Vipps-krav
+              {affectedFamilies} {affectedFamilies === 1 ? "familie" : "familier"} får en Vipps-forespørsel
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={pending}>Avbryt</AlertDialogCancel>
             <AlertDialogAction
               disabled={pending}
-              onClick={() => save({ enabled: true, ...values }, "Automatiske krav er på")}
+              onClick={() => save({ enabled: true, ...values }, "Automatiske forespørsler er på")}
             >
               {pending ? <Loader2 className="size-4 animate-spin" /> : null}
               Slå på
@@ -120,7 +120,7 @@ export function RequestSettings({
           }}
           className="grid gap-3 pt-2"
         >
-          {field("leadDays", "Send krav dager før frist", 0, 60)}
+          {field("leadDays", "Send forespørsel dager før frist", 0, 60)}
           {field("reminderDays", "Påminnelse etter dager", 1, 60)}
           {field("maxReminders", "Maks påminnelser", 0, 10)}
           <Button type="submit" disabled={pending} className="min-h-11 rounded-xl font-bold">

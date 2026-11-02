@@ -18,6 +18,7 @@ import { familyOptions } from "../family-options";
 import { adminBasePath } from "@/components/admin/paths";
 import { ageInYear, schoolYearStart } from "@/lib/age";
 import { FamilyEconomy } from "@/components/admin/family-economy";
+import { FamilyPaymentHistory, type FamilyHistoryPayment } from "@/components/admin/family-payment-history";
 import type { CustomPlanConfig } from "@/lib/custom-payment-plan";
 import {
   FamilyWorkbench,
@@ -124,6 +125,61 @@ function birthDescription(
   const age = ageInYear(birthDate, ageYear);
   const agePart = age != null ? `, ${age} år` : "";
   return `${prefix}${agePart} (født ${born})`;
+}
+
+async function loadFamilyPaymentHistory(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  schoolYearId: string,
+  studentIds: string[],
+): Promise<Map<string, FamilyHistoryPayment[]>> {
+  const byChild = new Map<string, FamilyHistoryPayment[]>(studentIds.map((id) => [id, []]));
+  if (studentIds.length === 0) return byChild;
+  const [{ data: allocationRows }, { data: targetRows }] = await Promise.all([
+    supabase.from("payment_allocations").select("payment_id, student_id, amount").in("student_id", studentIds),
+    supabase.from("payment_targets").select("payment_id, student_id, amount").in("student_id", studentIds),
+  ]);
+  const allocations = allocationRows ?? [];
+  const targets = targetRows ?? [];
+  const linkedIds = [...new Set([...allocations, ...targets].map((row) => row.payment_id))];
+  const filter = linkedIds.length
+    ? `id.in.(${linkedIds.join(",")}),student_id.in.(${studentIds.join(",")})`
+    : `student_id.in.(${studentIds.join(",")})`;
+  const { data: paymentRows } = await supabase
+    .from("payments")
+    .select("id, amount, status, method, created_at, paid_at, due_date, request_sent_at, reminder_count, voided_at, student_id, school_year_id, payment_allocations(student_id), payment_targets(student_id)")
+    .or(filter)
+    .order("created_at", { ascending: false });
+  const allocationAmount = new Map(allocations.map((row) => [`${row.payment_id}:${row.student_id}`, row.amount]));
+  const targetAmount = new Map(targets.map((row) => [`${row.payment_id}:${row.student_id}`, row.amount]));
+  for (const payment of paymentRows ?? []) {
+    if (payment.school_year_id && payment.school_year_id !== schoolYearId) continue;
+    const covered = new Set([
+      ...(payment.payment_allocations ?? []).map((row) => row.student_id),
+      ...(payment.payment_targets ?? []).map((row) => row.student_id),
+    ]);
+    for (const studentId of studentIds) {
+      const key = `${payment.id}:${studentId}`;
+      const amountOre =
+        allocationAmount.get(key) ??
+        targetAmount.get(key) ??
+        (payment.student_id === studentId && covered.size === 0 ? payment.amount : null);
+      if (amountOre === null) continue;
+      byChild.get(studentId)?.push({
+        id: payment.id,
+        amountOre,
+        status: payment.status,
+        method: payment.method,
+        createdAt: payment.created_at,
+        paidAt: payment.paid_at,
+        dueDate: payment.due_date,
+        sentAt: payment.request_sent_at,
+        reminderCount: payment.reminder_count ?? 0,
+        voided: Boolean(payment.voided_at),
+        sharedWith: covered.size,
+      });
+    }
+  }
+  return byChild;
 }
 
 export default async function FamilyPage({
@@ -543,6 +599,9 @@ export default async function FamilyPage({
       ])
     : [[], null, null, null];
   const requestByStudent = latestRequestByStudent(openRequests);
+  const historyByChild = activeYear
+    ? await loadFamilyPaymentHistory(supabase, activeYear.id, studentIds)
+    : null;
   const familyRequest =
     familyIds
       .map((id) => requestByStudent.get(id))
@@ -635,6 +694,20 @@ export default async function FamilyPage({
               familyId={family.id}
               familyName={family.displayName}
               schoolYearId={activeYear.id}
+              paymentHistory={
+                historyByChild ? (
+                  <FamilyPaymentHistory
+                    schoolYearLabel={activeYear.label}
+                    today={osloToday()}
+                    rows={family.students.map((student) => ({
+                      id: student.id,
+                      name: fullName(student.firstName, student.lastName),
+                      href: `${basePath}/elever/${student.id}`,
+                      payments: historyByChild.get(student.id) ?? [],
+                    }))}
+                  />
+                ) : null
+              }
               schoolYearLabel={activeYear.label}
               sem1DueOn={activeYear.sem1_due_on}
               sem2DueOn={activeYear.sem2_due_on}

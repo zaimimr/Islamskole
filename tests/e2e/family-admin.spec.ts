@@ -133,4 +133,45 @@ test.describe("families and students", () => {
     await expect(panel).toContainText(/3\s?000 kr/);
     await expect(panel.getByRole("button", { name: "Gi fritak" }).or(panel.getByRole("link", { name: "Gi fritak" }))).toBeVisible();
   });
+
+  test("FAM-PAY-HISTORY family page shows payment history per child", async ({ page }) => {
+    const year = await activeYear();
+    const schoolClass = await seedClass();
+    const family = await seedFamily({
+      students: [{ firstName: "ZZTEST Betalt" }, { firstName: "ZZTEST Venter" }],
+    });
+    const [paid, waiting] = family.students;
+    await enroll(paid.id, schoolClass.id, year.id);
+    await enroll(waiting.id, schoolClass.id, year.id);
+    await seedPayment(paid.id, year.id, 100000);
+    const due = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    const { data: open, error } = await db()
+      .from("payments")
+      .insert({
+        student_id: waiting.id,
+        school_year_id: year.id,
+        reference: `ZZTEST-open-${Date.now()}`,
+        amount: 150000,
+        status: "opprettet",
+        method: "vipps",
+        due_date: due,
+        request_sent_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    const { error: targetError } = await db()
+      .from("payment_targets")
+      .insert({ payment_id: open!.id, student_id: waiting.id, amount: 150000 });
+    if (targetError) throw new Error(targetError.message);
+
+    await page.goto(`/admin/familier/${family.id}`);
+    await expect(page.getByText(/^Betalingshistorikk/)).toBeVisible();
+    const paidSection = page.getByRole("region", { name: /ZZTEST Betalt/ });
+    await expect(paidSection).toContainText("Betalt");
+    await expect(paidSection).toContainText(/1\s?000 kr/);
+    const waitingSection = page.getByRole("region", { name: /ZZTEST Venter/ });
+    await expect(waitingSection).toContainText("Ikke betalt");
+    await expect(waitingSection).toContainText(/frist/);
+  });
 });

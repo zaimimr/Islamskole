@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import type { Metadata } from "next";
 import { relationshipLabel } from "@/lib/relationship";
 import { notFound } from "next/navigation";
@@ -10,7 +11,6 @@ import {
   loadOpenRequests,
   nextPlanInstallment,
 } from "@/lib/payment-requests";
-import { VippsRequestBlock } from "@/components/admin/payment-request";
 import { latestRequestByStudent } from "@/lib/payment-request-state";
 import { getLastParentChange } from "@/lib/parent-changes";
 import { findDuplicateFamilies } from "../duplicates";
@@ -621,24 +621,7 @@ export default async function FamilyPage({
     remaining: yearBalances.reduce((sum, row) => sum + Math.max(row.remaining ?? 0, 0), 0),
   };
   if (activeYear && unpaid && nextAction?.href === unpaid.href && familyBalance.remaining > 0) {
-    nextAction = {
-      ...nextAction,
-      control: (
-        <VippsRequestBlock
-          schoolYearId={activeYear.id}
-          studentIds={yearBalances
-            .filter((row) => (row.remaining ?? 0) > 0)
-            .map((row) => row.student_id as string)}
-          balance={familyBalance}
-          request={familyRequest}
-          today={osloToday()}
-          title={family.displayName}
-          nextInstallment={nextInstallment}
-          showStatus={false}
-          showMenu={false}
-        />
-      ),
-    };
+    nextAction = { ...nextAction, inEconomy: true };
   }
 
   const siblingSuggestion = Boolean(
@@ -649,6 +632,88 @@ export default async function FamilyPage({
       ) &&
       !dismissedYearIds.has(activeYear.id),
   );
+
+  const economyProps: ComponentProps<typeof FamilyEconomy> | null = activeYear
+    ? {
+        familyId: family.id,
+        familyName: family.displayName,
+        schoolYearId: activeYear.id,
+        schoolYearLabel: activeYear.label,
+        sem1DueOn: activeYear.sem1_due_on,
+        sem2DueOn: activeYear.sem2_due_on,
+        request: familyRequest,
+        nextInstallment: nextInstallment,
+        requestsPaused: Boolean(pausedRow?.data?.payment_requests_paused_at),
+        autoEnabled: Boolean(requestSettings?.enabled),
+        uncoveredOre: balances
+          .filter(
+            (row) =>
+              row.student_id &&
+              row.school_year_id === activeYear.id &&
+              familyStudentIds.has(row.student_id) &&
+              !requestByStudent.has(row.student_id),
+          )
+          .reduce((sum, row) => sum + Math.max(row.remaining ?? 0, 0), 0),
+        today: osloToday(),
+        childBalances: balances
+          .filter(
+            (row) =>
+              row.student_id &&
+              row.school_year_id === activeYear.id &&
+              familyStudentIds.has(row.student_id),
+          )
+          .map((row) => ({
+            id: row.student_id as string,
+            owedOre: row.owed ?? 0,
+            paidOre: row.paid ?? 0,
+            remainingOre: row.remaining ?? 0,
+          })),
+        plan:
+          activePlan
+            ? {
+                id: activePlan.id,
+                planType: activePlan.plan_type,
+                monthlyAmount: activePlan.monthly_amount,
+                customConfig: activePlan.custom_config,
+                pausedAt: activePlan.paused_at,
+              }
+            : null,
+        installments: (installmentRows as {
+          id: string;
+          student_id: string;
+          due_date: string;
+          amount: number;
+          status: string;
+        }[]).map((installment) => ({
+          id: installment.id,
+          studentName:
+            studentNameById.get(installment.student_id) ?? "Ukjent barn",
+          dueDate: installment.due_date,
+          amount: installment.amount,
+          status: installment.status,
+        })),
+        childrenOptions: family.students.map((student) => ({
+          id: student.id,
+          name: fullName(student.firstName, student.lastName),
+        })),
+        siblingSuggestion: siblingSuggestion,
+        adjustments: yearAdjustments.map((adjustment) => ({
+          id: adjustment.id,
+          studentName:
+            studentNameById.get(adjustment.student_id) ?? "Ukjent barn",
+          type: adjustment.type,
+          amount: adjustment.amount,
+          note: adjustment.note,
+          teacherName: adjustment.guardians
+            ? fullName(
+                adjustment.guardians.first_name,
+                adjustment.guardians.last_name,
+              )
+            : null,
+        })),
+        teachers: teacherOptions,
+      }
+    : null;
 
   return (
     <div className="grid gap-5">
@@ -702,90 +767,8 @@ export default async function FamilyPage({
           />
         ) : null
       }
-      economy={
-        activeYear ? (
-            <FamilyEconomy
-              familyId={family.id}
-              familyName={family.displayName}
-              schoolYearId={activeYear.id}
-              schoolYearLabel={activeYear.label}
-              sem1DueOn={activeYear.sem1_due_on}
-              sem2DueOn={activeYear.sem2_due_on}
-              request={familyRequest}
-              nextInstallment={nextInstallment}
-              requestsPaused={Boolean(pausedRow?.data?.payment_requests_paused_at)}
-              autoEnabled={Boolean(requestSettings?.enabled)}
-              uncoveredOre={balances
-                .filter(
-                  (row) =>
-                    row.student_id &&
-                    row.school_year_id === activeYear.id &&
-                    familyStudentIds.has(row.student_id) &&
-                    !requestByStudent.has(row.student_id),
-                )
-                .reduce((sum, row) => sum + Math.max(row.remaining ?? 0, 0), 0)}
-              today={osloToday()}
-              childBalances={balances
-                .filter(
-                  (row) =>
-                    row.student_id &&
-                    row.school_year_id === activeYear.id &&
-                    familyStudentIds.has(row.student_id),
-                )
-                .map((row) => ({
-                  id: row.student_id as string,
-                  owedOre: row.owed ?? 0,
-                  paidOre: row.paid ?? 0,
-                  remainingOre: row.remaining ?? 0,
-                }))}
-              plan={
-                activePlan
-                  ? {
-                      id: activePlan.id,
-                      planType: activePlan.plan_type,
-                      monthlyAmount: activePlan.monthly_amount,
-                      customConfig: activePlan.custom_config,
-                      pausedAt: activePlan.paused_at,
-                    }
-                  : null
-              }
-              installments={(installmentRows as {
-                id: string;
-                student_id: string;
-                due_date: string;
-                amount: number;
-                status: string;
-              }[]).map((installment) => ({
-                id: installment.id,
-                studentName:
-                  studentNameById.get(installment.student_id) ?? "Ukjent barn",
-                dueDate: installment.due_date,
-                amount: installment.amount,
-                status: installment.status,
-              }))}
-              childrenOptions={family.students.map((student) => ({
-                id: student.id,
-                name: fullName(student.firstName, student.lastName),
-              }))}
-              siblingSuggestion={siblingSuggestion}
-              adjustments={yearAdjustments.map((adjustment) => ({
-                id: adjustment.id,
-                studentName:
-                  studentNameById.get(adjustment.student_id) ?? "Ukjent barn",
-                type: adjustment.type,
-                amount: adjustment.amount,
-                note: adjustment.note,
-                teacherName: adjustment.guardians
-                  ? fullName(
-                      adjustment.guardians.first_name,
-                      adjustment.guardians.last_name,
-                    )
-                  : null,
-              }))}
-              teachers={teacherOptions}
-            />
-        ) : null
-      }
+      economy={activeYear ? <FamilyEconomy {...economyProps!} /> : null}
+      economySetup={activeYear ? <FamilyEconomy {...economyProps!} part="setup" /> : null}
       />
 
     </div>

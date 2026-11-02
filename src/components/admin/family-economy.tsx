@@ -39,7 +39,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/ui/select-field";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -161,6 +160,7 @@ export function FamilyEconomy({
   autoEnabled = false,
   uncoveredOre = 0,
   today,
+  part = "summary",
 }: {
   familyId: string;
   familyName: string;
@@ -181,6 +181,7 @@ export function FamilyEconomy({
   autoEnabled?: boolean;
   uncoveredOre?: number;
   today: string;
+  part?: "summary" | "setup";
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -348,89 +349,151 @@ export function FamilyEconomy({
 
   return (
     <>
-      {childBalances ? (
-        <Card className="rounded-2xl border-0 ring-1 ring-[#E3DED3]">
-          <CardContent className="flex flex-wrap items-center justify-between gap-4 py-4">
-            <dl className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
-              <div>
-                <dt className="text-sm font-bold text-admin-muted">
-                  Familien har igjen {schoolYearLabel}
-                </dt>
-                <dd
-                  className={`font-heading text-2xl font-bold tabular-nums ${familyRemaining > 0 ? "text-[#775108]" : "text-[#216A2B]"}`}
-                >
-                  {formatNok(familyRemaining)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm font-bold text-admin-muted">
-                  Innbetalt
-                </dt>
-                <dd className="font-heading text-xl font-bold tabular-nums">
-                  {formatNok(familyPaid)}
-                  <span className="text-sm font-semibold text-admin-muted">
-                    {" "}
-                    av {formatNok(familyOwed)}
-                  </span>
-                </dd>
-              </div>
-            </dl>
-            {childrenOptions.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                <VippsRequestBlock
-                  schoolYearId={schoolYearId}
-                  studentIds={owingChildIds}
-                  balance={{
-                    owed: familyOwed,
-                    paid: familyPaid,
-                    remaining: familyRemaining,
-                  }}
-                  request={request}
-                  today={today}
-                  nextInstallment={nextInstallment}
-                  title={familyName}
-                  manualChildren={paymentChildren}
-                  sadaqa={{ id: familyId, name: familyName, children: paymentChildren }}
-                  auto={{ familyId, paused: requestsPaused, globalEnabled: autoEnabled }}
-                  className="w-full"
-                />
-                {request && uncoveredOre > 0 ? (
-                  <p className="w-full text-sm font-bold text-[#775108] tabular-nums">
-                    Uten forespørsel: {formatNok(uncoveredOre)}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
-      ) : null}
-
-
-      <Card className="rounded-2xl border-0 ring-1 ring-[#E3DED3]">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2 font-heading text-xl">
-            <CalendarClock aria-hidden="true" className="size-5" />
-            Betalingsplan {schoolYearLabel}
-          </CardTitle>
-          {plan ? (
-            <div className="flex items-center gap-2">
-              <Badge className="bg-[#DCEDDD] text-[#216A2B]">
-                {planLabels[plan.planType]}
-                {plan.planType === "maanedlig" && plan.monthlyAmount
-                  ? ` ${formatNok(plan.monthlyAmount)}`
-                  : ""}
-              </Badge>
-              {plan.pausedAt ? (
-                <Badge className="bg-[#F9DEDB] text-[#8B2F2B]">
-                  Utsendinger stoppet
-                </Badge>
+      {part === "summary" && childBalances ? (
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
+          <dl className="grid grid-cols-2 gap-4">
+            <div>
+              <dt className="text-sm font-semibold text-admin-muted">Har igjen</dt>
+              <dd
+                className={`font-heading text-3xl font-bold tabular-nums ${familyRemaining > 0 ? "text-[#775108]" : "text-[#216A2B]"}`}
+              >
+                {formatNok(familyRemaining)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm font-semibold text-admin-muted">Innbetalt</dt>
+              <dd className="font-heading text-xl font-bold tabular-nums">
+                {formatNok(familyPaid)}
+                <span className="block font-sans text-sm font-semibold text-admin-muted">
+                  {" "}
+                  av {formatNok(familyOwed)}
+                </span>
+              </dd>
+            </div>
+          </dl>
+          {childrenOptions.length > 0 ? (
+            <div className="grid gap-2 border-t border-[#ECE8DF] pt-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-5">
+              <VippsRequestBlock
+                schoolYearId={schoolYearId}
+                studentIds={owingChildIds}
+                balance={{
+                  owed: familyOwed,
+                  paid: familyPaid,
+                  remaining: familyRemaining,
+                }}
+                request={request}
+                today={today}
+                nextInstallment={nextInstallment}
+                title={familyName}
+                manualChildren={paymentChildren}
+                sadaqa={{ id: familyId, name: familyName, children: paymentChildren }}
+                auto={{ familyId, paused: requestsPaused, globalEnabled: autoEnabled }}
+                className="w-full"
+              />
+              {request && uncoveredOre > 0 ? (
+                <p className="text-sm font-bold text-[#775108] tabular-nums">
+                  Uten forespørsel: {formatNok(uncoveredOre)}
+                </p>
               ) : null}
             </div>
-          ) : (
-            <Badge variant="outline">Ingen plan</Badge>
-          )}
-        </CardHeader>
-        <CardContent className="grid gap-4">
+          ) : null}
+        </div>
+      ) : null}
+
+      {part === "summary" && siblingSuggestion ? (
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#FFF8E9] p-4 ring-1 ring-[#E8D6AA]">
+            <div className="flex items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FEEDCA] text-[#775108]">
+                <Percent aria-hidden="true" className="size-5" />
+              </span>
+              <div>
+                <p className="font-bold">
+                  Familien kvalifiserer til søskenrabatt
+                </p>
+                <p className="text-sm text-[#6B5524]">
+                  Familier med 3 eller flere barn kan få 1 500 kr i rabatt
+                  (høstavdraget for ett barn).
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <SelectField
+                value={siblingChild}
+                onValueChange={setSiblingChild}
+                aria-label="Barn som får rabatten"
+                className="w-full sm:w-56"
+                triggerClassName="border-[#E8D6AA]"
+                options={childrenOptions.map((child) => ({
+                  value: child.id,
+                  label: child.name,
+                }))}
+              />
+              <Button
+                type="button"
+                disabled={pending || !siblingChild}
+                className="min-h-11 rounded-xl px-4"
+                onClick={() =>
+                  setConfirmation({
+                    title: `Godkjenn søskenrabatt for familien ${familyName}?`,
+                    description: `Kravet reduseres med 1 500 kr for ett barn, og avdraget ${sem2DueOn ? formatShortDate(sem2DueOn) : "for andre semester"} fjernes for barnet. Rabatten logges med begrunnelse.`,
+                    confirmLabel: "Godkjenn 1 500 kr rabatt",
+                    success: "Søskenrabatt godkjent",
+                    action: () => {
+                      const formData = new FormData();
+                      formData.set("family_id", familyId);
+                      formData.set("school_year_id", schoolYearId);
+                      formData.set("student_id", siblingChild);
+                      return approveSiblingDiscount(formData);
+                    },
+                  })
+                }
+              >
+                Godkjenn rabatt
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={pending}
+                className="min-h-11 rounded-xl px-3"
+                onClick={() =>
+                  run(
+                    () => dismissSiblingSuggestion(familyId, schoolYearId),
+                    "Forslaget er avvist",
+                  )
+                }
+              >
+                Avvis
+              </Button>
+            </div>
+        </div>
+      ) : null}
+
+      {part === "setup" ? (
+        <>
+          <details className="group border-b border-[#ECE8DF]">
+            <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 py-3 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
+              <CalendarClock aria-hidden="true" className="size-5 shrink-0 text-[#3C8F44]" />
+              <h2 className="font-heading text-lg font-bold">Betalingsplan</h2>
+              {plan ? (
+                <span className="flex flex-wrap items-center gap-2">
+                  <Badge className="bg-[#DCEDDD] text-[#216A2B]">
+                    {planLabels[plan.planType]}
+                    {plan.planType === "maanedlig" && plan.monthlyAmount
+                      ? ` ${formatNok(plan.monthlyAmount)}`
+                      : ""}
+                  </Badge>
+                  {plan.pausedAt ? (
+                    <Badge className="bg-[#F9DEDB] text-[#8B2F2B]">
+                      Utsendinger stoppet
+                    </Badge>
+                  ) : null}
+                </span>
+              ) : (
+                <Badge variant="outline">Ingen plan</Badge>
+              )}
+              <ChevronDown aria-hidden="true" className="ml-auto size-5 shrink-0 text-admin-muted transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="grid gap-4 pb-5">
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -688,87 +751,16 @@ export function FamilyEconomy({
               </p>
             </div>
           ) : null}
-        </CardContent>
-      </Card>
-
-      {siblingSuggestion ? (
-        <Card className="rounded-2xl border-0 bg-[#FFF8E9] ring-1 ring-[#E8D6AA]">
-          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
-            <div className="flex items-start gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FEEDCA] text-[#775108]">
-                <Percent aria-hidden="true" className="size-5" />
-              </span>
-              <div>
-                <p className="font-bold">
-                  Familien kvalifiserer til søskenrabatt
-                </p>
-                <p className="text-sm text-[#6B5524]">
-                  Familier med 3 eller flere barn kan få 1 500 kr i rabatt
-                  (høstavdraget for ett barn).
-                </p>
-              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <SelectField
-                value={siblingChild}
-                onValueChange={setSiblingChild}
-                aria-label="Barn som får rabatten"
-                className="w-full sm:w-56"
-                triggerClassName="border-[#E8D6AA]"
-                options={childrenOptions.map((child) => ({
-                  value: child.id,
-                  label: child.name,
-                }))}
-              />
-              <Button
-                type="button"
-                disabled={pending || !siblingChild}
-                className="min-h-11 rounded-xl px-4"
-                onClick={() =>
-                  setConfirmation({
-                    title: `Godkjenn søskenrabatt for familien ${familyName}?`,
-                    description: `Kravet reduseres med 1 500 kr for ett barn, og avdraget ${sem2DueOn ? formatShortDate(sem2DueOn) : "for andre semester"} fjernes for barnet. Rabatten logges med begrunnelse.`,
-                    confirmLabel: "Godkjenn 1 500 kr rabatt",
-                    success: "Søskenrabatt godkjent",
-                    action: () => {
-                      const formData = new FormData();
-                      formData.set("family_id", familyId);
-                      formData.set("school_year_id", schoolYearId);
-                      formData.set("student_id", siblingChild);
-                      return approveSiblingDiscount(formData);
-                    },
-                  })
-                }
-              >
-                Godkjenn rabatt
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={pending}
-                className="min-h-11 rounded-xl px-3"
-                onClick={() =>
-                  run(
-                    () => dismissSiblingSuggestion(familyId, schoolYearId),
-                    "Forslaget er avvist",
-                  )
-                }
-              >
-                Avvis
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <Card className="rounded-2xl border-0 ring-1 ring-[#E3DED3]">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 font-heading text-xl">
-            <HandHeart aria-hidden="true" className="size-5" />
-            Rabatter og fritak
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
+          </details>
+          <details className="group">
+            <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 py-3 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
+              <HandHeart aria-hidden="true" className="size-5 shrink-0 text-[#3C8F44]" />
+              <h2 className="font-heading text-lg font-bold">Rabatter og fritak</h2>
+              <Badge variant="outline">{adjustments.length === 0 ? "Ingen" : `${adjustments.length} fradrag`}</Badge>
+              <ChevronDown aria-hidden="true" className="ml-auto size-5 shrink-0 text-admin-muted transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="grid gap-4 pb-5">
           {adjustments.length > 0 ? (
             <ul className="grid gap-1.5">
               {adjustments.map((adjustment) => (
@@ -931,8 +923,10 @@ export function FamilyEconomy({
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+            </div>
+          </details>
+        </>
+      ) : null}
 
       <AlertDialog
         open={confirmation != null}

@@ -75,24 +75,27 @@ export function FamilyPaymentHistory({
 }) {
   if (rows.length === 0) return null;
   return (
-    <section aria-labelledby="family-payment-history" className="grid gap-3">
-      <h2 id="family-payment-history" className="font-heading text-xl font-bold">
+    <section
+      aria-labelledby="family-payment-history"
+      className="overflow-hidden rounded-2xl bg-white ring-1 ring-[#E3DED3]"
+    >
+      <h2 id="family-payment-history" className="px-5 pt-5 pb-3 font-heading text-lg font-bold sm:px-6 sm:pt-6">
         Betalingshistorikk {schoolYearLabel}
       </h2>
-      <div className="overflow-hidden rounded-xl ring-1 ring-[#E8E3D9]">
+      <div className="border-t border-[#E8E3D9]">
         <Table className="text-sm">
           <TableHeader className="bg-[#F7F6F1]">
             <TableRow>
-              <TableHead className="w-20 pl-4">Dato</TableHead>
+              <TableHead className="w-20 pl-5 sm:pl-6">Dato</TableHead>
               <TableHead className="text-right sm:w-32">Beløp</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="hidden md:table-cell xl:hidden 2xl:table-cell">Detaljer</TableHead>
+              <TableHead className="hidden md:table-cell">Detaljer</TableHead>
             </TableRow>
           </TableHeader>
           {rows.map((child) => (
             <TableBody key={child.id} aria-label={child.name} className="border-t border-[#E8E3D9] first-of-type:border-t-0">
               <TableRow className="bg-[#FBFAF7] hover:bg-[#FBFAF7]">
-                <TableCell colSpan={4} className="pl-4">
+                <TableCell colSpan={4} className="pl-5 sm:pl-6">
                   <Link href={child.href} className="font-bold text-[#216A2B] hover:underline">
                     {child.name}
                   </Link>
@@ -100,7 +103,7 @@ export function FamilyPaymentHistory({
               </TableRow>
               {child.payments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="pl-4 text-admin-muted">
+                  <TableCell colSpan={4} className="pl-5 text-admin-muted sm:pl-6">
                     Ingen betalinger
                   </TableCell>
                 </TableRow>
@@ -110,7 +113,7 @@ export function FamilyPaymentHistory({
                   const detail = paymentDetail(payment);
                   return (
                     <TableRow key={payment.id} className={payment.voided ? "text-admin-muted" : undefined}>
-                      <TableCell className="pl-4 align-top tabular-nums">
+                      <TableCell className="pl-5 align-top tabular-nums sm:pl-6">
                         {shortDate(payment.paidAt ?? payment.createdAt)}
                       </TableCell>
                       <TableCell className="text-right align-top">
@@ -126,9 +129,9 @@ export function FamilyPaymentHistory({
                       </TableCell>
                       <TableCell className="align-top whitespace-normal">
                         <StatusPill tone={status.tone}>{status.label}</StatusPill>
-                        <span className="mt-1 block text-xs text-admin-muted md:hidden xl:block 2xl:hidden">{detail}</span>
+                        <span className="mt-1 block text-xs text-admin-muted md:hidden">{detail}</span>
                       </TableCell>
-                      <TableCell className="hidden align-top whitespace-normal text-admin-muted md:table-cell xl:hidden 2xl:table-cell">
+                      <TableCell className="hidden align-top whitespace-normal text-admin-muted md:table-cell">
                         {detail}
                       </TableCell>
                     </TableRow>

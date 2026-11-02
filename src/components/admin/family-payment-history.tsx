@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Users } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusPill, type StatusTone } from "@/components/admin/status-pill";
 import { formatNok } from "@/lib/money";
 import { shortDate } from "@/lib/payment-request-state";
@@ -75,54 +75,70 @@ export function FamilyPaymentHistory({
 }) {
   if (rows.length === 0) return null;
   return (
-    <Card className="rounded-2xl border-0 ring-1 ring-[#E3DED3]">
-      <CardHeader>
-        <CardTitle className="font-heading text-xl">Betalingshistorikk {schoolYearLabel}</CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-5 lg:grid-cols-2">
-        {rows.map((child) => (
-          <section key={child.id} aria-label={child.name} className="grid content-start gap-2">
-            <Link href={child.href} className="font-heading text-lg font-bold text-[#216A2B] hover:underline">
-              {child.name}
-            </Link>
-            {child.payments.length === 0 ? (
-              <p className="rounded-xl bg-[#F7F6F1] px-4 py-3 text-sm text-admin-muted">Ingen betalinger</p>
-            ) : (
-              <ul className="divide-y divide-[#ECE8DF] overflow-hidden rounded-xl border border-[#E8E3D9]">
-                {child.payments.map((payment) => {
+    <section aria-labelledby="family-payment-history" className="grid gap-3">
+      <h2 id="family-payment-history" className="font-heading text-xl font-bold">
+        Betalingshistorikk {schoolYearLabel}
+      </h2>
+      <div className="overflow-hidden rounded-xl ring-1 ring-[#E8E3D9]">
+        <Table className="text-sm">
+          <TableHeader className="bg-[#F7F6F1]">
+            <TableRow>
+              <TableHead className="w-20 pl-4">Dato</TableHead>
+              <TableHead className="text-right sm:w-32">Beløp</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="hidden md:table-cell xl:hidden 2xl:table-cell">Detaljer</TableHead>
+            </TableRow>
+          </TableHeader>
+          {rows.map((child) => (
+            <TableBody key={child.id} aria-label={child.name} className="border-t border-[#E8E3D9] first-of-type:border-t-0">
+              <TableRow className="bg-[#FBFAF7] hover:bg-[#FBFAF7]">
+                <TableCell colSpan={4} className="pl-4">
+                  <Link href={child.href} className="font-bold text-[#216A2B] hover:underline">
+                    {child.name}
+                  </Link>
+                </TableCell>
+              </TableRow>
+              {child.payments.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="pl-4 text-admin-muted">
+                    Ingen betalinger
+                  </TableCell>
+                </TableRow>
+              ) : (
+                child.payments.map((payment) => {
                   const status = paymentStatus(payment, today);
+                  const detail = paymentDetail(payment);
                   return (
-                    <li key={payment.id} className={payment.voided ? "bg-[#FAF9F5]" : undefined}>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
-                        <span className="w-14 shrink-0 text-sm text-admin-muted tabular-nums">
-                          {shortDate(payment.paidAt ?? payment.createdAt)}
-                        </span>
-                        <span
-                          className={`font-heading text-lg font-bold tabular-nums ${payment.voided ? "line-through" : ""}`}
-                        >
+                    <TableRow key={payment.id} className={payment.voided ? "text-admin-muted" : undefined}>
+                      <TableCell className="pl-4 align-top tabular-nums">
+                        {shortDate(payment.paidAt ?? payment.createdAt)}
+                      </TableCell>
+                      <TableCell className="text-right align-top">
+                        <span className={`font-bold tabular-nums ${payment.voided ? "line-through" : ""}`}>
                           {formatNok(payment.amountOre)}
                         </span>
-                        <StatusPill tone={status.tone} className="ml-auto">
-                          {status.label}
-                        </StatusPill>
-                        <span className="flex w-full flex-wrap items-center gap-x-2 text-xs text-admin-muted">
-                          {paymentDetail(payment)}
-                          {payment.sharedWith > 1 ? (
-                            <span className="inline-flex items-center gap-1">
-                              <Users aria-hidden="true" className="size-3" />
-                              {payment.sharedWith} barn
-                            </span>
-                          ) : null}
-                        </span>
-                      </div>
-                    </li>
+                        {payment.sharedWith > 1 ? (
+                          <span className="flex items-center justify-end gap-1 text-xs text-admin-muted">
+                            <Users aria-hidden="true" className="size-3" />
+                            {payment.sharedWith} barn
+                          </span>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="align-top whitespace-normal">
+                        <StatusPill tone={status.tone}>{status.label}</StatusPill>
+                        <span className="mt-1 block text-xs text-admin-muted md:hidden xl:block 2xl:hidden">{detail}</span>
+                      </TableCell>
+                      <TableCell className="hidden align-top whitespace-normal text-admin-muted md:table-cell xl:hidden 2xl:table-cell">
+                        {detail}
+                      </TableCell>
+                    </TableRow>
                   );
-                })}
-              </ul>
-            )}
-          </section>
-        ))}
-      </CardContent>
-    </Card>
+                })
+              )}
+            </TableBody>
+          ))}
+        </Table>
+      </div>
+    </section>
   );
 }

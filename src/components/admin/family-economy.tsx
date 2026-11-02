@@ -161,7 +161,6 @@ export function FamilyEconomy({
   autoEnabled = false,
   uncoveredOre = 0,
   today,
-  paymentHistory = null,
 }: {
   familyId: string;
   familyName: string;
@@ -182,7 +181,6 @@ export function FamilyEconomy({
   autoEnabled?: boolean;
   uncoveredOre?: number;
   today: string;
-  paymentHistory?: React.ReactNode;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -407,7 +405,6 @@ export function FamilyEconomy({
         </Card>
       ) : null}
 
-      {paymentHistory}
 
       <Card className="rounded-2xl border-0 ring-1 ring-[#E3DED3]">
         <CardHeader className="flex flex-row items-center justify-between">

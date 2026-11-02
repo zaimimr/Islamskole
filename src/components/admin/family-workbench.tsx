@@ -136,6 +136,7 @@ export type FamilyWorkbenchProps = {
   duplicateFamilies?: FamilyDuplicate[];
   mergeOptions?: FamilyOption[];
   economy?: ReactNode;
+  paymentHistory?: ReactNode;
 };
 
 export type FamilyDuplicate = {
@@ -390,6 +391,7 @@ export function FamilyWorkbench({
   duplicateFamilies = [],
   mergeOptions = [],
   economy,
+  paymentHistory,
 }: FamilyWorkbenchProps) {
   const primaryGuardian =
     family.guardians.find((guardian) => guardian.isPrimary) ??
@@ -837,6 +839,8 @@ export function FamilyWorkbench({
               ) : null}
             </section>
           ) : null}
+
+          {paymentHistory}
         </div>
       </section>
 

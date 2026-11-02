@@ -688,26 +688,26 @@ export default async function FamilyPage({
       recentActivity={recentActivity}
       duplicateFamilies={duplicateFamilies}
       mergeOptions={familyOptions(allFamilies, family.id)}
+      paymentHistory={
+        historyByChild && activeYear ? (
+          <FamilyPaymentHistory
+            schoolYearLabel={activeYear.label}
+            today={osloToday()}
+            rows={family.students.map((student) => ({
+              id: student.id,
+              name: fullName(student.firstName, student.lastName),
+              href: `${basePath}/elever/${student.id}`,
+              payments: historyByChild.get(student.id) ?? [],
+            }))}
+          />
+        ) : null
+      }
       economy={
         activeYear ? (
             <FamilyEconomy
               familyId={family.id}
               familyName={family.displayName}
               schoolYearId={activeYear.id}
-              paymentHistory={
-                historyByChild ? (
-                  <FamilyPaymentHistory
-                    schoolYearLabel={activeYear.label}
-                    today={osloToday()}
-                    rows={family.students.map((student) => ({
-                      id: student.id,
-                      name: fullName(student.firstName, student.lastName),
-                      href: `${basePath}/elever/${student.id}`,
-                      payments: historyByChild.get(student.id) ?? [],
-                    }))}
-                  />
-                ) : null
-              }
               schoolYearLabel={activeYear.label}
               sem1DueOn={activeYear.sem1_due_on}
               sem2DueOn={activeYear.sem2_due_on}

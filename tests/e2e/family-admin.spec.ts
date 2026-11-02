@@ -166,11 +166,11 @@ test.describe("families and students", () => {
     if (targetError) throw new Error(targetError.message);
 
     await page.goto(`/admin/familier/${family.id}`);
-    await expect(page.getByText(/^Betalingshistorikk/)).toBeVisible();
-    const paidSection = page.getByRole("region", { name: /ZZTEST Betalt/ });
+    await expect(page.getByRole("heading", { name: /^Betalingshistorikk/ })).toBeVisible();
+    const paidSection = page.getByRole("rowgroup", { name: /ZZTEST Betalt/ });
     await expect(paidSection).toContainText("Betalt");
     await expect(paidSection).toContainText(/1\s?000 kr/);
-    const waitingSection = page.getByRole("region", { name: /ZZTEST Venter/ });
+    const waitingSection = page.getByRole("rowgroup", { name: /ZZTEST Venter/ });
     await expect(waitingSection).toContainText("Ikke betalt");
     await expect(waitingSection).toContainText(/frist/);
   });

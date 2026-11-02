@@ -1,22 +1,14 @@
 import Link from "next/link";
-import { ArrowRight, ChevronDown } from "lucide-react";
-import { AttendanceRoster } from "@/components/portal/teacher/attendance-roster";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { SelectField } from "@/components/ui/select-field";
-import { lessonTitle, slotRangeTimes, type TimeSlot } from "@/lib/lessons";
 import { getLessonRoster } from "@/lib/portal/data";
+import { slotRangeTimes, type TimeSlot } from "@/lib/lessons";
+import { osloToday } from "@/lib/dates";
 import { cn } from "@/lib/utils";
-import { formatOsloDate, osloToday } from "@/lib/dates";
+import { AttendanceClasses } from "./attendance-classes";
 import type { DayPlanClass } from "./day-plan-grid";
 
-export async function DayAttendance({
-  basePath,
-  day,
-  yearLabel,
-  slots,
-  classes,
-  query,
-}: {
+const toggleClass = "inline-flex min-h-11 items-center justify-center rounded-lg px-3 py-2 text-sm font-bold outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
+
+export async function DayAttendance({ basePath, day, yearLabel, slots, classes, query }: {
   basePath: string;
   day: { id: string; date: string; cancelled: boolean };
   yearLabel: string;
@@ -29,67 +21,26 @@ export async function DayAttendance({
   const visible = selectedClass === "alle" ? classes : classes.filter((row) => row.id === selectedClass);
   const rosters = await Promise.all(visible.map(async (row) => {
     const lesson = row.lessons.find((item) => item.start_position <= position && item.end_position >= position);
-    return { row, lesson, students: lesson ? await getLessonRoster(lesson.id, yearLabel) : [] };
+    return { id: row.id, name: row.name, classTeachers: row.classTeachers, lesson: lesson ?? null, students: lesson ? await getLessonRoster(lesson.id, yearLabel) : [] };
   }));
-  const dateLabel = formatOsloDate(day.date, { weekday: "short", day: "numeric", month: "short" });
+  const href = (classId: string, time: number) => `${basePath}/dagsplan?dag=${day.id}&visning=oppmote&klasse=${classId}&time=${time}`;
+  const sorted = [...rosters].sort((left, right) => Number(Boolean(right.lesson?.needsSubstitute)) - Number(Boolean(left.lesson?.needsSubstitute)));
 
   return (
     <section aria-label="Oppmøte" className="grid gap-4">
-      <form action={`${basePath}/dagsplan`} className="flex flex-wrap items-end gap-3">
-        <input type="hidden" name="dag" value={day.id} />
-        <input type="hidden" name="visning" value="oppmote" />
-        <div className="grid min-w-48 flex-1 gap-1.5 sm:flex-none">
-          <label id="attendance-class-label" className="text-sm font-bold">Klasse</label>
-          <SelectField
-            key={selectedClass}
-            name="klasse"
-            aria-labelledby="attendance-class-label"
-            defaultValue={selectedClass}
-            options={[{ value: "alle", label: "Alle klasser" }, ...classes.map((row) => ({ value: row.id, label: row.name }))]}
-          />
-        </div>
-        <div className="grid min-w-40 flex-1 gap-1.5 sm:flex-none">
-          <label id="attendance-time-label" className="text-sm font-bold">Time</label>
-          <SelectField
-            key={position}
-            name="time"
-            aria-labelledby="attendance-time-label"
-            defaultValue={String(position)}
-            options={slots.map((slot) => ({ value: String(slot.position), label: `${slot.label} · ${slotRangeTimes(slots, { start_position: slot.position, end_position: slot.position })}` }))}
-          />
-        </div>
-        <Button type="submit">Vis</Button>
-      </form>
-      {rosters.map(({ row, lesson, students }) => (
-        <details key={`${row.id}:${lesson?.id ?? "empty"}:${day.id}`} open className="group" aria-label={row.name}>
-          <summary className="flex min-h-12 cursor-pointer list-none flex-wrap items-center gap-2 rounded-lg py-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
-            <h2 className="font-heading text-xl font-bold">{row.name}</h2>
-            <span className="text-sm text-admin-muted">
-              <span className="font-bold text-foreground">{dateLabel}</span>
-              {" · "}
-              {lesson ? lessonTitle(lesson, slots, "Hele dagen") : "Ingen time"}
-            </span>
-            <ChevronDown aria-hidden="true" className="ml-auto size-4 transition-transform group-open:rotate-180" />
-          </summary>
-          {lesson ? (
-            <AttendanceRoster
-              key={lesson.id}
-              rows={students}
-              lessonId={lesson.id}
-              markable={!day.cancelled && !lesson.cancelled && day.date <= osloToday()}
-              reportable={false}
-            />
-          ) : null}
-          {lesson?.cancelled ? <p className="py-2 text-sm text-admin-muted">Timen er avlyst.</p> : null}
-        </details>
-      ))}
-      <Link
-        href={`${basePath}/dagsplan?dag=${day.id}&visning=totalt`}
-        className={cn(buttonVariants({ size: "lg" }), "mt-2 justify-self-stretch sm:justify-self-start")}
-      >
-        Totalt for {dateLabel}
-        <ArrowRight aria-hidden="true" className="size-4" />
-      </Link>
+      <nav aria-label="Klasse" className="grid grid-cols-2 gap-1 rounded-xl bg-[#EFECE4] p-1 sm:grid-cols-3 lg:flex lg:flex-wrap">
+        {[{ id: "alle", name: "Alle" }, ...classes].map((row) => (
+          <Link key={row.id} href={href(row.id, position)} scroll={false} aria-current={row.id === selectedClass ? "page" : undefined} className={cn(toggleClass, "min-w-0 break-words text-center", row.id === selectedClass ? "bg-white text-admin-action ring-1 ring-foreground/10" : "text-admin-muted hover:bg-white/60")}>{row.name}</Link>
+        ))}
+      </nav>
+      <nav aria-label="Time" className="flex flex-wrap gap-1 border-b border-foreground/10 pb-2">
+        {slots.map((slot) => (
+          <Link key={slot.position} href={href(selectedClass, slot.position)} scroll={false} aria-current={slot.position === position ? "page" : undefined} className={cn(toggleClass, "flex-col gap-0.5", slot.position === position ? "bg-admin-action text-white" : "text-admin-muted hover:bg-muted")}>
+            <span>{slot.position}. time</span><span className="text-xs font-normal tabular-nums">{slotRangeTimes(slots, { start_position: slot.position, end_position: slot.position })}</span>
+          </Link>
+        ))}
+      </nav>
+      <AttendanceClasses basePath={basePath} key={day.id} day={day} rows={sorted} selectedClass={selectedClass} future={day.date > osloToday()} />
     </section>
   );
 }

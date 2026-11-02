@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Menu, X } from "lucide-react";
+import { Menu, MoreHorizontal, X } from "lucide-react";
 import { SidebarNav } from "@/components/admin/sidebar-nav";
 import { SignOutButton } from "@/components/admin/sign-out-button";
 import {
@@ -19,10 +19,14 @@ export function AdminMobileNav({
   basePath,
   isAdmin,
   loginHref,
+  bottom = false,
+  active = false,
 }: {
   basePath: string;
   isAdmin: boolean;
   loginHref: string;
+  bottom?: boolean;
+  active?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -33,11 +37,14 @@ export function AdminMobileNav({
           <button
             type="button"
             aria-label="Åpne administrasjonsmenyen"
-            className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-[#E4E1D8] bg-white text-foreground outline-none transition-colors hover:bg-[#F2F1EB] focus-visible:ring-3 focus-visible:ring-ring/50 lg:hidden"
+            className={bottom
+              ? `flex min-h-14 w-full flex-col items-center justify-center gap-1 rounded-lg text-xs font-bold outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 ${active || open ? "bg-[#E7F1E7] text-admin-action" : "text-admin-muted"}`
+              : "inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-[#E4E1D8] bg-white text-foreground outline-none transition-colors hover:bg-[#F2F1EB] focus-visible:ring-3 focus-visible:ring-ring/50 lg:hidden"}
           />
         }
       >
-        <Menu aria-hidden="true" className="size-5" />
+        {bottom ? <MoreHorizontal aria-hidden="true" className="size-5" /> : <Menu aria-hidden="true" className="size-5" />}
+        {bottom ? <span>Mer</span> : null}
       </SheetTrigger>
       <SheetContent
         side="left"

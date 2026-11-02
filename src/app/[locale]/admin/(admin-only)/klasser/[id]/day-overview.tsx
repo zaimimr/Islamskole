@@ -130,7 +130,7 @@ export function ClassDayOverview({
                 <div className="grid gap-5 border-t border-[#ECE8DF] px-4 py-4 sm:px-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] content-start gap-4">
                     <NameGroup
-                      title="Ugyldig fravær"
+                      title="Ikke meldt fravær"
                       tone="absent"
                       names={day.absent.map((name) => <li key={name}>{name}</li>)}
                     />

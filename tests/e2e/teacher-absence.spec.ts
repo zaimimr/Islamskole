@@ -60,13 +60,18 @@ test.describe("teacher absence", () => {
     const teacher = await seedTeacher();
     const other = await seedTeacher();
     await assignTeacher(teacher.id, schoolClass.id, year.id);
+    const cleared = await db().from("lessons").delete().eq("school_day_id", day.id).eq("class_id", schoolClass.id);
+    if (cleared.error) throw cleared.error;
+    const planned = await db().from("lessons").insert({ class_id: schoolClass.id, school_day_id: day.id, start_position: 1, end_position: 1, teacher_guardian_id: teacher.id, subject: "Islam" });
+    if (planned.error) throw planned.error;
 
     await loginAs(context, teacher.email);
     await page.goto("/min-side");
     await page.getByRole("button", { name: "Meld fravær" }).click();
     const dialog = page.getByRole("dialog", { name: "Jeg kan ikke komme" });
-    await dialog.getByRole("radio", { name: dayLabel(day.date) }).check();
+    await dialog.getByRole("checkbox", { name: dayLabel(day.date), exact: true }).check();
     await dialog.getByLabel("Grunn (valgfritt)").fill("Syk");
+    await dialog.getByRole("button", { name: "Se gjennom 1 dato", exact: true }).click();
     await dialog.getByRole("button", { name: "Send" }).click();
     await expect(toast(page, "Fraværet er meldt")).toBeVisible();
     await expect.poll(() => absenceOf(teacher.id, day.id)).toEqual({ notified: true, source: "laerer", reason: "Syk" });
@@ -129,7 +134,6 @@ test.describe("teacher absence", () => {
 
     const dialog = page.getByRole("dialog", { name: "Sett opp vikar" });
     await expect(dialog).toContainText(schoolClass.name);
-    await page.screenshot({ path: "test-results/substitute-mobile.png" });
     await pickOption(page, dialog, new RegExp(schoolClass.name), substitute.name);
     await dialog.getByRole("button", { name: "Lagre" }).click();
     await expect(dialog).toBeHidden();

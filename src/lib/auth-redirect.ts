@@ -22,6 +22,6 @@ export function resolvePostLoginPath(input: {
 }): string {
   const next = safeNextPath(input.next);
   if (next) return next;
-  if (input.isAdmin) return "/admin";
+  if (input.isAdmin) return "/admin/dagsplan";
   return input.locale === "en" ? "/en/min-side" : "/min-side";
 }

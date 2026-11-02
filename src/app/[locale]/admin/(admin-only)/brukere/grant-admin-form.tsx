@@ -3,7 +3,7 @@
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, UserPlus } from "lucide-react";
+import { ChevronDown, Loader2, UserPlus } from "lucide-react";
 import { addUserWithRole } from "@/app/[locale]/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,15 +22,16 @@ export function GrantAdminForm() {
   }, [state, router]);
 
   return (
-    <section className="rounded-2xl bg-white p-4 ring-1 ring-[#E3DED3] sm:p-5">
+    <details className="group rounded-2xl bg-white p-4 ring-1 ring-[#E3DED3] sm:p-5">
+      <summary id="grant-admin-title" className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-lg font-heading text-xl font-bold outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
+        Legg til bruker
+        <ChevronDown aria-hidden="true" className="size-4 shrink-0 transition-transform group-open:rotate-180" />
+      </summary>
       <form
         action={formAction}
         aria-labelledby="grant-admin-title"
-        className="grid gap-4"
+        className="mt-4 grid gap-4"
       >
-        <h2 id="grant-admin-title" className="font-heading text-xl font-bold">
-          Legg til bruker
-        </h2>
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,12rem)_auto] sm:items-end">
           <div className="grid gap-2">
             <Label htmlFor="grant-full-name">Navn</Label>
@@ -82,6 +83,6 @@ export function GrantAdminForm() {
           </Button>
         </div>
       </form>
-    </section>
+    </details>
   );
 }

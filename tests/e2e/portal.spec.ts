@@ -42,7 +42,7 @@ test.describe("Min side for parents and students", () => {
       await expect(attendance.locator(`[data-date="${day.date}"]`)).toHaveCount(1);
     }
     await expect(attendance.locator(`[data-date="${world.days[0].date}"]`)).toContainText("Møtt");
-    await expect(attendance.locator(`[data-date="${world.days[1].date}"]`)).toContainText("Ugyldig fravær");
+    await expect(attendance.locator(`[data-date="${world.days[1].date}"]`)).toContainText("Ikke meldt fravær");
     await expect(attendance.locator(`[data-date="${world.days[2].date}"]`)).toContainText("Ikke registrert");
 
     const notes = page.getByRole("region", { name: "Ukenotater" });

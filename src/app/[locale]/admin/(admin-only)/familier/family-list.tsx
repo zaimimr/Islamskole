@@ -22,6 +22,7 @@ import { familyQueues, type FamilyQueueId } from "./family-queues";
 export type FamilyListRow = {
   id: string;
   displayName: string;
+  childNames: string[];
   childCount: number;
   addressLine: string | null;
   flags: string[];
@@ -95,7 +96,7 @@ export function FamilyList({
       <section className="grid gap-4 rounded-2xl bg-white p-4 ring-1 ring-[#E3DED3] sm:p-5">
         <div role="search">
           <label htmlFor="family-search" className="text-sm font-bold">
-            Finn familie, foresatt eller barn
+            Søk etter elev, foresatt eller familie
           </label>
           <div className="relative mt-2">
             <Search
@@ -108,13 +109,13 @@ export function FamilyList({
               value={query}
               onChange={(event) => update(event.target.value, queue, 1)}
               autoComplete="off"
-              placeholder="For eksempel Rahman, 900 00 000 eller Haslum"
+              placeholder="Elevnavn, foresatt eller telefonnummer"
               className="min-h-11 w-full rounded-xl border border-[#AFCFB3] bg-white pr-4 pl-11 text-base outline-none placeholder:text-admin-muted focus-visible:border-[#2F7938] focus-visible:ring-3 focus-visible:ring-[#2F7938]/20 sm:text-sm"
             />
           </div>
         </div>
-        <nav aria-label="Arbeidskøer" className="-mx-1 overflow-x-auto px-1">
-          <ul className="flex min-w-max gap-2">
+        <nav aria-label="Arbeidskøer">
+          <ul className="flex flex-wrap gap-2">
             {familyQueues.map((item) => {
               const current = item.id === queue;
               return (
@@ -172,9 +173,16 @@ export function FamilyList({
                 className="group grid gap-3 rounded-2xl bg-white p-4 outline-none ring-1 ring-[#E3DED3] transition-colors hover:bg-[#FBFAF6] focus-visible:ring-3 focus-visible:ring-ring/50 sm:grid-cols-[minmax(0,1.2fr)_minmax(12rem,0.8fr)_auto] sm:items-center sm:gap-4 sm:p-5"
               >
                 <span className="min-w-0">
-                  <span className="block truncate font-heading text-lg font-bold">
-                    {family.displayName}
+                  <span className="block font-heading text-lg font-bold wrap-anywhere">
+                    {[...family.childNames].sort((a, b) =>
+                      Number(matchesSearch(query, b)) - Number(matchesSearch(query, a)),
+                    ).join(", ") || family.displayName}
                   </span>
+                  {family.childNames.length > 0 ? (
+                    <span className="mt-1 block text-sm text-admin-muted wrap-anywhere">
+                      {family.displayName}
+                    </span>
+                  ) : null}
                   <span className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-admin-muted">
                     <span className="inline-flex items-center gap-1.5">
                       <Users aria-hidden="true" className="size-4" />

@@ -2,7 +2,7 @@ import { getIsAdmin } from "@/lib/auth";
 import { loadYearAttendance, type AttendanceTally } from "@/lib/attendance-report";
 import { createClient } from "@/lib/supabase/server";
 
-const HEADERS = ["Klasse", "Elev", "Oppmøte %", "Møtt", "Forsinket", "Gyldig fravær", "Ugyldig fravær", "Registrerte dager"];
+const HEADERS = ["Klasse", "Elev", "Oppmøte %", "Møtt", "Forsinket", "Meldt fravær", "Ikke meldt fravær", "Registrerte dager"];
 
 function escapeCsvField(value: unknown): string {
   if (value == null) return "";

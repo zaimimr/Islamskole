@@ -83,14 +83,14 @@ function ItemList({ items, basePath, admin, emptyMessage }: { items: Item[]; bas
     {items.map((item) => {
       const href = item.kind === "sfo" ? `${basePath}/sfo/${item.id}` : `${basePath}/aktiviteter/${item.id}`;
       const editable = item.kind === "sfo" || admin;
-      return <li key={`${item.kind}-${item.id}`} className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
-        <time dateTime={item.day ?? undefined} className="flex size-14 shrink-0 flex-col items-center justify-center rounded-xl bg-[#F7F6F1] text-center">
+      return <li key={`${item.kind}-${item.id}`} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 p-4 sm:p-5 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
+        <time dateTime={item.day ?? undefined} className="flex size-12 shrink-0 flex-col items-center justify-center rounded-xl bg-[#F7F6F1] text-center sm:size-14">
           <span className="font-heading text-xl leading-none font-bold tabular-nums">{item.day ? formatOsloDate(item.day, { day: "2-digit" }) : "--"}</span>
           <span className="mt-1 text-[0.6875rem] font-bold text-admin-muted uppercase">{item.day ? formatOsloDate(item.day, { month: "short" }) : "Dato"}</span>
         </time>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate font-bold">{item.title}</h3>
+            <h3 className="font-bold wrap-anywhere">{item.title}</h3>
             <StatusPill tone={item.kind === "sfo" ? "info" : "neutral"}>{item.kind === "sfo" ? "SFO" : "Nettside"}</StatusPill>
             <StatusPill tone={item.status[1]}>{item.status[0]}</StatusPill>
           </div>
@@ -100,7 +100,7 @@ function ItemList({ items, basePath, admin, emptyMessage }: { items: Item[]; bas
             {item.extra ? <span>{item.extra}</span> : null}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+        <div className="col-span-2 flex flex-wrap items-center justify-end gap-2 lg:col-span-1">
           {item.shareUrl ? <CopyLinkButton url={item.shareUrl} showLabel /> : null}
           {editable ? <Link href={href} className={buttonVariants({ variant: "outline" })}><Pencil aria-hidden="true" className="size-4" />{item.kind === "sfo" ? "Åpne" : "Rediger"}</Link> : null}
           {item.kind === "event" && admin ? <RowActions label={`Flere valg for ${item.title}`} destructive={{

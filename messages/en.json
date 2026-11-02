@@ -696,7 +696,7 @@
         "thenOpen": "Next school day is {day}",
         "none": "There are no more school days planned this year.",
         "expected": "Attending",
-        "reported": "Excused absence"
+        "reported": "Reported absence"
       },
       "missing": {
         "title": "Health info or photo consent is missing for {names}",
@@ -784,7 +784,7 @@
         "today": "today",
         "cancelled": "cancelled",
         "cancelledNotice": "This school day is cancelled. Attendance cannot be recorded.",
-        "futureNotice": "Attendance is recorded on the day. Excused absence can be recorded now."
+        "futureNotice": "Attendance is recorded on the day. Reported absence can be recorded now."
       },
       "roster": {
         "title": "Attendance",
@@ -798,26 +798,38 @@
         "noPhoto": "No photo consent",
         "allergies": "Allergy",
         "medical": "Health",
-        "pickup": "Can also pick up"
+        "pickup": "Can also pick up",
+        "markUnrecorded": "Mark {count, plural, one {# unrecorded student} other {# unrecorded students}} present",
+        "markedPresent": "{count, plural, one {# student marked} other {# students marked}} present",
+        "markPresentFor": "Mark {name} present",
+        "actionsFor": "Actions for {name}",
+        "studentInfo": "Student information",
+        "contacts": "Contact and student details",
+        "withdrawReport": "Withdraw absence report",
+        "saved": "Attendance saved",
+        "emptyFilter": "No students in this view",
+        "saveReport": "Save reported absence",
+        "inherited": "Carried forward from an earlier lesson",
+        "savedAt": "Recorded at {time}"
       },
       "status": {
         "til_stede": "Present",
-        "fravaer": "Unexcused absence",
+        "fravaer": "Unreported absence",
         "sent": "Late",
-        "meldt_fravaer": "Excused absence"
+        "meldt_fravaer": "Reported absence"
       },
       "statusShort": {
         "til_stede": "Present",
-        "fravaer": "Unexcused",
+        "fravaer": "Unreported",
         "sent": "Late",
-        "meldt_fravaer": "Excused"
+        "meldt_fravaer": "Reported"
       },
       "summary": {
         "present": "present",
         "late": "late",
         "unmarked": "not recorded",
-        "reported": "excused absence",
-        "unreported": "unexcused absence"
+        "reported": "reported absence",
+        "unreported": "unreported absence"
       },
       "note": {
         "title": "Lesson note",
@@ -851,7 +863,7 @@
         "open": "Report absence",
         "dialogTitle": "I can't come",
         "intro": "The school sees it and finds a substitute.",
-        "dayLabel": "Which day?",
+        "dayLabel": "Which dates?",
         "reasonLabel": "Reason (optional)",
         "submit": "Send",
         "sent": "Absence reported",
@@ -860,7 +872,9 @@
         "undo": "Undo",
         "undoFor": "Undo absence {day}",
         "withdrawn": "Absence withdrawn",
-        "alreadyReported": "Reported"
+        "alreadyReported": "Reported",
+        "back": "Back",
+        "review": "Review {count, plural, one {# date} other {# dates}}"
       },
       "suspended": {
         "title": "Your teacher access is paused",
@@ -921,9 +935,9 @@
       },
       "status": {
         "til_stede": "Present",
-        "fravaer": "Unexcused absence",
+        "fravaer": "Unreported absence",
         "sent": "Late",
-        "meldt_fravaer": "Excused absence",
+        "meldt_fravaer": "Reported absence",
         "none": "Not recorded"
       },
       "payment": {
@@ -953,7 +967,7 @@
         "schoolDay": "School day",
         "cancelled": "No school",
         "empty": "No upcoming school days or activities.",
-        "reported": "Excused absence: {names}"
+        "reported": "Reported absence: {names}"
       },
       "lessons": {
         "title": "Timetable {day}",

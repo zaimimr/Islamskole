@@ -80,4 +80,4 @@ File `src/lib/auth-redirect.ts`, importable from plain Node (no `server-only`, n
   - Returns null for null, undefined, empty, no leading slash, `//...`, `/\...`, absolute URLs, `javascript:`, `/%2F%2F...`, a leading space, and the login pages (`/min-side/logg-inn`, `/en/min-side/logg-inn`, `/min-side/auth/bekreft`, `/login`).
 - `resolvePostLoginPath({ next, isAdmin, locale }): string`
   - A safe `next` wins, for admins and others.
-  - Otherwise `/admin` for admins in both locales, `/min-side` for `no`, `/en/min-side` for `en`.
+  - Otherwise `/admin/dagsplan` for admins in both locales, `/min-side` for `no`, `/en/min-side` for `en`.

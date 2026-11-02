@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, UserCheck } from "lucide-react";
-import { createStudentFromApplication } from "@/app/[locale]/admin/students-actions";
+import { createStudentFromApplication, getClassCapacityInfo } from "@/app/[locale]/admin/students-actions";
+import { CapacityIncrease } from "@/components/admin/capacity-increase";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/ui/select-field";
@@ -43,9 +44,25 @@ export function AdmitDialog({
   const [pending, startTransition] = useTransition();
   const [classId, setClassId] = useState(suggestedClassId ?? "");
 
+  const [newCapacity, setNewCapacity] = useState("");
+  const [freshCapacity, setFreshCapacity] = useState<{ classId: string; capacity: number | null; enrolled: number }[]>([]);
+  const currentClasses = classes.map((item) => {
+    const current = freshCapacity.find((row) => row.classId === item.id);
+    return current ? { ...item, capacity: current.capacity, enrolled: current.enrolled } : item;
+  });
+  const selectedClass = currentClasses.find((item) => item.id === classId);
+  const needsIncrease = selectedClass?.capacity != null && selectedClass.enrolled >= selectedClass.capacity;
+
   function handleAdmit() {
+    const capacityValue = needsIncrease && selectedClass ? Number(newCapacity || selectedClass.enrolled + 1) : null;
+    if (capacityValue != null && selectedClass?.capacity != null && (!Number.isInteger(capacityValue) || capacityValue < Math.max(selectedClass.capacity + 1, selectedClass.enrolled + 1) || capacityValue > 10000)) {
+      toast.error(`Ny kapasitet må være mellom ${Math.max(selectedClass.capacity + 1, selectedClass.enrolled + 1)} og 10000.`);
+      return;
+    }
     startTransition(async () => {
       const result = await createStudentFromApplication(applicationId, {
+        newCapacity: capacityValue,
+        expectedCapacity: needsIncrease ? selectedClass?.capacity : null,
         classId: classId || null,
         schoolYearId: classId ? (schoolYear?.id ?? null) : null,
       });
@@ -65,6 +82,10 @@ export function AdmitDialog({
         router.refresh();
       } else if (!result.ok) {
         toast.error(result.error);
+        if (schoolYear) {
+          try { setFreshCapacity(await getClassCapacityInfo(schoolYear.id)); }
+          catch { toast.error("Kunne ikke oppdatere kapasiteten. Prøv igjen."); }
+        }
       }
     });
   }
@@ -100,15 +121,13 @@ export function AdmitDialog({
           <SelectField
             id={`admit-class-${applicationId}`}
             value={classId}
-            onValueChange={setClassId}
+            onValueChange={(value) => { setClassId(value); setNewCapacity(""); }}
             disabled={!schoolYear}
             options={[
               { value: "", label: "Ikke plasser ennå" },
-              ...classes.map((item) => ({
+              ...currentClasses.map((item) => ({
                 value: item.id,
                 label: `${classOptionLabel(item)}${item.id === suggestedClassId ? " · foreslått" : ""}`,
-                disabled:
-                  item.capacity != null && item.enrolled >= item.capacity,
               })),
             ]}
           />
@@ -116,10 +135,11 @@ export function AdmitDialog({
             {!schoolYear
               ? "Velg et aktivt skoleår før plassering."
               : hint
-                ? `Forslaget bygger på alder og ønske (${hint}). Fulle klasser kan ikke velges.`
-                : "Fulle klasser kan ikke velges."}
+                ? `Forslag: ${hint}.`
+                : null}
           </p>
         </div>
+        {needsIncrease && selectedClass?.capacity != null ? <CapacityIncrease id={`admit-capacity-${applicationId}`} className={selectedClass.name} capacity={selectedClass.capacity} enrolled={selectedClass.enrolled} value={newCapacity} onChange={setNewCapacity} /> : null}
         <DialogFooter className="pt-2">
           <Button
             type="button"
@@ -128,7 +148,7 @@ export function AdmitDialog({
             className="min-h-11 rounded-xl px-5 font-bold"
           >
             {pending ? <Loader2 className="size-4 animate-spin" /> : null}
-            {classId ? "Ta opp og plasser" : "Ta opp uten plass"}
+            {needsIncrease ? "Øk kapasitet og plasser" : classId ? "Ta opp og plasser" : "Ta opp uten plass"}
           </Button>
         </DialogFooter>
       </DialogContent>

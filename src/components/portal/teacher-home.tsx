@@ -47,6 +47,18 @@ export async function TeacherHome({ locale }: { locale: string }) {
         <h2 id="teacher-home-title" className="text-2xl font-bold">{tHome("teacherTitle")}</h2>
         <Link href="/min-side/beskjeder" className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-brand-green-dark outline-none hover:bg-primary/10 focus-visible:ring-3 focus-visible:ring-ring/50"><Megaphone aria-hidden="true" className="size-4" />{tAnnouncements("title")}</Link>
       </div>
+      <TeacherAbsence
+        days={days.upcoming
+          .filter((day) => !day.cancelled)
+          .map((day) => ({ id: day.id, label: dayLabel(day.date), reported: reportedDays.has(day.id) }))}
+        absences={myAbsences.map((absence) => ({
+          id: absence.id,
+          label: dayLabel(absence.date),
+          reason: absence.reason,
+          byAdmin: absence.source === "admin",
+          canUndo: absence.source === "laerer",
+        }))}
+      />
       {classes.length === 0 ? (
         <p className="text-pretty text-muted-foreground">{tHome("teacherUnassigned")}</p>
       ) : null}
@@ -137,21 +149,6 @@ export async function TeacherHome({ locale }: { locale: string }) {
             })}
           </ul>
         </div>
-      ) : null}
-      {classes.length ? (
-        <TeacherAbsence
-          days={days.upcoming
-            .filter((day) => !day.cancelled)
-            .slice(0, 8)
-            .map((day) => ({ id: day.id, label: dayLabel(day.date), reported: reportedDays.has(day.id) }))}
-          absences={myAbsences.map((absence) => ({
-            id: absence.id,
-            label: dayLabel(absence.date),
-            reason: absence.reason,
-            byAdmin: absence.source === "admin",
-            canUndo: absence.source === "laerer",
-          }))}
-        />
       ) : null}
       {substituteOptions.length ? (
         <SubstitutePicker

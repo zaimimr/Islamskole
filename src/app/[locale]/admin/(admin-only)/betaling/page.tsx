@@ -52,7 +52,7 @@ import { cn } from "@/lib/utils";
 import { familyDisplayName } from "@/lib/families/naming";
 import { SelectField } from "@/components/ui/select-field";
 
-export const metadata: Metadata = { title: "Økonomi" };
+export const metadata: Metadata = { title: "Betaling" };
 
 type YearRow = { id: string; label: string; is_active: boolean };
 
@@ -363,7 +363,7 @@ export default async function BetalingPage({
           id="payment-load-error"
           className="mt-4 font-heading text-3xl font-bold tracking-[-0.02em]"
         >
-          Økonomien kunne ikke lastes
+          Betalingene kunne ikke lastes
         </h1>
         <p className="mt-2 max-w-prose text-admin-muted">
           Ingen beløp er erstattet med null. Prøv å laste siden på nytt før du
@@ -390,7 +390,7 @@ export default async function BetalingPage({
     <div className="grid gap-7 lg:gap-8">
       <header>
         <h1 className="text-balance font-heading text-[2rem] leading-tight font-bold tracking-[-0.02em] sm:text-4xl">
-          Økonomi
+          Betaling
         </h1>
         <p className="mt-1 max-w-2xl text-admin-muted">
           Hva som må følges opp, hva som har kommet inn og hva familiene har
@@ -957,9 +957,11 @@ function FamilyList({
           <details className="group/family">
             <summary className="grid min-h-16 cursor-pointer list-none grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 outline-none transition-colors hover:bg-[#FBFAF6] focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 sm:grid-cols-[minmax(0,1fr)_11rem_9rem_auto] [&::-webkit-details-marker]:hidden">
               <span className="min-w-0">
-                <span className="block truncate font-bold">{group.name}</span>
-                <span className="block truncate text-sm text-admin-muted">
+                <span className="block font-bold wrap-anywhere">
                   {group.children.map(childName).join(", ")}
+                </span>
+                <span className="mt-0.5 block text-sm text-admin-muted wrap-anywhere">
+                  {group.name}
                 </span>
               </span>
               <span className="hidden text-sm tabular-nums sm:block">

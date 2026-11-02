@@ -68,7 +68,7 @@ export async function endSubstitute(classId: string): Promise<PortalActionResult
 }
 
 const teacherAbsenceSchema = z.object({
-  schoolDayId: uuid,
+  schoolDayIds: z.array(uuid).min(1).max(100),
   reason: z
     .string()
     .trim()
@@ -79,7 +79,11 @@ const teacherAbsenceSchema = z.object({
 });
 
 export async function reportTeacherAbsence(schoolDayId: string, reason?: string | null): Promise<PortalActionResult> {
-  const parsed = teacherAbsenceSchema.safeParse({ schoolDayId, reason });
+  return reportTeacherAbsences([schoolDayId], reason);
+}
+
+export async function reportTeacherAbsences(schoolDayIds: string[], reason?: string | null): Promise<PortalActionResult> {
+  const parsed = teacherAbsenceSchema.safeParse({ schoolDayIds, reason });
   if (!parsed.success) return { ok: false, error: "invalid" };
   const context = await getPortalContext();
   if (!context.user) return { ok: false, error: "unauthenticated" };
@@ -91,28 +95,27 @@ export async function reportTeacherAbsence(schoolDayId: string, reason?: string 
 
   const { data, error } = await supabase
     .from("teacher_absences")
-    .insert({
+    .insert([...new Set(parsed.data.schoolDayIds)].map((schoolDayId) => ({
       guardian_id: teacherId,
-      school_day_id: parsed.data.schoolDayId,
+      school_day_id: schoolDayId,
       reason: parsed.data.reason,
       notified: true,
       source: "laerer",
-    })
-    .select("id")
-    .single();
+    })))
+    .select("id, school_day_id");
   if (error) {
     return { ok: false, error: error.code === "23505" ? "duplicate" : error.code === "42501" ? "closed" : "unknown" };
   }
 
-  await writeAudit({
+  for (const row of data ?? []) await writeAudit({
     action: "teacher_absence.report",
     entityType: "teacher_absence",
-    entityId: data.id,
-    metadata: { guardian_id: teacherId, school_day_id: parsed.data.schoolDayId },
+    entityId: row.id,
+    metadata: { guardian_id: teacherId, school_day_id: row.school_day_id },
   });
   revalidatePath("/[locale]/min-side", "layout");
   revalidatePath("/[locale]/admin", "layout");
-  return { ok: true, id: data.id };
+  return { ok: true };
 }
 
 export async function withdrawTeacherAbsence(id: string): Promise<PortalActionResult> {

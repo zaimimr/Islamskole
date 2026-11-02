@@ -696,7 +696,7 @@
         "thenOpen": "Neste skoledag er {day}",
         "none": "Det er ingen flere skoledager satt opp i år.",
         "expected": "Kommer",
-        "reported": "Gyldig fravær"
+        "reported": "Meldt fravær"
       },
       "missing": {
         "title": "Mangler helseinfo eller fotosamtykke for {names}",
@@ -784,7 +784,7 @@
         "today": "i dag",
         "cancelled": "avlyst",
         "cancelledNotice": "Denne skoledagen er avlyst. Oppmøte kan ikke registreres.",
-        "futureNotice": "Oppmøte føres på selve dagen. Gyldig fravær kan føres nå."
+        "futureNotice": "Oppmøte føres på selve dagen. Meldt fravær kan føres nå."
       },
       "roster": {
         "title": "Oppmøte",
@@ -798,26 +798,38 @@
         "noPhoto": "Ikke fotosamtykke",
         "allergies": "Allergi",
         "medical": "Helse",
-        "pickup": "Kan også hente"
+        "pickup": "Kan også hente",
+        "markUnrecorded": "Merk {count, plural, one {# uregistrert} other {# uregistrerte}} som møtt",
+        "markedPresent": "{count, plural, one {# elev merket} other {# elever merket}} som møtt",
+        "markPresentFor": "Merk {name} som møtt",
+        "actionsFor": "Handlinger for {name}",
+        "studentInfo": "Elevinfo",
+        "contacts": "Kontakt og elevdetaljer",
+        "withdrawReport": "Trekk fraværsmelding",
+        "saved": "Oppmøte lagret",
+        "emptyFilter": "Ingen elever i denne visningen",
+        "saveReport": "Lagre meldt fravær",
+        "inherited": "Videreført fra en tidligere time",
+        "savedAt": "Registrert kl. {time}"
       },
       "status": {
         "til_stede": "Møtt",
-        "fravaer": "Ugyldig fravær",
+        "fravaer": "Ikke meldt fravær",
         "sent": "Forsinket",
-        "meldt_fravaer": "Gyldig fravær"
+        "meldt_fravaer": "Meldt fravær"
       },
       "statusShort": {
         "til_stede": "Møtt",
-        "fravaer": "Ugyldig",
+        "fravaer": "Ikke meldt",
         "sent": "Sent",
-        "meldt_fravaer": "Gyldig"
+        "meldt_fravaer": "Meldt"
       },
       "summary": {
         "present": "møtt",
         "late": "forsinket",
         "unmarked": "ikke registrert",
-        "reported": "gyldig fravær",
-        "unreported": "ugyldig fravær"
+        "reported": "meldt fravær",
+        "unreported": "ikke meldt fravær"
       },
       "note": {
         "title": "Notat for timen",
@@ -851,7 +863,7 @@
         "open": "Meld fravær",
         "dialogTitle": "Jeg kan ikke komme",
         "intro": "Skolen ser meldingen og finner vikar.",
-        "dayLabel": "Hvilken dag?",
+        "dayLabel": "Hvilke dager?",
         "reasonLabel": "Grunn (valgfritt)",
         "submit": "Send",
         "sent": "Fraværet er meldt",
@@ -860,7 +872,9 @@
         "undo": "Angre",
         "undoFor": "Angre fravær {day}",
         "withdrawn": "Fraværet er trukket",
-        "alreadyReported": "Meldt"
+        "alreadyReported": "Meldt",
+        "back": "Tilbake",
+        "review": "Se gjennom {count, plural, one {# dato} other {# datoer}}"
       },
       "suspended": {
         "title": "Lærertilgangen er satt på pause",
@@ -921,9 +935,9 @@
       },
       "status": {
         "til_stede": "Møtt",
-        "fravaer": "Ugyldig fravær",
+        "fravaer": "Ikke meldt fravær",
         "sent": "Forsinket",
-        "meldt_fravaer": "Gyldig fravær",
+        "meldt_fravaer": "Meldt fravær",
         "none": "Ikke registrert"
       },
       "payment": {
@@ -953,7 +967,7 @@
         "schoolDay": "Skoledag",
         "cancelled": "Ingen skole",
         "empty": "Ingen kommende skoledager eller aktiviteter.",
-        "reported": "Gyldig fravær: {names}"
+        "reported": "Meldt fravær: {names}"
       },
       "lessons": {
         "title": "Timeplan {day}",

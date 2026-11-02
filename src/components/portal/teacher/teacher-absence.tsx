@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { AlertTriangle, CalendarX2, Loader2, Undo2 } from "lucide-react";
-import { reportTeacherAbsence, withdrawTeacherAbsence } from "@/lib/portal/teacher-actions";
+import { reportTeacherAbsences, withdrawTeacherAbsence } from "@/lib/portal/teacher-actions";
 import type { PortalErrorCode } from "@/lib/portal/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +26,8 @@ type AbsenceItem = { id: string; label: string; reason: string | null; byAdmin: 
 export function TeacherAbsence({ days, absences }: { days: AbsenceDay[]; absences: AbsenceItem[] }) {
   const t = useTranslations("portal");
   const [open, setOpen] = useState(false);
-  const [dayId, setDayId] = useState("");
+  const [dayIds, setDayIds] = useState<string[]>([]);
+  const [reviewing, setReviewing] = useState(false);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<PortalErrorCode | null>(null);
   const [pending, startTransition] = useTransition();
@@ -36,7 +37,8 @@ export function TeacherAbsence({ days, absences }: { days: AbsenceDay[]; absence
   function handleOpenChange(next: boolean) {
     setOpen(next);
     if (next) {
-      setDayId(openDays[0]?.id ?? "");
+      setDayIds([]);
+      setReviewing(false);
       setReason("");
       setError(null);
     }
@@ -44,13 +46,17 @@ export function TeacherAbsence({ days, absences }: { days: AbsenceDay[]; absence
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!dayId) {
+    if (!dayIds.length) {
       setError("invalid");
+      return;
+    }
+    if (!reviewing) {
+      setReviewing(true);
       return;
     }
     setError(null);
     startTransition(async () => {
-      const result = await reportTeacherAbsence(dayId, reason);
+      const result = await reportTeacherAbsences(dayIds, reason);
       if (!result.ok) {
         setError(result.error);
         return;
@@ -123,15 +129,15 @@ export function TeacherAbsence({ days, absences }: { days: AbsenceDay[]; absence
             <CalendarX2 aria-hidden="true" />
             {t("teacher.away.open")}
           </DialogTrigger>
-          <DialogContent closeLabel={t("common.close")} className="gap-5 rounded-3xl p-5 sm:max-w-md">
+          <DialogContent closeLabel={t("common.close")} className="max-h-[85dvh] gap-4 overflow-y-auto rounded-2xl p-5 sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="pr-8 font-heading text-xl font-semibold">{t("teacher.away.dialogTitle")}</DialogTitle>
               <DialogDescription>{t("teacher.away.intro")}</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="grid gap-5">
-              <fieldset className="grid gap-2">
+              <fieldset className="grid gap-2" disabled={pending}>
                 <legend className="mb-2 text-sm font-semibold">{t("teacher.away.dayLabel")}</legend>
-                {days.map((day) => (
+                {(reviewing ? days.filter((day) => dayIds.includes(day.id)) : days).map((day) => (
                   <label
                     key={day.id}
                     className={cn(
@@ -140,12 +146,12 @@ export function TeacherAbsence({ days, absences }: { days: AbsenceDay[]; absence
                     )}
                   >
                     <input
-                      type="radio"
+                      type="checkbox"
                       name="teacher_away_day"
                       value={day.id}
-                      checked={dayId === day.id}
-                      disabled={day.reported}
-                      onChange={() => setDayId(day.id)}
+                      checked={dayIds.includes(day.id)}
+                      disabled={day.reported || reviewing}
+                      onChange={(event) => setDayIds((selected) => event.target.checked ? [...selected, day.id] : selected.filter((id) => id !== day.id))}
                       className="size-4 accent-[var(--brand-green-dark)]"
                     />
                     <span className="first-letter:uppercase">{day.label}</span>
@@ -163,6 +169,8 @@ export function TeacherAbsence({ days, absences }: { days: AbsenceDay[]; absence
                   id="teacher-away-reason"
                   value={reason}
                   maxLength={500}
+                  readOnly={reviewing}
+                  disabled={pending}
                   onChange={(event) => setReason(event.target.value)}
                   className="min-h-20 text-base"
                 />
@@ -174,12 +182,12 @@ export function TeacherAbsence({ days, absences }: { days: AbsenceDay[]; absence
                 </p>
               ) : null}
               <DialogFooter className="-mx-5 -mb-5 rounded-b-3xl p-5">
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                  {t("common.cancel")}
+                <Button type="button" variant="outline" disabled={pending} onClick={() => reviewing ? setReviewing(false) : setOpen(false)}>
+                  {reviewing ? t("teacher.away.back") : t("common.cancel")}
                 </Button>
-                <Button type="submit" disabled={pending || !dayId}>
+                <Button type="submit" disabled={pending || !dayIds.length}>
                   {pending ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
-                  {t("teacher.away.submit")}
+                  {reviewing ? t("teacher.away.submit") : t("teacher.away.review", { count: dayIds.length })}
                 </Button>
               </DialogFooter>
             </form>

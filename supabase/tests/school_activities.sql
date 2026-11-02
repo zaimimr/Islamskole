@@ -72,13 +72,13 @@ values
 
 update public.enrollments set created_at = statement_timestamp() - interval '40 days';
 insert into public.school_days (id, school_year_id, date) values
-  ('f8000000-0000-0000-0000-0000000000d1', 'f8000000-0000-0000-0000-000000000001', date_trunc('week', current_date)::date - 1),
-  ('f8000000-0000-0000-0000-0000000000d2', 'f8000000-0000-0000-0000-000000000001', date_trunc('week', current_date)::date + 13);
+  ('f8000000-0000-0000-0000-0000000000d1', 'f8000000-0000-0000-0000-000000000001', date_trunc('week', public.oslo_today())::date - 1),
+  ('f8000000-0000-0000-0000-0000000000d2', 'f8000000-0000-0000-0000-000000000001', date_trunc('week', public.oslo_today())::date + 13);
 select set_config('request.jwt.claims','{"sub":"f8000000-0000-0000-0000-0000000000a2","email":"zz-f8-teacher@zztest.local","role":"authenticated"}',true);
 set local role authenticated;
-select lives_ok($$ select public.save_school_activity('f8000000-0000-0000-0000-0000000000e1','f8000000-0000-0000-0000-0000000000c1','f8000000-0000-0000-0000-000000000001',null,'ZZTEST Trip','School activity','I consent to this trip',(select date from public.school_days where id='f8000000-0000-0000-0000-0000000000d2'),current_date) $$,'staff saves activity draft');
-select lives_ok($$ select public.save_school_activity('f8000000-0000-0000-0000-0000000000e1','f8000000-0000-0000-0000-0000000000c1','f8000000-0000-0000-0000-000000000001',null,'ZZTEST Trip','School activity','I consent to this trip',(select date from public.school_days where id='f8000000-0000-0000-0000-0000000000d2'),current_date) $$,'creating the same draft again is idempotent');
-select throws_ok($$ select public.save_school_activity(gen_random_uuid(),'f8000000-0000-0000-0000-0000000000c2','f8000000-0000-0000-0000-000000000001',null,'Other class','','Consent',current_date + 7,current_date) $$,'42501',null,'staff cannot create for another class');
+select lives_ok($$ select public.save_school_activity('f8000000-0000-0000-0000-0000000000e1','f8000000-0000-0000-0000-0000000000c1','f8000000-0000-0000-0000-000000000001',null,'ZZTEST Trip','School activity','I consent to this trip',(select date from public.school_days where id='f8000000-0000-0000-0000-0000000000d2'),public.oslo_today()) $$,'staff saves activity draft');
+select lives_ok($$ select public.save_school_activity('f8000000-0000-0000-0000-0000000000e1','f8000000-0000-0000-0000-0000000000c1','f8000000-0000-0000-0000-000000000001',null,'ZZTEST Trip','School activity','I consent to this trip',(select date from public.school_days where id='f8000000-0000-0000-0000-0000000000d2'),public.oslo_today()) $$,'creating the same draft again is idempotent');
+select throws_ok($$ select public.save_school_activity(gen_random_uuid(),'f8000000-0000-0000-0000-0000000000c2','f8000000-0000-0000-0000-000000000001',null,'Other class','','Consent',public.oslo_today() + 7,public.oslo_today()) $$,'42501',null,'staff cannot create for another class');
 reset role;
 select set_config('request.jwt.claims','{"sub":"f8000000-0000-0000-0000-0000000000a4","email":"zz-f8-parent@zztest.local","role":"authenticated"}',true);
 set local role authenticated;
@@ -131,7 +131,7 @@ set local role authenticated;
 select is((select count(*) from public.school_activities),0::bigint,'uninvited family sees no activity');
 select is((select count(*) from public.activity_responses),0::bigint,'unrelated family sees no guardian responses');
 reset role;
-update public.school_activities set event_date=current_date - 7,respond_by=current_date - 8 where id='f8000000-0000-0000-0000-0000000000e1';
+update public.school_activities set event_date=public.oslo_today() - 7,respond_by=public.oslo_today() - 8 where id='f8000000-0000-0000-0000-0000000000e1';
 select set_config('request.jwt.claims','{"sub":"f8000000-0000-0000-0000-0000000000a4","email":"zz-f8-parent@zztest.local","role":"authenticated"}',true);
 set local role authenticated;
 select throws_ok($$ select public.respond_school_activity(gen_random_uuid(),id,'f8000000-0000-0000-0000-000000000051',updated_at,'granted',true) from public.school_activities $$,'PT409',null,'deadline closes new guardian responses');

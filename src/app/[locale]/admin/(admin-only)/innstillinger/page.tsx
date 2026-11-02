@@ -7,7 +7,7 @@ import {
   type SettingsRecord,
 } from "@/components/admin/settings-form";
 
-export const metadata: Metadata = { title: "Innstillinger" };
+export const metadata: Metadata = { title: "Kontakt og lenker" };
 
 async function getSettings(): Promise<
   { ok: true; settings: SettingsRecord | null } | { ok: false }
@@ -47,7 +47,7 @@ export default async function InnstillingerPage({
     <div className="grid gap-6 lg:gap-7">
       <header>
         <h1 className="text-balance font-heading text-[2rem] leading-tight font-bold tracking-[-0.02em] sm:text-4xl">
-          Innstillinger
+          Kontakt og lenker
         </h1>
         <p className="mt-1 max-w-2xl text-admin-muted">
           Kontaktinformasjon og offentlige lenker som brukes på nettsiden.

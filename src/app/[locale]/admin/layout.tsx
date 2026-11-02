@@ -8,6 +8,7 @@ import { getAccess, getUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
+import { AdminBottomNav } from "@/components/admin/admin-bottom-nav";
 import { CommandPalette } from "@/components/admin/command-palette";
 import {
   NavCountsProvider,
@@ -138,8 +139,8 @@ export default async function AdminLayout({
         </a>
         <aside className="sticky top-0 hidden h-dvh print:hidden w-[16.5rem] shrink-0 flex-col border-r border-[#E9E5DC] bg-[#FEFEFE] px-4 py-5 lg:flex">
           <Link
-            href={basePath}
-            aria-label="Gå til arbeidsflaten"
+            href={isAdmin ? `${basePath}/dagsplan` : `${basePath}/sfo`}
+            aria-label={isAdmin ? "Gå til dagplan" : "Gå til aktiviteter"}
             className="mb-6 inline-flex w-fit rounded-lg px-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <Image
@@ -163,21 +164,21 @@ export default async function AdminLayout({
           <header className="sticky top-0 z-30 border-b print:hidden border-[#E9E5DC] bg-[#FCFAF5]/95 supports-backdrop-filter:backdrop-blur-md">
             <ImpersonationBanner />
             <div className="mx-auto flex w-full max-w-[96rem] items-center gap-2 px-4 py-2 sm:gap-3 sm:px-6 lg:px-8 lg:py-3">
-              <AdminMobileNav
+              {!isAdmin ? <AdminMobileNav
                 basePath={basePath}
                 isAdmin={isAdmin}
                 loginHref={resolvedLoginPath}
-              />
+              /> : null}
               <Link
-                href={basePath}
-                aria-label="Gå til arbeidsflaten"
+                href={isAdmin ? `${basePath}/dagsplan` : `${basePath}/sfo`}
+                aria-label={isAdmin ? "Gå til dagplan" : "Gå til aktiviteter"}
                 className="mr-auto inline-flex min-h-11 items-center rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50 lg:hidden"
               >
                 <Image
                   src="/brand/logo.png"
                   alt="Islamskole Bærum"
-                  width={96}
-                  height={39}
+                  width={80}
+                  height={33}
                   priority
                 />
               </Link>
@@ -192,7 +193,7 @@ export default async function AdminLayout({
                   className="size-4 text-[#3C8F44]"
                 />
                 <span className="sr-only">Aktivt skoleår: </span>
-                <span className="max-w-[6.5rem] truncate sm:max-w-none">
+                <span className="max-w-20 truncate sm:max-w-none">
                   <Suspense
                     fallback={
                       <span className="inline-block h-4 w-[4.5rem] animate-pulse rounded-md bg-muted align-middle" />
@@ -233,10 +234,11 @@ export default async function AdminLayout({
           <div
             id="admin-content"
             tabIndex={-1}
-            className="flex-1 px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8"
+            className={`flex-1 px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8 ${isAdmin ? "pb-24 sm:pb-24 lg:pb-8" : ""}`}
           >
             <div className="mx-auto w-full max-w-[96rem]">{children}</div>
           </div>
+          {isAdmin ? <AdminBottomNav basePath={basePath} loginHref={resolvedLoginPath} /> : null}
         </div>
       </div>
     </NavCountsProvider>

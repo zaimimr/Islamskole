@@ -41,16 +41,26 @@ async function getClasses() {
         .eq("school_year_id", activeYear.id)
         .eq("status", "aktiv")
     : { data: [], error: null };
+  const teacherResult = activeYear ? await supabase.from("class_teachers")
+    .select("class_id, guardian:guardians!inner(first_name, last_name, person_roles!inner(role_key, suspended_at))")
+    .eq("school_year_id", activeYear.id).eq("guardian.person_roles.role_key", "teacher").is("guardian.person_roles.suspended_at", null)
+    : { data: [], error: null };
+  const teachersByClass = new Map<string, string[]>();
+  for (const row of (teacherResult.data ?? []) as unknown as { class_id: string; guardian: { first_name: string | null; last_name: string | null } }[]) {
+    const name = [row.guardian.first_name, row.guardian.last_name].filter(Boolean).join(" ");
+    teachersByClass.set(row.class_id, [...(teachersByClass.get(row.class_id) ?? []), name]);
+  }
   const counts = new Map<string, number>();
   for (const row of (enrollmentResult.data as { class_id: string }[] | null) ??
     []) {
     counts.set(row.class_id, (counts.get(row.class_id) ?? 0) + 1);
   }
   return {
-    ok: !classResult.error && !yearResult.error && !enrollmentResult.error,
+    ok: !classResult.error && !yearResult.error && !enrollmentResult.error && !teacherResult.error,
     classes: (classResult.data as ClassRow[] | null) ?? [],
     activeYearLabel: activeYear?.label ?? null,
     counts,
+    teachersByClass,
   };
 }
 
@@ -66,7 +76,7 @@ export default async function KlasserPage({
 }: PageProps<"/[locale]/admin/klasser">) {
   const { locale } = await params;
   const basePath = adminBasePath(locale);
-  const { ok, classes, activeYearLabel, counts } = await getClasses();
+  const { ok, classes, activeYearLabel, counts, teachersByClass } = await getClasses();
 
   const items: SortableClass[] = classes.map((c) => ({
     id: c.id,
@@ -76,9 +86,9 @@ export default async function KlasserPage({
     enrolled: counts.get(c.id) ?? 0,
     price: c.price,
     published: Boolean(c.published),
+    teachers: teachersByClass.get(c.id) ?? [],
   }));
 
-  const publishedCount = items.filter((item) => item.published).length;
   const enrolledTotal = items.reduce((sum, item) => sum + item.enrolled, 0);
 
   if (!ok) {
@@ -103,8 +113,8 @@ export default async function KlasserPage({
           </h1>
           <p className="mt-1 max-w-2xl text-admin-muted">
             {activeYearLabel
-              ? `Elever med plass i ${activeYearLabel}, kapasitet og innhold på nettsiden.`
-              : "Kapasitet og innhold på nettsiden. Velg et aktivt skoleår for å se elevtall."}
+              ? activeYearLabel
+              : "Velg et aktivt skoleår for elevtall og lærere."}
           </p>
         </div>
         <Link
@@ -120,10 +130,6 @@ export default async function KlasserPage({
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#ECE8DF] px-4 py-4 sm:px-5">
           <div>
             <h2 className="font-heading text-xl font-bold">Klasseoversikt</h2>
-            <p className="mt-0.5 max-w-2xl text-sm text-admin-muted">
-              Åpne en klasse for elevlisten. Rekkefølgen styrer nettsiden. Bruk
-              håndtaket for å flytte en klasse.
-            </p>
           </div>
           {items.length > 0 ? (
             <div className="flex items-center gap-3 rounded-xl bg-[#F7F6F1] px-3 py-2 text-sm">
@@ -134,7 +140,7 @@ export default async function KlasserPage({
                 <span className="font-bold tabular-nums">{items.length}</span>{" "}
                 klasser
                 <span className="text-admin-muted">
-                  {` · ${enrolledTotal} elever · ${publishedCount} publisert`}
+                  {` · ${enrolledTotal} elever`}
                 </span>
               </span>
             </div>

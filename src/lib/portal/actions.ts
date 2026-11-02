@@ -220,10 +220,11 @@ export async function markAttendance(
 const teacherAbsenceSchema = z.object({
   studentId: uuid,
   lessonId: uuid,
+  reason: optionalText,
 });
 
-export async function reportAbsenceForStudent(studentId: string, lessonId: string): Promise<PortalActionResult> {
-  const parsed = teacherAbsenceSchema.safeParse({ studentId, lessonId });
+export async function reportAbsenceForStudent(studentId: string, lessonId: string, reason?: string): Promise<PortalActionResult> {
+  const parsed = teacherAbsenceSchema.safeParse({ studentId, lessonId, reason });
   if (!parsed.success) return { ok: false, error: "invalid" };
   const user = await getUser();
   if (!user) return { ok: false, error: "unauthenticated" };
@@ -233,7 +234,7 @@ export async function reportAbsenceForStudent(studentId: string, lessonId: strin
 
   const { data: existing, error: readError } = await supabase
     .from("absence_reports")
-    .select("id")
+    .select("id, source")
     .eq("student_id", parsed.data.studentId)
     .eq("school_day_id", lesson.school_day_id)
     .is("withdrawn_at", null)
@@ -249,6 +250,7 @@ export async function reportAbsenceForStudent(studentId: string, lessonId: strin
         school_day_id: lesson.school_day_id,
         source: "laerer",
         reported_by: user.id,
+        reason: parsed.data.reason,
       })
       .select("id")
       .single();
@@ -260,6 +262,9 @@ export async function reportAbsenceForStudent(studentId: string, lessonId: strin
       entityId: data.id,
       metadata: { student_id: parsed.data.studentId, school_day_id: lesson.school_day_id, source: "laerer" },
     });
+  } else if (existing?.source === "laerer" && reason !== undefined) {
+    const result = await saveAbsenceReason(reportId, reason);
+    if (!result.ok) return result;
   }
 
   const date = lesson.school_days?.date;
@@ -320,6 +325,7 @@ export async function saveAbsenceReason(reportId: string, reason: string): Promi
   if (error) return { ok: false, error: dbError(error) };
   if (!data) return { ok: false, error: "not_found" };
 
+  await writeAudit({ action: "absence.note", entityType: "absence_report", entityId: data.id });
   refreshPortal();
   return { ok: true };
 }
@@ -329,6 +335,30 @@ const markManySchema = z.object({
   lessonId: uuid,
   status: z.enum(ATTENDANCE_STATUSES),
 });
+
+export async function markUnrecordedPresent(
+  studentIds: string[],
+  lessonId: string,
+): Promise<{ ok: true; studentIds: string[] } | { ok: false; error: PortalErrorCode }> {
+  const parsed = markManySchema.safeParse({ studentIds, lessonId, status: "til_stede" });
+  if (!parsed.success) return { ok: false, error: "invalid" };
+  const user = await getUser();
+  if (!user) return { ok: false, error: "unauthenticated" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("portal_mark_unrecorded_present", {
+    p_lesson_id: parsed.data.lessonId,
+    p_student_ids: [...new Set(parsed.data.studentIds)],
+  });
+  if (error) return { ok: false, error: dbError(error) };
+  await writeAudit({
+    action: "attendance.mark_many",
+    entityType: "attendance",
+    entityId: parsed.data.lessonId,
+    metadata: { lesson_id: parsed.data.lessonId, student_ids: data ?? [], status: "til_stede" },
+  });
+  refreshPortal();
+  return { ok: true, studentIds: data ?? [] };
+}
 
 export async function markAttendanceMany(
   studentIds: string[],

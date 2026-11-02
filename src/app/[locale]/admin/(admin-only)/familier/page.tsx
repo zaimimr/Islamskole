@@ -149,6 +149,9 @@ async function FamilyListLoader({
     return {
       id: family.id,
       displayName: family.displayName,
+      childNames: [...family.students, ...pendingApplications].map((child) =>
+        [child.firstName, child.lastName].filter(Boolean).join(" "),
+      ).filter(Boolean),
       childCount: family.students.length + pendingApplications.length,
       addressLine: family.address
         ? [family.address, family.city].filter(Boolean).join(", ")

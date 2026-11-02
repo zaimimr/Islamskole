@@ -123,8 +123,8 @@ function birthDescription(
   const born = formatOsloDate(birthDate);
   if (!born) return prefix;
   const age = ageInYear(birthDate, ageYear);
-  const agePart = age != null ? `, ${age} år` : "";
-  return `${prefix}${agePart} (født ${born})`;
+  const description = [prefix, age != null ? `${age} år` : null].filter(Boolean).join(", ");
+  return `${description}${description ? " " : ""}(født ${born})`;
 }
 
 async function loadFamilyPaymentHistory(
@@ -380,7 +380,7 @@ export default async function FamilyPage({
     return {
       id: student.id,
       name: fullName(student.firstName, student.lastName),
-      description: birthDescription(student.birthDate, "Registrert elev", ageYear),
+      description: birthDescription(student.birthDate, "", ageYear),
       href: `${basePath}/elever/${student.id}`,
       admission: application
         ? admissionFact(application.status)

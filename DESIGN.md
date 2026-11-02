@@ -28,7 +28,7 @@ Islamskole Bærum feels welcoming, trustworthy, and rooted in its local school c
 
 ## Layout and Density
 
-- Admin navigation is grouped and stable, with the active school year and global family search available from the shell.
+- Admin navigation is grouped and stable, with Dagplan first, the active school year and global student-first search available from the shell. Mobile exposes Dagplan, Elever, Klasser and Mer in bottom navigation.
 - Lead with unresolved work and decisions. Totals support the workbench instead of replacing it.
 - Family context should persist when moving between a guardian, child, enrollment, placement, and payment.
 - Desktop surfaces can be information-dense when hierarchy is strong. Mobile surfaces become task cards and drawers, never compressed desktop tables.
@@ -51,8 +51,8 @@ Islamskole Bærum feels welcoming, trustworthy, and rooted in its local school c
 ## Implemented Admin Primitives
 
 - `FamilyWorkbench` is the canonical family detail composition. It keeps relationship context, child-level operational facts, the next action, and recent activity in one responsive view model.
-- `/admin/familier` is the canonical global family search and list. Student maintenance remains available through `/admin/elever` and is linked from each family record.
-- The shell exposes six primary destinations, grouped secondary tools, the active school year, family search, account access, and a scrollable mobile drawer.
+- `/admin/elever` and global first-name search lead staff lookup. Student identity, age and class precede guardian contact, then payment controls. Family records retain shared relationships and billing, with child names prominent in lists.
+- The shell exposes Dagplan, Elever and Klasser directly, grouped secondary tools, the active school year, student-first search, account access, and a scrollable mobile drawer under Mer.
 - `--admin-muted` is the minimum muted text tone on light admin surfaces. `--admin-action` is the accessible green used for primary admin actions.
 - Child summaries use an auto-fitting fact grid with a minimum readable column width. Mobile keeps the next action before detailed records and relationship history.
 - Family editing keeps the primary contact, relationship labels, address, new guardians, and data-review resolution in one task-focused surface.

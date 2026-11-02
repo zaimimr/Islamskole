@@ -20,6 +20,7 @@ import {
   sendWelcomeEmail,
   type ClassCapacityInfo,
 } from "@/app/[locale]/admin/students-actions";
+import { CapacityIncrease } from "@/components/admin/capacity-increase";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/ui/select-field";
@@ -79,6 +80,7 @@ export function EnrollmentManager({
   const [selectedClass, setSelectedClass] = useState(suggestedClassId ?? "");
   const [switchingId, setSwitchingId] = useState<string | null>(null);
   const [switchClass, setSwitchClass] = useState("");
+  const [newCapacity, setNewCapacity] = useState("");
   const [capacity, setCapacity] = useState<Map<string, ClassCapacityInfo>>(
     new Map(),
   );
@@ -94,7 +96,7 @@ export function EnrollmentManager({
     getClassCapacityInfo(capacityYear).then((info) => {
       if (!active) return;
       setCapacity(new Map(info.map((c) => [c.classId, c])));
-    });
+    }).catch(() => { if (active) toast.error("Kunne ikke hente kapasiteten. Prøv igjen."); });
     return () => {
       active = false;
     };
@@ -102,12 +104,31 @@ export function EnrollmentManager({
 
   const yearFee = new Map(schoolYears.map((y) => [y.id, y.fee]));
 
-  function isClassFull(option: ClassOption) {
-    const info = capacity.get(option.id);
-    return (
-      info != null && info.capacity != null && info.enrolled >= info.capacity
-    );
+  async function refreshCapacity() {
+    try {
+      const info = await getClassCapacityInfo(capacityYear);
+      setCapacity(new Map(info.map((row) => [row.classId, row])));
+    } catch {
+      toast.error("Kunne ikke oppdatere kapasiteten. Prøv igjen.");
+    }
   }
+
+  const capacityClass = switchingId ? switchClass : selectedClass;
+  const selectedCapacity = capacity.get(capacityClass);
+  const needsIncrease = selectedCapacity?.capacity != null && selectedCapacity.enrolled >= selectedCapacity.capacity;
+  const selectedName = classes.find((item) => item.id === capacityClass)?.name ?? "Klassen";
+
+  function selectClass(value: string, switching = false) {
+    setNewCapacity("");
+    if (switching) setSwitchClass(value);
+    else setSelectedClass(value);
+  }
+
+  const capacityReview = needsIncrease && selectedCapacity?.capacity != null ? <CapacityIncrease
+    id={switchingId ? "switch-capacity" : "placement-capacity"}
+    className={selectedName} capacity={selectedCapacity.capacity} enrolled={selectedCapacity.enrolled}
+    value={newCapacity} onChange={setNewCapacity}
+  /> : null;
 
   function classOptionLabel(option: ClassOption, yearId: string) {
     const info = capacity.get(option.id);
@@ -153,13 +174,14 @@ export function EnrollmentManager({
         router.refresh();
       } else {
         toast.error(result.error);
+        await refreshCapacity();
       }
     });
   }
 
-  function handleSwitch(enrollmentId: string) {
+  function handleSwitch(enrollmentId: string, formData: FormData) {
     startTransition(async () => {
-      const result = await changeEnrollmentClass(enrollmentId, switchClass);
+      const result = await changeEnrollmentClass(enrollmentId, switchClass, needsIncrease && selectedCapacity?.capacity != null ? { newCapacity: Number(formData.get("new_capacity")), expectedCapacity: selectedCapacity.capacity } : undefined);
       if (result.ok) {
         toast.success("Eleven har byttet klasse");
         if (result.note) toast.warning(result.note);
@@ -167,6 +189,7 @@ export function EnrollmentManager({
         router.refresh();
       } else {
         toast.error(result.error);
+        await refreshCapacity();
       }
     });
   }
@@ -311,7 +334,7 @@ export function EnrollmentManager({
                     </div>
                   </div>
                   {switchingId === enrollment.id ? (
-                    <div className="grid gap-2 rounded-xl bg-[#F8F6F0] p-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                    <form onSubmit={(event) => { event.preventDefault(); handleSwitch(enrollment.id, new FormData(event.currentTarget)); }} className="grid gap-3 rounded-xl bg-[#F8F6F0] p-3">
                       <div className="grid gap-2">
                         <Label htmlFor={`switch-${enrollment.id}`}>
                           Ny klasse
@@ -319,7 +342,7 @@ export function EnrollmentManager({
                         <SelectField
                           id={`switch-${enrollment.id}`}
                           value={switchClass}
-                          onValueChange={setSwitchClass}
+                          onValueChange={(value) => selectClass(value, true)}
                           placeholder="Velg klasse"
                           options={classes
                             .filter(
@@ -331,23 +354,22 @@ export function EnrollmentManager({
                                 option,
                                 enrollment.schoolYearId,
                               ),
-                              disabled: isClassFull(option),
                             }))}
                         />
                         <p className="text-xs text-admin-muted">
                           Er ingenting betalt ennå, får eleven prisen til den nye klassen. Ellers beholdes prisen.
                         </p>
                       </div>
-                      <div className="flex gap-2">
+                      {capacityReview}
+                      <div className="flex flex-wrap gap-2">
                         <Button
-                          type="button"
+                          type="submit"
                           disabled={pending || !switchClass}
-                          onClick={() => handleSwitch(enrollment.id)}
                         >
                           {pending ? (
                             <Loader2 className="size-4 animate-spin" />
                           ) : null}
-                          Bytt
+                          {needsIncrease ? "Øk kapasitet og plasser" : "Bytt klasse"}
                         </Button>
                         <Button
                           type="button"
@@ -358,7 +380,7 @@ export function EnrollmentManager({
                           Avbryt
                         </Button>
                       </div>
-                    </div>
+                    </form>
                   ) : null}
                 </li>
               );
@@ -399,12 +421,11 @@ export function EnrollmentManager({
                 name="class_id"
                 required
                 value={selectedClass}
-                onValueChange={setSelectedClass}
+                onValueChange={(value) => selectClass(value)}
                 placeholder="Velg klasse"
                 options={classes.map((option) => ({
                   value: option.id,
                   label: classOptionLabel(option, selectedYear),
-                  disabled: isClassFull(option),
                 }))}
               />
             </div>
@@ -417,19 +438,20 @@ export function EnrollmentManager({
                 name="school_year_id"
                 required
                 value={selectedYear}
-                onValueChange={setSelectedYear}
+                onValueChange={(value) => { setSelectedYear(value); setNewCapacity(""); }}
                 options={schoolYears.map((option) => ({
                   value: option.id,
                   label: option.label,
                 }))}
               />
             </div>
+            {capacityReview ? <div className="sm:col-span-4">{capacityReview}</div> : null}
             <Button
               type="submit"
               disabled={pending || !selectedClass || hasActiveInSelectedYear}
             >
               {pending ? <Loader2 className="size-4 animate-spin" /> : null}
-              Plasser
+              {needsIncrease ? "Øk kapasitet og plasser" : "Plasser"}
             </Button>
             <Button
               type="button"

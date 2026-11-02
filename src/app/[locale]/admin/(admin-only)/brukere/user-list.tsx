@@ -126,8 +126,8 @@ export function UserList({
             </div>
           </div>
         </div>
-        <nav aria-label="Filtrer på rolle" className="-mx-1 overflow-x-auto">
-          <ul className="flex gap-1 px-1">
+        <nav aria-label="Filtrer på rolle">
+          <ul className="flex flex-wrap gap-1">
             {roleFilters.map((filter) => {
               const active = filter.value === role;
               const count = searched.filter(filter.match).length;
@@ -138,7 +138,7 @@ export function UserList({
                     onClick={() => update(filter.value, query, 1)}
                     aria-pressed={active}
                     className={cn(
-                      "inline-flex min-h-10 items-center gap-1.5 rounded-full px-3.5 text-sm font-bold whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                      "inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-sm font-bold whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
                       active
                         ? "bg-[#DCEDDD] text-[#216A2B]"
                         : "text-admin-muted hover:bg-[#F4F1EA] hover:text-foreground",
@@ -185,6 +185,15 @@ export function UserList({
                     {user.lastSignInAt
                       ? `Sist inne ${formatOsloDate(user.lastSignInAt)}`
                       : "Aldri logget inn"}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-admin-muted sm:hidden">
+                    {[
+                      user.isDeveloper ? "Utvikler" : user.roles.includes("admin") ? "Administrator" : null,
+                      user.roles.includes("sfo") ? "SFO" : null,
+                      user.roles.includes("teacher") ? "Lærer" : null,
+                      user.isGuardian ? "Foresatt" : null,
+                      user.isStudent ? "Elev" : null,
+                    ].filter(Boolean).join(" · ")}
                   </p>
                 </div>
                 <div className="hidden shrink-0 flex-wrap items-center justify-end gap-1.5 sm:flex">

@@ -32,18 +32,18 @@ type PaletteItem = {
 };
 
 const destinations = [
+  { label: "Dagplan", path: "/dagsplan" },
+  { label: "Elever", path: "/elever" },
+  { label: "Klasser", path: "/klasser" },
   { label: "Arbeidsflate", path: "" },
   { label: "Opptak", path: "/register" },
   { label: "Familier", path: "/familier" },
-  { label: "Elever", path: "/elever" },
-  { label: "Klasser", path: "/klasser" },
-  { label: "Dagsplan", path: "/dagsplan" },
-  { label: "Økonomi", path: "/betaling" },
+  { label: "Betaling", path: "/betaling" },
   { label: "Betalingslogg", path: "/betaling/logg" },
   { label: "Skoleår", path: "/skolear" },
   { label: "Aktiviteter", path: "/aktiviteter" },
   { label: "Ny aktivitet", path: "/aktiviteter/ny" },
-  { label: "Innstillinger", path: "/innstillinger" },
+  { label: "Kontakt og lenker", path: "/innstillinger" },
   { label: "Lærere", path: "/laerere" },
   { label: "Brukere", path: "/brukere" },
   { label: "Revisjonshistorikk", path: "/revisjon" },
@@ -118,19 +118,19 @@ export function CommandPaletteDialog({
       href: `${basePath}${hit.path}`,
       icon: groupIcons[hit.group],
     }));
-    const allFamilies = term
+    const allStudents = term
       ? [
           {
-            key: "search:familier",
+            key: "search:elever",
             group: "Søk",
-            label: `Søk etter «${query.trim()}» i alle familier`,
+            label: `Se alle elever som passer «${query.trim()}»`,
             detail: null,
-            href: `${basePath}/familier?q=${encodeURIComponent(query.trim())}`,
+            href: `${basePath}/elever?q=${encodeURIComponent(query.trim())}&year=alle`,
             icon: Search,
           },
         ]
       : [];
-    return [...searchItems, ...navItems, ...allFamilies];
+    return [...searchItems, ...navItems, ...allStudents];
   }, [basePath, hits, query]);
 
   function handleOpenChange(next: boolean) {
@@ -204,7 +204,7 @@ export function CommandPaletteDialog({
               setActiveIndex(0);
             }}
             onKeyDown={onInputKeyDown}
-            placeholder="Familie, elev, klasse eller Vipps-referanse"
+            placeholder="Elev, foresatt, klasse eller Vipps-referanse"
             aria-label="Søk"
             role="combobox"
             aria-expanded="true"
@@ -269,11 +269,11 @@ export function CommandPaletteDialog({
                       className="size-4 shrink-0 text-[#3C8F44]"
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-bold">
+                      <span className="block break-words font-bold">
                         {item.label}
                       </span>
                       {item.detail ? (
-                        <span className="block truncate text-xs text-admin-muted">
+                        <span className="block break-words text-xs text-admin-muted">
                           {item.detail}
                         </span>
                       ) : null}

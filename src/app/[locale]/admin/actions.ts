@@ -9,7 +9,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getIsAdmin, getUser } from "@/lib/auth";
 import { toUserError } from "@/lib/action-errors";
-import { osloLocalToIso } from "@/lib/dates";
+import { osloLocalToIso, osloToday } from "@/lib/dates";
+import { ageInYear, schoolYearStart } from "@/lib/age";
 import { formatNok } from "@/lib/money";
 import { getSiteSettings } from "@/lib/data";
 import { writeAudit } from "@/lib/audit";
@@ -1249,7 +1250,7 @@ export async function searchAdmin(query: string): Promise<AdminSearchResult> {
       .limit(20),
     supabase
       .rpc("admin_search_students", { p_query: term })
-      .select("id, child_first_name, child_last_name, child_birth_date")
+      .select("id, child_first_name, child_last_name, child_birth_date, enrollments(status, classes(name_no), school_years(label, is_active))")
       .limit(30),
     supabase
       .rpc("admin_search_classes", { p_query: term })
@@ -1332,15 +1333,22 @@ export async function searchAdmin(query: string): Promise<AdminSearchResult> {
     child_first_name: string | null;
     child_last_name: string | null;
     child_birth_date: string | null;
+    enrollments: {
+      status: string;
+      classes: { name_no: string } | null;
+      school_years: { label: string; is_active: boolean } | null;
+    }[];
   }[]) {
     const name = personName(student.child_first_name, student.child_last_name);
+    const current = student.enrollments.filter((enrollment) => enrollment.status === "aktiv" && enrollment.school_years?.is_active);
+    const ageYear = schoolYearStart(current[0]?.school_years?.label) ?? Number(osloToday().slice(0, 4));
+    const age = ageInYear(student.child_birth_date, ageYear);
+    const classNames = [...new Set(current.map((enrollment) => enrollment.classes?.name_no).filter(Boolean))];
     hits.push({
       group: "Elever",
       id: student.id,
       label: name || "Elev uten navn",
-      detail: student.child_birth_date
-        ? `Født ${student.child_birth_date.slice(0, 4)}`
-        : null,
+      detail: [age == null ? null : `${age} år`, classNames.length ? classNames.join(", ") : "Ingen klasse i år"].filter(Boolean).join(" · "),
       path: `/elever/${student.id}`,
     });
   }
@@ -1383,7 +1391,8 @@ export async function searchAdmin(query: string): Promise<AdminSearchResult> {
     });
   }
 
-  return { ok: true, hits: hits.slice(0, 30) };
+  const order: Record<AdminSearchHit["group"], number> = { Elever: 0, Familier: 1, Klasser: 2, Betalinger: 3 };
+  return { ok: true, hits: hits.sort((a, b) => order[a.group] - order[b.group]).slice(0, 30) };
 }
 
 export async function signOut(): Promise<void> {

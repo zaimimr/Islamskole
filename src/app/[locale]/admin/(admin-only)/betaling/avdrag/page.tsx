@@ -186,12 +186,17 @@ export default async function InstallmentsPage({
             >
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <Link
+                  href={`${basePath}/elever/${row.student_id}`}
+                  className="inline-flex min-h-11 items-center font-bold outline-none underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  {studentName(row)}
+                </Link>
+                <Link
                   href={`${basePath}/familier/${familyId}`}
-                  className="font-bold outline-none underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className="inline-flex min-h-11 items-center text-admin-muted outline-none underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
                   {familyName}
                 </Link>
-                <span className="text-admin-muted">{studentName(row)}</span>
                 <span
                   className={cn(
                     "basis-full text-admin-muted sm:basis-auto",
@@ -340,7 +345,7 @@ export default async function InstallmentsPage({
 
       {stopped.length > 0 ? (
         <details className="group rounded-2xl bg-white p-5 ring-1 ring-[#E3DED3]">
-          <summary className="cursor-pointer list-none font-heading text-xl font-bold outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center font-heading text-xl font-bold outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
             Stoppede avdrag ({stopped.length})
           </summary>
           <div className="mt-3">{renderRows(stopped, true)}</div>

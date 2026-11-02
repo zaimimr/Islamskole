@@ -45,6 +45,8 @@ export type DayPlanLesson = {
   hasData: boolean;
   doubleBooked: boolean;
   needsSubstitute: boolean;
+  availableTeacherNames?: string[];
+  absentTeacherNames?: string[];
 };
 
 export type DayPlanClass = {

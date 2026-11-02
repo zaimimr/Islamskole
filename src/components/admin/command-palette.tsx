@@ -67,7 +67,7 @@ export function CommandPalette({ basePath }: { basePath: string }) {
       >
         <Search aria-hidden="true" className="size-[1.125rem] text-[#3C8F44]" />
         <span className="flex-1 truncate">
-          Søk etter familie, elev, klasse eller Vipps-referanse
+          Søk etter elev, foresatt, klasse eller Vipps-referanse
         </span>
         <kbd className="rounded-md border border-[#E4E1D8] bg-[#FAF9F5] px-1.5 py-0.5 font-sans text-xs font-bold text-admin-muted">
           {shortcut}

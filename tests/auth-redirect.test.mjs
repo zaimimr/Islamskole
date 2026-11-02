@@ -43,9 +43,9 @@ test("resolvePostLoginPath prefers a safe next", () => {
   );
 });
 
-test("resolvePostLoginPath sends admins to /admin and everyone else to Min side", () => {
-  assert.equal(resolvePostLoginPath({ next: null, isAdmin: true, locale: "no" }), "/admin");
-  assert.equal(resolvePostLoginPath({ next: null, isAdmin: true, locale: "en" }), "/admin");
+test("resolvePostLoginPath sends admins to Dagplan and everyone else to Min side", () => {
+  assert.equal(resolvePostLoginPath({ next: null, isAdmin: true, locale: "no" }), "/admin/dagsplan");
+  assert.equal(resolvePostLoginPath({ next: null, isAdmin: true, locale: "en" }), "/admin/dagsplan");
   assert.equal(resolvePostLoginPath({ next: null, isAdmin: false, locale: "no" }), "/min-side");
   assert.equal(resolvePostLoginPath({ next: null, isAdmin: false, locale: "en" }), "/en/min-side");
 });
@@ -57,6 +57,6 @@ test("resolvePostLoginPath ignores an unsafe next", () => {
   );
   assert.equal(
     resolvePostLoginPath({ next: "https://evil.example", isAdmin: true, locale: "no" }),
-    "/admin",
+    "/admin/dagsplan",
   );
 });

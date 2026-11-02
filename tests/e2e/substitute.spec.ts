@@ -33,6 +33,7 @@ async function attendanceOf(studentId: string, schoolDayId: string) {
     .select("status")
     .eq("student_id", studentId)
     .eq("school_day_id", schoolDayId)
+    .is("inherited_from_lesson_id", null)
     .maybeSingle();
   if (error) throw error;
   return data?.status ?? null;
@@ -68,8 +69,7 @@ test.describe("substitutes and admin in class portal", () => {
     await expect(page.getByText(/Du er vikar i denne klassen/)).toBeVisible();
 
     await page.goto(`/min-side/klasse/${other.schoolClass.id}?dag=${dayId}`);
-    const group = page.getByRole("group", { name: `Oppmøte for ${other.student.name}` });
-    await group.getByRole("button", { name: "Møtt" }).click();
+    await page.getByRole("button", { name: `Merk ${other.student.name} som møtt`, exact: true }).click();
     await expect.poll(() => attendanceOf(other.student.id, dayId)).toBe("til_stede");
 
     const homework = `ZZTEST vikarlekse ${uid()}`;
@@ -95,8 +95,8 @@ test.describe("substitutes and admin in class portal", () => {
     await expect(page).toHaveURL(new RegExp(`/min-side/klasse/${schoolClass.id}`));
 
     await page.goto(`/min-side/klasse/${schoolClass.id}?dag=${dayId}`);
-    const group = page.getByRole("group", { name: `Oppmøte for ${student.name}` });
-    await group.getByRole("button", { name: "Forsinket" }).click();
+    await page.getByRole("button", { name: `Oppmøte for ${student.name}`, exact: true }).click();
+    await page.getByRole("menuitem", { name: "Forsinket", exact: true }).click();
     await expect.poll(() => attendanceOf(student.id, dayId)).toBe("sent");
     await expect(page.getByRole("link", { name: "Tilbake til klassen i admin" })).toBeVisible();
   });

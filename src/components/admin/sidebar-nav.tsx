@@ -82,7 +82,11 @@ function buildNavigation(basePath: string, isAdmin: boolean) {
   const groups: NavGroup[] = [
     {
       label: null,
-      links: [{ href: basePath, label: "Arbeidsflate", icon: LayoutDashboard }],
+      links: [
+        { href: `${basePath}/dagsplan`, label: "Dagplan", icon: CalendarClock },
+        { href: `${basePath}/elever`, label: "Elever", icon: Backpack },
+        { href: `${basePath}/klasser`, label: "Klasser", icon: GraduationCap },
+      ],
     },
     {
       label: "Skolen",
@@ -99,9 +103,6 @@ function buildNavigation(basePath: string, isAdmin: boolean) {
           label: "Familier",
           icon: Users,
         },
-        { href: `${basePath}/elever`, label: "Elever", icon: Backpack },
-        { href: `${basePath}/klasser`, label: "Klasser", icon: GraduationCap },
-        { href: `${basePath}/dagsplan`, label: "Dagsplan", icon: CalendarClock },
         { href: `${basePath}/beskjeder`, label: "Beskjeder", icon: Megaphone },
         {
           href: `${basePath}/laerere`,
@@ -110,7 +111,7 @@ function buildNavigation(basePath: string, isAdmin: boolean) {
           countKey: "teacherApplications",
           countLabel: "nye lærersøknader",
         },
-        { href: `${basePath}/betaling`, label: "Økonomi", icon: Wallet },
+        { href: `${basePath}/betaling`, label: "Betaling", icon: Wallet },
         {
           href: `${basePath}/aktiviteter`,
           label: "Aktiviteter",
@@ -124,7 +125,7 @@ function buildNavigation(basePath: string, isAdmin: boolean) {
       links: [
         {
           href: `${basePath}/innstillinger`,
-          label: "Innstillinger",
+          label: "Kontakt og lenker",
           icon: Settings,
         },
       ],
@@ -132,6 +133,7 @@ function buildNavigation(basePath: string, isAdmin: boolean) {
     {
       label: "Oppsett",
       links: [
+        { href: basePath, label: "Arbeidsflate", icon: LayoutDashboard },
         { href: `${basePath}/skolear`, label: "Skoleår", icon: CalendarRange },
         { href: `${basePath}/brukere`, label: "Brukere", icon: ShieldCheck },
         {

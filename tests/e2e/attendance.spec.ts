@@ -1,17 +1,21 @@
-import { expect, test } from "playwright/test";
+import { expect, test, type Page } from "playwright/test";
 import {
   activeYear,
   assignTeacher,
   db,
   enroll,
   loginAs,
-  pickOption,
   seedAdmin,
   seedClass,
   seedFamily,
   seedSchoolDays,
   seedTeacher,
 } from "./fixtures";
+
+async function chooseStatus(page: Page, studentName: string, status: string) {
+  await page.getByRole("button", { name: `Oppmøte for ${studentName}`, exact: true }).click();
+  await page.getByRole("menuitem", { name: status, exact: true }).click();
+}
 
 async function attendance(studentId: string, dayId: string) {
   const { data, error } = await db().from("attendance")
@@ -52,44 +56,42 @@ test("admin takes attendance across classes and teachers correct later lessons",
   const admin = await seedAdmin();
   await loginAs(context, admin.email);
   await page.goto(`/admin/dagsplan?dag=${day.id}`);
-  await expect(page.getByRole("table", { name: "Dagsplan" })).toContainText(firstClass.name);
-  await expect(page.getByRole("table", { name: "Dagsplan" })).not.toContainText(emptyClass.name);
-  await page.getByRole("link", { name: "Oppmøte", exact: true }).click();
   const overview = page.getByRole("region", { name: "Oppmøte", exact: true });
-  const firstRoster = overview.locator("details").filter({ hasText: firstClass.name });
-  const secondRoster = overview.locator("details").filter({ hasText: secondClass.name });
+  await overview.getByRole("button", { name: "Vis alle elevlister", exact: true }).click();
+  const firstRoster = overview.getByRole("region", { name: firstClass.name, exact: true });
+  const secondRoster = overview.getByRole("region", { name: secondClass.name, exact: true });
   await expect(firstRoster).toContainText(firstChild.name);
   await expect(secondRoster).toContainText(secondChild.name);
   await expect(overview).not.toContainText(emptyClass.name);
-  await page.screenshot({ path: "test-results/attendance-desktop.png", fullPage: true });
-  await firstRoster.getByRole("button", { name: "Alle møtt", exact: true }).click();
+  await firstRoster.getByRole("button", { name: "Merk 1 uregistrert som møtt", exact: true }).click();
   await expect.poll(async () => (await attendance(firstChild.id, day.id)).map((row) => row.status)).toEqual([
     "til_stede", "til_stede", "til_stede",
   ]);
   expect(await attendance(secondChild.id, day.id)).toHaveLength(0);
-  const firstStatus = firstRoster.getByRole("group", { name: `Oppmøte for ${firstChild.name}` });
-  await firstStatus.getByRole("button", { name: "Ugyldig fravær", exact: true }).click();
+  const firstStatus = firstRoster.getByRole("button", { name: `Oppmøte for ${firstChild.name}`, exact: true });
+  await chooseStatus(page, firstChild.name, "Ikke meldt fravær");
   await expect.poll(async () => (await attendance(firstChild.id, day.id))
     .find((row) => row.lesson_id === firstLessons[0].id)?.status).toBe("fravaer");
-  await firstStatus.getByRole("button", { name: "Forsinket", exact: true }).click();
+  await chooseStatus(page, firstChild.name, "Forsinket");
   await expect.poll(async () => (await attendance(firstChild.id, day.id))
     .find((row) => row.lesson_id === firstLessons[0].id)?.status).toBe("sent");
-  await expect(firstStatus.getByRole("button", { name: "Forsinket", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await firstStatus.getByRole("button", { name: "Møtt", exact: true }).click();
+  await expect(firstStatus).toContainText("Forsinket");
+  await chooseStatus(page, firstChild.name, "Møtt");
   await expect.poll(async () => (await attendance(firstChild.id, day.id))
     .find((row) => row.lesson_id === firstLessons[0].id)?.status).toBe("til_stede");
   await page.reload();
-  await expect(firstStatus.getByRole("button", { name: "Møtt", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await overview.getByRole("button", { name: "Vis alle elevlister", exact: true }).click();
+  await expect(firstStatus).toContainText("Møtt");
   await expect(firstRoster).toContainText("1 møtt");
-  await secondRoster.getByRole("button", { name: "Alle møtt", exact: true }).click();
+  await secondRoster.getByRole("button", { name: "Merk 1 uregistrert som møtt", exact: true }).click();
   await expect.poll(async () => (await attendance(secondChild.id, day.id)).length).toBe(3);
-  await expect(secondRoster.getByRole("button", { name: "Møtt", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(secondRoster.getByRole("button", { name: `Oppmøte for ${secondChild.name}`, exact: true })).toContainText("Møtt");
 
-  await pickOption(page, overview, "Time", "Time 2 · 11:00-12:00");
-  await overview.getByRole("button", { name: "Vis", exact: true }).click();
-  await expect(firstRoster.getByRole("button", { name: "Møtt", exact: true })).toHaveAttribute("aria-pressed", "true");
+  const secondLesson = overview.getByRole("navigation", { name: "Time", exact: true }).getByRole("link", { name: /^2\. time/ });
+  await secondLesson.click();
+  await expect(secondLesson).toHaveAttribute("aria-current", "page");
+  await expect(firstStatus).toContainText("Møtt");
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: "test-results/attendance-mobile.png", fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole("link", { name: "Neste skoledag" }).click();
   await expect(page).toHaveURL(new RegExp(`dag=${nextDay.id}.*visning=oppmote`));
@@ -97,12 +99,11 @@ test("admin takes attendance across classes and teachers correct later lessons",
 
   await loginAs(context, teacher.email);
   await page.goto(`/min-side/klasse/${firstClass.id}?dag=${day.id}&time=${firstLessons[1].id}`);
-  const roster = page.getByRole("region", { name: "Oppmøte", exact: true });
-  await roster.getByRole("button", { name: "Ugyldig fravær", exact: true }).click();
+  await chooseStatus(page, firstChild.name, "Ikke meldt fravær");
   await expect.poll(async () => (await attendance(firstChild.id, day.id))
     .find((row) => row.lesson_id === firstLessons[2].id)?.status).toBe("fravaer");
   await page.goto(`/min-side/klasse/${firstClass.id}?dag=${day.id}&time=${firstLessons[0].id}`);
-  await roster.getByRole("button", { name: "Forsinket", exact: true }).click();
+  await chooseStatus(page, firstChild.name, "Forsinket");
   await expect.poll(async () => (await attendance(firstChild.id, day.id))
     .find((row) => row.lesson_id === firstLessons[0].id)?.status).toBe("sent");
   expect((await attendance(firstChild.id, day.id)).find((row) => row.lesson_id === firstLessons[1].id)?.status).toBe("fravaer");
@@ -127,7 +128,7 @@ test("admin sees attendance totals per class", async ({ page, context }) => {
   const admin = await seedAdmin();
   await loginAs(context, admin.email);
   await page.goto(`/admin/dagsplan?dag=${first.id}&visning=oppmote`);
-  await page.getByRole("link", { name: /^Totalt for / }).click();
+  await page.getByRole("link", { name: "Rapporter", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`dag=${first.id}.*visning=totalt`));
   const row = page.getByRole("row", { name: new RegExp(schoolClass.name) });
   await expect(row.getByRole("cell")).toHaveText(["1", "0", "1", "0", "0"]);
@@ -136,7 +137,9 @@ test("admin sees attendance totals per class", async ({ page, context }) => {
   await page.getByRole("link", { name: "Hele året", exact: true }).click();
   const report = page.locator(`#klasse-${schoolClass.id}`);
   await expect(report.locator("summary")).toContainText("50 %");
-  await expect(report.locator("summary")).toContainText("1 møtt1 forsinket1 gyldig fravær1 ugyldig fravær");
+  for (const label of ["1 møtt", "1 forsinket", "1 meldt fravær", "1 ikke meldt fravær"]) {
+    await expect(report.locator("summary")).toContainText(label);
+  }
   await expect(page.getByRole("row")).toHaveCount(0);
   await report.locator("summary").click();
   await expect(report).toContainText(`${one.name}100 %`);
@@ -145,5 +148,39 @@ test("admin sees attendance totals per class", async ({ page, context }) => {
   expect(csv).toContain(`${schoolClass.name};${one.name};100;1;1;0;0;2`);
   expect(csv).toContain(`${schoolClass.name};Hele klassen;50;1;1;1;1;4`);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: "test-results/attendance-totals-mobile.png", fullPage: true });
+});
+
+test("bulk present preserves staff-reported absence without a note and late arrivals", async ({ page, context }) => {
+  const year = await activeYear();
+  const [day] = await seedSchoolDays(year, 1);
+  const schoolClass = await seedClass();
+  const family = await seedFamily({ students: [{}, {}, {}] });
+  for (const child of family.students) await enroll(child.id, schoolClass.id, year.id);
+  const cleared = await db().from("lessons").delete().eq("class_id", schoolClass.id).eq("school_day_id", day.id);
+  if (cleared.error) throw cleared.error;
+  const lessons = await db().from("lessons").insert([1, 2, 3].map((position) => ({
+    class_id: schoolClass.id, school_day_id: day.id, start_position: position, end_position: position, subject: "Islam",
+  })));
+  if (lessons.error) throw lessons.error;
+  const [reported, late, unrecorded] = family.students;
+  const admin = await seedAdmin();
+  await loginAs(context, admin.email);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/admin/dagsplan?dag=${day.id}&klasse=${schoolClass.id}`);
+  const roster = page.getByRole("region", { name: schoolClass.name, exact: true });
+  await chooseStatus(page, reported.name, "Meldt fravær");
+  await roster.getByRole("textbox").fill("Foresatt meldte fra via SMS");
+  await roster.getByRole("button", { name: "Lagre meldt fravær", exact: true }).click();
+  await expect(roster.getByRole("button", { name: `Oppmøte for ${reported.name}`, exact: true })).toContainText("Meldt fravær");
+  await chooseStatus(page, reported.name, "Meldt fravær");
+  await roster.getByRole("textbox").fill("");
+  await roster.getByRole("button", { name: "Lagre meldt fravær", exact: true }).click();
+  await chooseStatus(page, late.name, "Forsinket");
+  await roster.getByRole("button", { name: "Merk 1 uregistrert som møtt", exact: true }).click();
+  await expect.poll(async () => (await attendance(unrecorded.id, day.id)).map((row) => row.status)).toEqual(["til_stede", "til_stede", "til_stede"]);
+  expect((await attendance(reported.id, day.id)).map((row) => row.status)).toEqual(["meldt_fravaer", "meldt_fravaer", "meldt_fravaer"]);
+  expect((await attendance(late.id, day.id)).map((row) => row.status)).toEqual(["sent", "sent", "sent"]);
+  const report = await db().from("absence_reports").select("source, reason, reported_by").eq("student_id", reported.id).eq("school_day_id", day.id).is("withdrawn_at", null).single();
+  if (report.error) throw report.error;
+  expect(report.data).toEqual({ source: "laerer", reason: null, reported_by: admin.id });
 });

@@ -4283,6 +4283,35 @@ export type Database = {
       }
     }
     Functions: {
+      admin_admit_student: {
+        Args: {
+          p_application: string
+          p_class?: string
+          p_expected_capacity?: number
+          p_new_capacity?: number
+          p_returning_student?: string
+          p_year?: string
+        }
+        Returns: Json
+      }
+      admin_place_student: {
+        Args: {
+          p_class: string
+          p_enrollment?: string
+          p_expected_capacity?: number
+          p_expected_class?: string
+          p_expected_price?: number
+          p_new_capacity?: number
+          p_reprice?: boolean
+          p_student: string
+          p_year: string
+        }
+        Returns: string
+      }
+      portal_mark_unrecorded_present: {
+        Args: { p_lesson_id: string; p_student_ids: string[] }
+        Returns: string[]
+      }
       my_activity_status: {
         Args: { p_student: string }
         Returns: {

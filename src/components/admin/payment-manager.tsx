@@ -53,7 +53,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/ui/select-field";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -444,9 +444,7 @@ export function PaymentManager({
     <Card className="overflow-hidden rounded-2xl border-0 bg-white p-0 shadow-none ring-1 ring-[#E3DED3]">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 border-b border-[#ECE8DF] px-5 py-5 sm:px-6">
         <div>
-          <CardTitle className="font-heading text-2xl font-bold">
-            Betaling
-          </CardTitle>
+          <h2 className="font-heading text-2xl font-bold">Betaling</h2>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           {currentClass ? (

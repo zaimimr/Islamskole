@@ -76,7 +76,7 @@ test("merge a paid application into a placed child after reviewing the balance",
     page,
     dialog,
     "Elev som beholdes",
-    `${child.name} Registrert`,
+    child.name,
   );
   await expect(page.getByRole("listbox")).not.toBeVisible();
   await pickOption(

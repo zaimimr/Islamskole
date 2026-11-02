@@ -227,12 +227,12 @@ export default async function FollowUpPage({
                   <div className="min-w-0">
                     <Link
                       href={family.href}
-                      className="block min-h-11 truncate py-2 font-heading text-lg font-bold underline-offset-4 hover:underline"
+                      className="block min-h-11 py-2 font-heading text-lg font-bold wrap-anywhere underline-offset-4 outline-none hover:underline focus-visible:rounded focus-visible:ring-3 focus-visible:ring-ring/50"
                     >
-                      {family.name}
-                    </Link>
-                    <p className="truncate text-sm text-admin-muted">
                       {family.children.map((child) => child.name).join(", ")}
+                    </Link>
+                    <p className="text-sm text-admin-muted wrap-anywhere">
+                      {family.name}
                     </p>
                   </div>
                   <p className="shrink-0 font-heading text-lg font-bold tabular-nums text-[#775108]">

@@ -31,7 +31,7 @@ export function DayPicker({
   const arrow = cn(buttonVariants({ variant: "outline", size: "icon" }), "size-11 shrink-0 rounded-xl bg-white");
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2">
       {previous ? (
         <Link href={href(previous.id)} className={arrow} aria-label="Forrige skoledag">
           <ChevronLeft aria-hidden="true" className="size-4" />
@@ -42,8 +42,8 @@ export function DayPicker({
         options={days.map((day) => ({ value: day.id, label: day.label }))}
         value={selectedId}
         onValueChange={(value) => startTransition(() => router.push(href(value)))}
-        className="min-w-56 flex-1 sm:flex-none"
-        triggerClassName="min-h-11 rounded-xl border-[#CFC9BD] bg-white shadow-none"
+        className="min-w-0 flex-1 sm:w-64 sm:flex-none"
+        triggerClassName="min-h-11 w-full min-w-0 rounded-xl border-[#CFC9BD] bg-white shadow-none"
       />
       {next ? (
         <Link href={href(next.id)} className={arrow} aria-label="Neste skoledag">

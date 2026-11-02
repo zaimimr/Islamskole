@@ -1,7 +1,7 @@
 import { expect, test } from "playwright/test";
 import { activeYear, enroll, loginAs, seedAdmin, seedClass, seedFamily, seedSchoolDays } from "./fixtures";
 
-test("admin class navigation keeps the roster before the semester plan on mobile", async ({ page, context }) => {
+test("admin opens class information first and reaches the roster separately on mobile", async ({ page, context }) => {
   const year = await activeYear();
   const schoolClass = await seedClass();
   const family = await seedFamily();
@@ -13,13 +13,15 @@ test("admin class navigation keeps the roster before the semester plan on mobile
   await page.goto(`/admin/klasser/${schoolClass.id}`);
   await expect(page.getByRole("heading", { name: schoolClass.name, exact: true })).toBeVisible();
   const navigation = page.getByRole("navigation", { name: "Klassevisning", exact: true });
+  await expect(navigation.getByRole("link", { name: "Klasseinfo", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("heading", { name: "Lærere", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Kapasitet for klassen", { exact: true })).toBeVisible();
+  await navigation.getByRole("link", { name: "Elever i år", exact: true }).click();
   const student = page.getByRole("link", { name: family.students[0].name }).last();
   await expect(student).toBeVisible();
-  expect((await student.boundingBox())!.y).toBeLessThan(760);
   await expect(page.getByRole("heading", { name: "Semesterplan", exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Timeplan", exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: "test-results/class-navigation-mobile.png", animations: "disabled" });
   await navigation.getByRole("link", { name: "Semesterplan", exact: true }).click();
   await expect(page).toHaveURL(/fane=semesterplan/);
   await expect(page.getByRole("heading", { name: "Semesterplan", exact: true })).toBeVisible();
@@ -38,7 +40,6 @@ test("admin class navigation keeps the roster before the semester plan on mobile
   await navigation.getByRole("link", { name: "Elever i år", exact: true }).click();
   await expect(student).toBeVisible();
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.screenshot({ path: "test-results/class-navigation-desktop.png", animations: "disabled" });
   await page.goto(`/en/admin/klasser/${schoolClass.id}?fane=semesterplan`);
   await expect(page).toHaveURL(`/admin/klasser/${schoolClass.id}?fane=semesterplan`);
   await expect(navigation.getByRole("link", { name: "Semesterplan", exact: true })).toHaveAttribute("aria-current", "page");

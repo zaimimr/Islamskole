@@ -102,7 +102,7 @@ test.describe("who gets a login link", () => {
 });
 
 test.describe("following the link", () => {
-  test("AUTH-17 admin lands on /admin", async ({ page, browser }) => {
+  test("AUTH-17 admin lands on Dagplan", async ({ page, browser }) => {
     const admin = await seedAdmin();
     const since = Date.now();
     await requestLoginLink(page, admin.email);
@@ -110,7 +110,7 @@ test.describe("following the link", () => {
     const fresh = await browser.newContext({ baseURL: BASE_URL });
     const tab = await fresh.newPage();
     await tab.goto(link);
-    await expect(tab).toHaveURL(`${BASE_URL}/admin`);
+    await expect(tab).toHaveURL(`${BASE_URL}/admin/dagsplan`);
     await fresh.close();
   });
 

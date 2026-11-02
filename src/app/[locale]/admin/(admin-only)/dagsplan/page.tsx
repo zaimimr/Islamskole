@@ -20,6 +20,7 @@ import { EnsureLessonsButton } from "./ensure-lessons-button";
 import { TeacherAbsences, type TeacherAbsenceRow } from "./teacher-absences";
 import { DayAttendance } from "./day-attendance";
 import { AttendanceTotals } from "./attendance-totals";
+import { UpcomingTeacherAbsences } from "./upcoming-teacher-absences";
 
 export const metadata: Metadata = { title: "Dagsplan" };
 
@@ -52,8 +53,9 @@ const linkClass =
 export default async function DagsplanPage({ params, searchParams }: PageProps<"/[locale]/admin/dagsplan">) {
   const [{ locale }, query] = await Promise.all([params, searchParams]);
   const basePath = adminBasePath(locale);
-  const attendanceView = query.visning === "oppmote";
+  const attendanceView = !query.visning || query.visning === "oppmote";
   const totalsView = query.visning === "totalt";
+  const planningView = query.visning === "planlegging";
   const supabase = await createClient();
   const { data: year } = await supabase
     .from("school_years")
@@ -66,10 +68,6 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
       <h1 className="text-balance font-heading text-[2rem] leading-tight font-bold tracking-[-0.02em] sm:text-4xl">
         Dagsplan
       </h1>
-      {attendanceView || totalsView ? null : <p className="mt-1 max-w-2xl text-admin-muted">
-        Hvem underviser hvilken klasse i hver time. Bytt inn vikar, slå sammen eller avlys timer for én dag.
-        Fast oppsett endres under hver klasse.
-      </p>}
     </header>
   );
 
@@ -132,17 +130,19 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
   }
 
   const viewNav = (
-    <nav aria-label="Dagsplanvisning" className="flex gap-1 border-b border-[#E3DED3]">
+    <nav aria-label="Dagsplanvisning" className="grid grid-cols-4 gap-1 border-b border-[#E3DED3] sm:flex sm:flex-wrap">
       {[
-        { label: "Timeplan", view: null, active: !attendanceView && !totalsView },
         { label: "Oppmøte", view: "oppmote", active: attendanceView },
-        { label: "Totalt", view: "totalt", active: totalsView },
+        { label: "Timeplan", view: "timeplan", active: !attendanceView && !totalsView && !planningView },
+        { label: "Planlegg", view: "planlegging", active: planningView },
+        { label: "Rapporter", view: "totalt", active: totalsView },
       ].map((view) => (
         <Link
           key={view.label}
-          href={`${basePath}/dagsplan?dag=${day.id}${view.view ? `&visning=${view.view}` : ""}`}
+          href={`${basePath}/dagsplan?dag=${day.id}&visning=${view.view}${typeof query.time === "string" ? `&time=${encodeURIComponent(query.time)}` : ""}${typeof query.klasse === "string" ? `&klasse=${encodeURIComponent(query.klasse)}` : ""}`}
+          scroll={false}
           aria-current={view.active ? "page" : undefined}
-          className={`-mb-px inline-flex min-h-11 items-center border-b-2 px-3 text-sm font-bold outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${view.active ? "border-[#2F7938] text-[#1D4E24]" : "border-transparent text-admin-muted hover:text-foreground"}`}
+          className={`-mb-px inline-flex min-h-11 items-center justify-center border-b-2 px-1 text-sm font-bold outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:px-3 ${view.active ? "border-[#2F7938] text-[#1D4E24]" : "border-transparent text-admin-muted hover:text-foreground"}`}
         >
           {view.label}
         </Link>
@@ -163,7 +163,7 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
     />
   );
   const stickyDayPicker = (
-    <div className="sticky top-[3.8rem] z-20 -mx-4 -my-3 border-b border-[#E9E5DC] bg-[#FCFAF5]/95 px-4 py-2 supports-backdrop-filter:backdrop-blur-md sm:-mx-6 sm:px-6 lg:top-[4.3rem] lg:-mx-8 lg:px-8 print:static">
+    <div className="sticky top-[3.8rem] z-20 -mx-4 -my-3 border-b border-[#E9E5DC] bg-[#FCFAF5] px-4 py-2 sm:-mx-6 sm:px-6 lg:top-[4.3rem] lg:-mx-8 lg:px-8 print:static">
       {dayPicker}
     </div>
   );
@@ -176,6 +176,10 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
       </span>
     </p>
   ) : null;
+
+  if (planningView) {
+    return <div className="grid gap-5">{header}{viewNav}<UpcomingTeacherAbsences basePath={basePath} yearId={year.id} today={today} days={days} slots={slots} /></div>;
+  }
 
   if (totalsView) {
     const wholeYear = query.periode === "aar";
@@ -291,6 +295,8 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
       hasData: withData.has(row.id),
       doubleBooked: clashes.has(row.id),
       needsSubstitute: uncovered.has(row.id),
+      availableTeacherNames: (lessonTeacherIds(row).length ? lessonTeacherIds(row) : classTeacherIds.get(row.class_id) ?? []).filter((id) => !absentIds.has(id)).map(nameOf),
+      absentTeacherNames: [...new Set([...(classTeacherIds.get(row.class_id) ?? []), ...lessonTeacherIds(row), ...(row.plan?.teacher_guardian_id ? [row.plan.teacher_guardian_id] : [])])].filter((id) => absentIds.has(id)).map(nameOf),
     });
     classMap.set(row.class_id, entry);
   }
@@ -358,7 +364,7 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
 
       {cancelledNotice}
 
-      {day.cancelled || attendanceView ? null : (
+      {day.cancelled ? null : (
         <TeacherAbsences
           dayId={day.id}
           dayLabel={dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1)}
@@ -385,7 +391,7 @@ export default async function DagsplanPage({ params, searchParams }: PageProps<"
             {clashes.size ? ` · ${clashes.size} dobbeltbooket` : ""}
             {cancelled ? ` · ${cancelled} avlyst` : ""}
           </p>
-          <DayPlanGrid dayId={day.id} slots={slots} classes={classes} teachers={teachers} />
+          <DayPlanGrid dayId={day.id} slots={slots} classes={typeof query.klasse === "string" && classes.some((row) => row.id === query.klasse) ? classes.filter((row) => row.id === query.klasse) : classes} teachers={teachers} />
         </>
       ) : (
         <section className="grid justify-items-start gap-3 rounded-2xl bg-white p-6 ring-1 ring-[#E3DED3]">

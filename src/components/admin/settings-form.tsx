@@ -51,9 +51,6 @@ export function SettingsForm({
             </span>
             <div>
               <h2 className="font-heading text-xl font-bold">Kontaktkanaler</h2>
-              <p className="mt-0.5 text-sm text-admin-muted">
-                Velg riktig innboks for generelle spørsmål og påmelding.
-              </p>
             </div>
           </div>
 
@@ -68,9 +65,6 @@ export function SettingsForm({
                 spellCheck={false}
                 defaultValue={settings?.contact_email ?? ""}
               />
-              <p className="text-sm text-admin-muted">
-                Brukes for generelle henvendelser på nettsiden.
-              </p>
             </div>
             <div className="grid gap-2 border-t border-[#ECE8DF] pt-5">
               <Label htmlFor="enroll_email">Påmeldings-e-post</Label>
@@ -82,9 +76,6 @@ export function SettingsForm({
                 spellCheck={false}
                 defaultValue={settings?.enroll_email ?? ""}
               />
-              <p className="text-sm text-admin-muted">
-                Mottar spørsmål som gjelder innmelding og opptak.
-              </p>
             </div>
           </div>
         </section>
@@ -98,9 +89,6 @@ export function SettingsForm({
               <h2 className="font-heading text-xl font-bold">
                 Besøksinformasjon
               </h2>
-              <p className="mt-0.5 text-sm text-admin-muted">
-                Informasjon foresatte bruker for å finne og kontakte skolen.
-              </p>
             </div>
           </div>
 
@@ -122,10 +110,6 @@ export function SettingsForm({
                 rows={4}
                 defaultValue={settings?.hours ?? ""}
               />
-              <p className="text-sm text-admin-muted">
-                Ta med undervisningsdag og tidspunkt slik det skal vises
-                offentlig.
-              </p>
             </div>
           </div>
         </section>
@@ -138,9 +122,6 @@ export function SettingsForm({
           </span>
           <div>
             <h2 className="font-heading text-xl font-bold">Sosiale medier</h2>
-            <p className="mt-0.5 text-sm text-admin-muted">
-              Hele nettadressen brukes i lenkene på den offentlige nettsiden.
-            </p>
           </div>
         </div>
 
@@ -176,12 +157,12 @@ export function SettingsForm({
         </div>
       </section>
 
-      <div className="sticky bottom-0 z-10 flex justify-end rounded-2xl bg-white/95 p-4 ring-1 ring-[#E3DED3] supports-backdrop-filter:backdrop-blur-md">
-        <Button type="submit" disabled={pending}>
+      <div className="flex justify-end rounded-2xl bg-white p-4 ring-1 ring-[#E3DED3]">
+        <Button type="submit" disabled={pending} className="min-h-11 w-full sm:w-auto">
           {pending ? (
             <Loader2 aria-hidden="true" className="size-4 animate-spin" />
           ) : null}
-          Lagre innstillinger
+          Lagre
         </Button>
       </div>
     </form>

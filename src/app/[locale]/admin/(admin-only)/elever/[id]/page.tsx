@@ -1,12 +1,12 @@
 import { StudentReports } from "@/components/term-reports/student-reports";
 import type { Metadata } from "next";
 import { relationshipLabel } from "@/lib/relationship";
+import { safeNextPath } from "@/lib/auth-redirect";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
   ChevronDown,
-  CircleDollarSign,
   GraduationCap,
   Mail,
   Pencil,
@@ -36,7 +36,6 @@ import {
   type OpenRequest,
 } from "@/lib/payment-request-state";
 import { getLastParentChange } from "@/lib/parent-changes";
-import { formatNok } from "@/lib/money";
 import { StudentExitPanel } from "./student-exit-panel";
 import { StudentLoginEmail } from "./student-login-email";
 import { getAdminFamilies } from "@/lib/families/service";
@@ -129,9 +128,12 @@ export default async function ElevDetailPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { locale, id } = await params;
-  const editing = (await searchParams).rediger === "1";
+  const query = await searchParams;
+  const editing = query.rediger === "1";
   const basePath = adminBasePath(locale);
   const listHref = `${basePath}/elever`;
+  const sourceHref = safeNextPath(typeof query.fra === "string" ? query.fra : null);
+  const returnHref = sourceHref?.startsWith(`${listHref}?`) ? sourceHref : listHref;
   const supabase = await createClient();
 
   const [
@@ -566,9 +568,6 @@ export default async function ElevDetailPage({
     }
   }
 
-  const activeBalance = defaultSchoolYearId
-    ? balancesByYear[defaultSchoolYearId]
-    : null;
   const activeClass = activeEnrollment?.classes?.name_no ?? "Ikke plassert";
 
   const name = studentDisplayName(student) || "Elev";
@@ -594,7 +593,7 @@ export default async function ElevDetailPage({
   const header = (
     <header>
       <Link
-        href={editing ? studentHref : listHref}
+        href={editing ? studentHref : returnHref}
         className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-bold text-[#277A31] outline-none hover:bg-[#F2F7F2] focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <ArrowLeft aria-hidden="true" className="size-4" />
@@ -610,13 +609,10 @@ export default async function ElevDetailPage({
               {formatAge(student.child_birth_date, ageYear)} år
             </span>
           ) : null}
-          {lastParentChange ? (
-            <p className="basis-full text-sm text-admin-muted">
-              Sist endret av forelder {formatOsloDateTime(lastParentChange.createdAt)}
-              {lastParentChange.actorEmail ? ` (${lastParentChange.actorEmail})` : ""}:{" "}
-              {lastParentChange.summary}
-            </p>
-          ) : null}
+          {!editing ? <p className="flex basis-full items-center gap-2 text-sm font-bold">
+            <GraduationCap aria-hidden="true" className="size-4 text-admin-action" />
+            {activeEnrollment ? <Link href={`${basePath}/klasser/${activeEnrollment.class_id}`} className={linkClass}>{activeClass}</Link> : activeClass}
+          </p> : null}
         </div>
         {!editing ? (
           <div className="flex flex-wrap gap-2">
@@ -639,16 +635,7 @@ export default async function ElevDetailPage({
                 Åpne familie
               </Link>
             ) : null}
-            <FamilyPickerDialog
-              triggerLabel="Flytt til annen familie"
-              title={`Flytt ${name} til en annen familie`}
-              description="Eleven kobles til den nye familiens foresatte. Betalinger og plasser følger eleven."
-              confirmLabel="Flytt"
-              successMessage={`${name} er flyttet`}
-              options={familyOptions(allFamilies, student.family_id)}
-              action={moveStudentToFamily.bind(null, student.id)}
-              triggerClassName="border-[#CFC9BD] bg-white px-4"
-            />
+
           </div>
         ) : null}
       </div>
@@ -682,65 +669,9 @@ export default async function ElevDetailPage({
     <div className="grid gap-5 sm:gap-6">
       {header}
 
-      <PaymentManager
-        studentId={student.id}
-        studentName={name}
-        classByYear={classByYear}
-        schoolYears={schoolYears}
-        defaultSchoolYearId={defaultSchoolYearId}
-        defaultAmount={defaultAmount}
-        balancesByYear={balancesByYear}
-        feesByYear={feesByYear}
-        payments={payments}
-        adjustments={adjustments}
-        teachers={teachers}
-        requestsByYear={requestsByYear}
-        nextInstallmentByYear={nextInstallmentByYear}
-        today={osloToday()}
-      />
-
-      <section
-        aria-label="Aktiv elevstatus"
-        className="grid overflow-hidden rounded-2xl bg-white ring-1 ring-[#E3DED3] sm:grid-cols-3"
-      >
-        <div className="flex min-h-24 items-center gap-3 px-4 py-4 sm:px-5">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#DCEDDD] text-[#216A2B]">
-            <GraduationCap aria-hidden="true" className="size-5" />
-          </span>
-          <div>
-            <p className="text-xs font-bold text-admin-muted">Aktiv klasse</p>
-            <p className="mt-1 font-heading text-xl font-bold">{activeClass}</p>
-          </div>
-        </div>
-        <div className="flex min-h-24 items-center gap-3 border-t border-[#ECE8DF] px-4 py-4 sm:border-t-0 sm:border-l sm:px-5">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#EFF8FD] text-[#245D7C]">
-            <GraduationCap aria-hidden="true" className="size-5" />
-          </span>
-          <div>
-            <p className="text-xs font-bold text-admin-muted">Skoleår</p>
-            <p className="mt-1 font-heading text-xl font-bold">
-              {activeYear?.label ?? "Ikke valgt"}
-            </p>
-          </div>
-        </div>
-        <div className="flex min-h-24 items-center gap-3 border-t border-[#ECE8DF] px-4 py-4 sm:border-t-0 sm:border-l sm:px-5">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FEEDCA] text-[#775108]">
-            <CircleDollarSign aria-hidden="true" className="size-5" />
-          </span>
-          <div>
-            <p className="text-xs font-bold text-admin-muted">
-              Gjenstår å betale
-            </p>
-            <p className="mt-1 font-heading text-xl font-bold tabular-nums">
-              {formatNok(activeBalance?.remaining ?? 0)}
-            </p>
-          </div>
-        </div>
-      </section>
-
       <section className="overflow-hidden rounded-2xl bg-white ring-1 ring-[#E3DED3]">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#ECE8DF] px-4 py-4 sm:px-5">
-          <h2 className="font-heading text-xl font-bold">Elev og foresatte</h2>
+          <h2 className="font-heading text-xl font-bold">Foresatte</h2>
           {familyHref ? (
             <Link href={familyHref} className={linkClass}>
               Endre i familien
@@ -748,21 +679,7 @@ export default async function ElevDetailPage({
           ) : null}
         </div>
         <div className="grid gap-5 p-4 sm:p-5">
-          <dl className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-4">
-            <Fact label="Fødselsdato">
-              {student.child_birth_date
-                ? `${formatOsloDate(student.child_birth_date, { day: "numeric", month: "long", year: "numeric" })}${childAge != null ? `, ${childAge} år` : ""}`
-                : "Ikke oppgitt"}
-            </Fact>
-            <Fact label="Kjønn">
-              {student.child_gender
-                ? (genderLabels[student.child_gender] ?? student.child_gender)
-                : "Ikke oppgitt"}
-            </Fact>
-          </dl>
-
           <div>
-            <h3 className="text-sm font-bold">Foresatte</h3>
             {guardians.length > 0 ? (
               <ul className="mt-2 grid gap-2">
                 {guardians.map((link) => {
@@ -814,6 +731,9 @@ export default async function ElevDetailPage({
             )}
           </div>
 
+          <details className="border-t border-[#ECE8DF] pt-2">
+            <summary className="flex min-h-11 cursor-pointer items-center text-sm font-bold text-admin-action">Elevopplysninger</summary>
+            <div className="grid gap-4 pt-3">
           <div>
             <h3 className="text-sm font-bold">Helse, bilder og henting</h3>
             <dl className="mt-2 grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-4">
@@ -877,6 +797,10 @@ export default async function ElevDetailPage({
               />
             </summary>
             <dl className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-4">
+              <Fact label="Fødselsdato">
+                {student.child_birth_date ? formatOsloDate(student.child_birth_date, { day: "numeric", month: "long", year: "numeric" }) : "Ikke oppgitt"}
+              </Fact>
+              <Fact label="Kjønn">{student.child_gender ? (genderLabels[student.child_gender] ?? student.child_gender) : "Ikke oppgitt"}</Fact>
               <Fact label="Adresse">{address || "Ikke oppgitt"}</Fact>
               <Fact label="Telefon (kontakt)">
                 {student.child_phone ? (
@@ -904,8 +828,41 @@ export default async function ElevDetailPage({
               </p>
             </div>
           </details>
+            <FamilyPickerDialog
+              triggerLabel="Flytt til annen familie"
+              title={`Flytt ${name} til en annen familie`}
+              description="Eleven kobles til den nye familiens foresatte. Betalinger og plasser følger eleven."
+              confirmLabel="Flytt"
+              successMessage={`${name} er flyttet`}
+              options={familyOptions(allFamilies, student.family_id)}
+              action={moveStudentToFamily.bind(null, student.id)}
+              triggerClassName="border-[#CFC9BD] bg-white px-4"
+            />
+          {lastParentChange ? <p className="text-sm text-admin-muted">
+            Sist endret av forelder {formatOsloDateTime(lastParentChange.createdAt)}
+            {lastParentChange.actorEmail ? ` (${lastParentChange.actorEmail})` : ""}: {lastParentChange.summary}
+          </p> : null}
+            </div>
+          </details>
         </div>
       </section>
+
+      <PaymentManager
+        studentId={student.id}
+        studentName={name}
+        classByYear={classByYear}
+        schoolYears={schoolYears}
+        defaultSchoolYearId={defaultSchoolYearId}
+        defaultAmount={defaultAmount}
+        balancesByYear={balancesByYear}
+        feesByYear={feesByYear}
+        payments={payments}
+        adjustments={adjustments}
+        teachers={teachers}
+        requestsByYear={requestsByYear}
+        nextInstallmentByYear={nextInstallmentByYear}
+        today={osloToday()}
+      />
 
       <EnrollmentManager
         studentId={student.id}

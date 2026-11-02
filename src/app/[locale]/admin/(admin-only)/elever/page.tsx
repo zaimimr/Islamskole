@@ -369,6 +369,9 @@ export default async function RegistrertePage({
   const pageStudents = students.slice(from, from + PAGE_SIZE);
 
   const filtered = Boolean(q || classFilter || payFilter || yearParam);
+  const returnQuery = new URLSearchParams(Object.entries(sp).flatMap(([key, value]) => typeof value === "string" ? [[key, value]] : Array.isArray(value) ? value.map((item) => [key, item]) : []));
+  const returnHref = `${basePath}/elever${returnQuery.size ? `?${returnQuery}` : ""}`;
+  const studentHref = (id: string) => `${basePath}/elever/${id}${returnQuery.size ? `?fra=${encodeURIComponent(returnHref)}` : ""}`;
   const scopeLabel =
     yearFilter === "needs_rollover"
       ? `mangler plass i ${activeYearLabel ?? "aktivt skoleår"}`
@@ -403,7 +406,7 @@ export default async function RegistrertePage({
 
   return (
     <div className="grid gap-4 sm:gap-6">
-      <header className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <header className="flex items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-balance font-heading text-3xl font-bold tracking-[-0.02em] sm:text-4xl">
             Elever
@@ -418,6 +421,8 @@ export default async function RegistrertePage({
         </Link>
       </header>
 
+      <details className="order-last rounded-2xl bg-white px-4 ring-1 ring-[#E3DED3] lg:order-none">
+        <summary className="flex min-h-11 cursor-pointer items-center text-sm font-bold text-admin-action">Betalingssummer</summary>
       <section
         aria-label="Status for elevregisteret"
         className="grid grid-cols-3 divide-x divide-[#ECE8DF] overflow-hidden rounded-2xl bg-white ring-1 ring-[#E3DED3]"
@@ -465,6 +470,7 @@ export default async function RegistrertePage({
           );
         })}
       </section>
+      </details>
 
       <section className="rounded-2xl bg-white px-4 py-2 ring-1 ring-[#E3DED3] sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
@@ -543,8 +549,8 @@ export default async function RegistrertePage({
                   <TableRow>
                     <TableHead>Navn</TableHead>
                     <TableHead>Alder</TableHead>
-                    <TableHead>Foresatt</TableHead>
                     <TableHead>Klasse</TableHead>
+                    <TableHead>Foresatt</TableHead>
                     <TableHead>Skoleår</TableHead>
                     <TableHead>Betalt</TableHead>
                     <TableHead>Betaling</TableHead>
@@ -572,7 +578,7 @@ export default async function RegistrertePage({
                       >
                         <TableCell className="font-medium">
                           <Link
-                            href={`${basePath}/elever/${student.id}`}
+                            href={studentHref(student.id)}
                             className="rounded outline-none after:absolute after:inset-0 focus-visible:ring-3 focus-visible:ring-ring/50"
                           >
                             {studentDisplayName(student) || "Navn mangler"}
@@ -581,8 +587,8 @@ export default async function RegistrertePage({
                         <TableCell>
                           {formatAge(student.child_birth_date, ageYear)}
                         </TableCell>
-                        <TableCell>{guardianName(student) ?? "-"}</TableCell>
                         <TableCell>{classLabel(student)}</TableCell>
+                        <TableCell>{guardianName(student) ?? "-"}</TableCell>
                         <TableCell>
                           {years.length === 0 ? (
                             <span className="text-muted-foreground">-</span>
@@ -648,19 +654,19 @@ export default async function RegistrertePage({
                 return (
                   <li key={student.id}>
                     <Link
-                      href={`${basePath}/elever/${student.id}`}
+                      href={studentHref(student.id)}
                       className="group flex items-center justify-between gap-3 px-4 py-3 outline-none transition-colors hover:bg-[#FBFAF6] focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 sm:px-5"
                     >
                       <span className="min-w-0">
-                        <span className="block truncate font-heading text-lg font-bold">
+                        <span className="block break-words font-heading text-lg font-bold">
                           {studentDisplayName(student) || "Navn mangler"}
                         </span>
-                        <span className="block truncate text-sm text-admin-muted">
+                        <span className="block break-words text-sm text-admin-muted">
                           {formatAge(student.child_birth_date, ageYear)} år ·{" "}
                           {classLabel(student)}
                         </span>
                       </span>
-                      <span className="flex shrink-0 items-center gap-2">
+                      <span className="flex max-w-[40%] shrink-0 items-center gap-2">
                         <span className="text-right text-xs font-bold">
                           {requestFor(student.id) && ledger.remaining > 0
                             ? describeRequest(ledger, requestFor(student.id), today).label

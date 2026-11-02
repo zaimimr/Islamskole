@@ -232,7 +232,7 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
 
 export async function createStudentFromApplication(
   applicationId: string,
-  placement?: { classId?: string | null; schoolYearId?: string | null },
+  placement?: { classId?: string | null; schoolYearId?: string | null; newCapacity?: number | null; expectedCapacity?: number | null },
 ): Promise<ActionResult> {
   const denied = await requireAdmin();
   if (denied) return denied;
@@ -274,8 +274,6 @@ export async function createStudentFromApplication(
   let pricing: EnrollmentPricing | null = null;
   if (classId && schoolYearId) {
     pricing = await resolveEnrollmentPricing(supabase, classId, schoolYearId);
-    const full = await capacityError(supabase, classId, schoolYearId, pricing);
-    if (full) return { ok: false, error: full };
   }
 
   const app = application as unknown as {
@@ -303,32 +301,6 @@ export async function createStudentFromApplication(
     message: string | null;
   };
 
-  const payload = {
-    application_id: applicationId,
-    family_id: app.family_id,
-    child_first_name: app.child_first_name,
-    child_last_name: app.child_last_name,
-    child_birth_date: app.child_birth_date,
-    child_gender: app.child_gender,
-    child_address: app.child_address,
-    child_postal_code: app.child_postal_code,
-    child_city: app.child_city,
-    child_email: app.child_email,
-    child_phone: app.child_phone,
-    mother_first_name: app.mother_first_name,
-    mother_last_name: app.mother_last_name,
-    mother_phone: app.mother_phone,
-    mother_email: app.mother_email,
-    father_first_name: app.father_first_name,
-    father_last_name: app.father_last_name,
-    father_phone: app.father_phone,
-    father_email: app.father_email,
-    child_level_quran: app.child_level_quran,
-    child_level_arabic: app.child_level_arabic,
-    child_level_islam: app.child_level_islam,
-    notes: app.message,
-  };
-
   const { data: applicationGuardians } = app.family_id
     ? await supabase
         .from("family_guardians")
@@ -349,74 +321,38 @@ export async function createStudentFromApplication(
     ],
   });
 
-  let studentId: string;
-  if (returning) {
-    studentId = returning.id;
-  } else {
-    const { data, error } = await supabase
-      .from("students")
-      .insert(payload as never)
-      .select("id")
-      .single();
-    if (error) return { ok: false, error: toUserError(error) };
-    studentId = (data as unknown as { id: string }).id;
-  }
+  const capacityChange = capacityChangeSchema.safeParse({
+    newCapacity: placement?.newCapacity ?? null,
+    expectedCapacity: placement?.expectedCapacity ?? null,
+  });
+  if (!capacityChange.success) return { ok: false, error: capacityChange.error.issues[0].message };
+  const { data: admission, error: admissionError } = await supabase.rpc("admin_admit_student", {
+    p_application: applicationId,
+    p_returning_student: returning?.id ?? undefined,
+    p_class: classId ?? undefined,
+    p_year: schoolYearId ?? undefined,
+    p_new_capacity: capacityChange.data.newCapacity ?? undefined,
+    p_expected_capacity: capacityChange.data.expectedCapacity ?? undefined,
+  });
+  if (admissionError) return { ok: false, error: toUserError(admissionError) };
+  const admitted = admission as { student_id: string; enrollment_id: string | null };
+  const studentId = admitted.student_id;
   const name = studentDisplayName(app) || null;
-
   await writeAudit({
     action: returning ? "student.relinked" : "student.create",
     entityType: "students",
     entityId: studentId,
     metadata: { source: "application", applicationId, name },
   });
-
-  const { count: existingPlacements } =
-    returning && schoolYearId
-      ? await supabase
-          .from("enrollments")
-          .select("id", { count: "exact", head: true })
-          .eq("student_id", studentId)
-          .eq("school_year_id", schoolYearId)
-          .eq("status", "aktiv")
-      : { count: 0 };
-
-  let placementError: string | null = null;
-  if (pricing && classId && schoolYearId && !existingPlacements) {
-    const { data: enrollment, error: enrollError } = await supabase
-      .from("enrollments")
-      .insert({
-        student_id: studentId,
-        class_id: classId,
-        school_year_id: schoolYearId,
-        status: "aktiv",
-        price_snapshot: pricing.priceSnapshot,
-      } as never)
-      .select("id")
-      .single();
-    if (enrollError) {
-      placementError = `${name ?? "Eleven"} er registrert, men kunne ikke plasseres i ${pricing.className}. Åpne elevsiden og plasser eleven der.`;
-    } else {
-      await ensureStudentFee(supabase, studentId, schoolYearId);
-      await writeAudit({
-        action: "enrollment.create",
-        entityType: "student_enrollments",
-        entityId: (enrollment as unknown as { id: string }).id,
-        metadata: {
-          studentId,
-          name,
-          classId,
-          className: pricing.className,
-          schoolYearId,
-          priceSnapshot: pricing.priceSnapshot,
-        },
-      });
-    }
+  if (admitted.enrollment_id && schoolYearId && pricing) {
+    await ensureStudentFee(supabase, studentId, schoolYearId);
+    await writeAudit({
+      action: "enrollment.create",
+      entityType: "student_enrollments",
+      entityId: admitted.enrollment_id,
+      metadata: { studentId, name, classId, className: pricing.className, schoolYearId, priceSnapshot: pricing.priceSnapshot },
+    });
   }
-
-  await supabase
-    .from("student_applications")
-    .update({ status: "akseptert" } as never)
-    .eq("id", applicationId);
 
   await targetApplicationPayment(
     supabase,
@@ -434,7 +370,6 @@ export async function createStudentFromApplication(
   );
 
   revalidate();
-  if (placementError) return { ok: false, error: placementError };
   return {
     ok: true,
     id: studentId,
@@ -628,19 +563,10 @@ const enrollmentSchema = z.object({
   school_year_id: z.string().min(1, "Velg et skoleår"),
 });
 
-async function countActiveEnrollments(
-  supabase: SupabaseServerClient,
-  classId: string,
-  schoolYearId: string,
-): Promise<number> {
-  const { count } = await supabase
-    .from("enrollments")
-    .select("id", { count: "exact", head: true })
-    .eq("class_id", classId)
-    .eq("school_year_id", schoolYearId)
-    .eq("status", "aktiv");
-  return count ?? 0;
-}
+const capacityChangeSchema = z.object({
+  newCapacity: z.number().int().min(1, "Ny kapasitet må være minst 1").max(10000).nullable(),
+  expectedCapacity: z.number().int().min(0).nullable(),
+});
 
 type EnrollmentPricing = {
   className: string;
@@ -672,22 +598,6 @@ async function resolveEnrollmentPricing(
   };
 }
 
-async function capacityError(
-  supabase: SupabaseServerClient,
-  classId: string,
-  schoolYearId: string,
-  pricing: EnrollmentPricing,
-): Promise<string | null> {
-  if (pricing.capacity == null) return null;
-  const enrolled = await countActiveEnrollments(
-    supabase,
-    classId,
-    schoolYearId,
-  );
-  if (enrolled < pricing.capacity) return null;
-  return `${pricing.className} er full (${enrolled} av ${pricing.capacity} plasser). Velg en annen klasse, eller øk kapasiteten under Klasser.`;
-}
-
 export type ClassCapacityInfo = {
   classId: string;
   capacity: number | null;
@@ -701,18 +611,19 @@ export async function getClassCapacityInfo(
   if (!schoolYearId) return [];
   const supabase = await createClient();
 
-  const { data: classRows } = await supabase
+  const { data: classRows, error: classError } = await supabase
     .from("classes")
     .select("id, capacity");
   const classes =
     (classRows as unknown as
       { id: string; capacity: number | null }[] | null) ?? [];
 
-  const { data: enrollmentRows } = await supabase
+  const { data: enrollmentRows, error: enrollmentError } = await supabase
     .from("enrollments")
     .select("class_id")
     .eq("school_year_id", schoolYearId)
     .eq("status", "aktiv");
+  if (classError || enrollmentError) throw new Error("Kunne ikke hente kapasiteten. Prøv igjen.");
   const enrollments =
     (enrollmentRows as unknown as { class_id: string }[] | null) ?? [];
 
@@ -765,43 +676,20 @@ export async function placeStudentInClass(
     payload.class_id,
     payload.school_year_id,
   );
-  const full = await capacityError(
-    supabase,
-    payload.class_id,
-    payload.school_year_id,
-    pricing,
-  );
-  if (full) return { ok: false, error: full };
-
+  const capacityChange = capacityChangeSchema.safeParse({
+    newCapacity: readNumber(formData, "new_capacity"),
+    expectedCapacity: readNumber(formData, "expected_capacity"),
+  });
+  if (!capacityChange.success) return { ok: false, error: capacityChange.error.issues[0].message };
   const ended = current.find((row) => row.class_id === payload.class_id);
-  let enrollmentId: string;
-  if (ended) {
-    const { error } = await supabase
-      .from("enrollments")
-      .update({
-        status: "aktiv",
-        price_snapshot: pricing.priceSnapshot,
-      } as never)
-      .eq("id", ended.id);
-    if (error) return { ok: false, error: toUserError(error) };
-    enrollmentId = ended.id;
-  } else {
-    const { data, error } = await supabase
-      .from("enrollments")
-      .insert({ ...payload, price_snapshot: pricing.priceSnapshot } as never)
-      .select("id")
-      .single();
-    if (error) {
-      if (error.code === "23505") {
-        return {
-          ok: false,
-          error: "Eleven har allerede en plass dette skoleåret",
-        };
-      }
-      return { ok: false, error: toUserError(error) };
-    }
-    enrollmentId = (data as unknown as { id: string }).id;
-  }
+  const { data: enrollmentId, error } = await supabase.rpc("admin_place_student", {
+    p_student: payload.student_id,
+    p_class: payload.class_id,
+    p_year: payload.school_year_id,
+    p_new_capacity: capacityChange.data.newCapacity ?? undefined,
+    p_expected_capacity: capacityChange.data.expectedCapacity ?? undefined,
+  });
+  if (error) return { ok: false, error: toUserError(error) };
 
   await ensureStudentFee(supabase, payload.student_id, payload.school_year_id);
   await writeAudit({
@@ -843,9 +731,12 @@ async function loadEnrollment(supabase: SupabaseServerClient, id: string) {
 export async function changeEnrollmentClass(
   enrollmentId: string,
   classId: string,
+  capacityChange?: { newCapacity: number; expectedCapacity: number },
 ): Promise<ActionResult> {
   const denied = await requireAdmin();
   if (denied) return denied;
+  const capacityInput = capacityChangeSchema.safeParse({ newCapacity: capacityChange?.newCapacity ?? null, expectedCapacity: capacityChange?.expectedCapacity ?? null });
+  if (!capacityInput.success) return { ok: false, error: capacityInput.error.issues[0].message };
   if (!classId) return { ok: false, error: "Velg en klasse" };
   const supabase = await createClient();
   const enrollment = await loadEnrollment(supabase, enrollmentId);
@@ -862,14 +753,6 @@ export async function changeEnrollmentClass(
     classId,
     enrollment.school_year_id,
   );
-  const full = await capacityError(
-    supabase,
-    classId,
-    enrollment.school_year_id,
-    pricing,
-  );
-  if (full) return { ok: false, error: full };
-
   const [allocations, fee, oldPricing, { data: student }, { data: target }, { data: year }] =
     await Promise.all([
       supabase
@@ -910,14 +793,17 @@ export async function changeEnrollmentClass(
     feeIsClassPrice &&
     pricing.priceSnapshot != null;
 
-  const { error } = await supabase
-    .from("enrollments")
-    .update(
-      (repriced
-        ? { class_id: classId, price_snapshot: pricing.priceSnapshot }
-        : { class_id: classId }) as never,
-    )
-    .eq("id", enrollmentId);
+  const { error } = await supabase.rpc("admin_place_student", {
+    p_student: enrollment.student_id,
+    p_class: classId,
+    p_year: enrollment.school_year_id,
+    p_enrollment: enrollmentId,
+    p_expected_class: enrollment.class_id,
+    p_new_capacity: capacityInput.data.newCapacity ?? undefined,
+    p_expected_capacity: capacityInput.data.expectedCapacity ?? undefined,
+    p_reprice: repriced,
+    p_expected_price: pricing.priceSnapshot ?? undefined,
+  });
   if (error) {
     if (error.code === "23505") {
       return {

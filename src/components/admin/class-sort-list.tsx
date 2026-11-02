@@ -22,6 +22,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2 } from "lucide-react";
 import { reorderClasses, deleteClass } from "@/app/[locale]/admin/actions";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RowActionsMenu } from "@/components/admin/row-actions-menu";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ export type SortableClass = {
   enrolled: number;
   price: number | null;
   published: boolean;
+  teachers: string[];
 };
 
 function CapacityMeter({
@@ -70,7 +72,7 @@ function CapacityMeter({
   );
 }
 
-function Row({ item, basePath }: { item: SortableClass; basePath: string }) {
+function Row({ item, basePath, reordering }: { item: SortableClass; basePath: string; reordering: boolean }) {
   const {
     attributes,
     listeners,
@@ -78,7 +80,7 @@ function Row({ item, basePath }: { item: SortableClass; basePath: string }) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: item.id });
+  } = useSortable({ id: item.id, disabled: !reordering });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -90,12 +92,13 @@ function Row({ item, basePath }: { item: SortableClass; basePath: string }) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 bg-white px-4 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto] sm:px-5",
+        "grid items-center gap-x-3 gap-y-2 bg-white px-4 py-4 sm:px-5",
+        reordering ? "grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]" : "grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_auto_auto]",
         isDragging &&
           "relative z-10 rounded-xl shadow-[0_12px_32px_rgba(45,55,43,0.14)] ring-1 ring-[#8DB793]",
       )}
     >
-      <button
+      {reordering ? <button
         type="button"
         aria-label="Dra for å endre rekkefølge"
         title="Dra for å endre rekkefølge"
@@ -104,14 +107,15 @@ function Row({ item, basePath }: { item: SortableClass; basePath: string }) {
         {...listeners}
       >
         <GripVertical className="size-5" />
-      </button>
+      </button> : null}
       <Link
         href={`${basePath}/klasser/${item.id}`}
-        className="col-start-2 row-start-1 min-w-0 rounded-lg sm:col-start-auto sm:row-start-auto outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        className={cn("row-start-1 min-w-0 rounded-lg sm:col-start-auto sm:row-start-auto outline-none focus-visible:ring-3 focus-visible:ring-ring/50", reordering ? "col-start-2" : "col-start-1")}
       >
         <span className="block truncate font-bold underline-offset-4 hover:underline">
           {item.name}
         </span>
+        <span className="mt-1 block text-sm">{item.teachers.length ? item.teachers.join(", ") : "Ingen lærer tildelt"}</span>
         <span className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-admin-muted">
           <span>{item.age}</span>
           {item.price != null ? (
@@ -122,10 +126,10 @@ function Row({ item, basePath }: { item: SortableClass; basePath: string }) {
           ) : null}
         </span>
       </Link>
-      <div className="col-start-2 row-start-2 sm:col-start-auto sm:row-start-auto">
+      <div className={cn("row-start-2 sm:col-start-auto sm:row-start-auto", reordering ? "col-start-2" : "col-start-1")}>
         <CapacityMeter enrolled={item.enrolled} capacity={item.capacity} />
       </div>
-      <Badge
+      {reordering ? <Badge
         variant={item.published ? "default" : "secondary"}
         className={cn(
           "col-start-3 row-start-1 w-fit justify-self-end sm:col-start-auto sm:row-start-auto sm:justify-self-auto",
@@ -133,8 +137,8 @@ function Row({ item, basePath }: { item: SortableClass; basePath: string }) {
         )}
       >
         {item.published ? "Publisert" : "Utkast"}
-      </Badge>
-      <div className="col-start-3 row-start-2 flex items-center justify-end gap-1 sm:col-start-auto sm:row-start-auto">
+      </Badge> : null}
+      <div className={cn("row-start-1 flex items-center justify-end gap-1 sm:col-start-auto sm:row-start-auto", reordering ? "col-start-3" : "col-start-2")}>
         <RowActionsMenu
           label={`Handlinger for ${item.name}`}
           actions={[
@@ -167,6 +171,7 @@ export function ClassSortList({
   basePath: string;
 }) {
   const [items, setItems] = useState(classes);
+  const [reordering, setReordering] = useState(false);
   const [pending, startTransition] = useTransition();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -195,6 +200,8 @@ export function ClassSortList({
   }
 
   return (
+    <div>
+    <div className="flex justify-end border-b border-[#ECE8DF] px-4 py-2"><Button type="button" variant="ghost" disabled={pending} aria-pressed={reordering} onClick={() => setReordering((value) => !value)}>{reordering ? "Ferdig med rekkefølge" : "Rekkefølge på nettsiden"}</Button></div>
     <DndContext
       id="class-sort"
       sensors={sensors}
@@ -210,10 +217,11 @@ export function ClassSortList({
           className={cn("divide-y divide-[#ECE8DF]", pending && "opacity-70")}
         >
           {items.map((item) => (
-            <Row key={item.id} item={item} basePath={basePath} />
+            <Row key={item.id} item={item} basePath={basePath} reordering={reordering} />
           ))}
         </ul>
       </SortableContext>
     </DndContext>
+    </div>
   );
 }

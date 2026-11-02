@@ -65,10 +65,18 @@ Preserve the Islamskole Bærum name, logo, public cream-and-green identity, frie
 ## Product Principles
 
 1. Show the principal what needs attention before showing totals.
-2. Treat the family as the working relationship while preserving child-level decisions and accounting.
-3. Keep admission, placement, enrollment, and payment states explicit and independently trustworthy.
+2. Start staff lookup with the student's first name, age and class, then show parent contact and admin-only payments. Preserve shared family relationships and billing.
+3. Keep admission, placement, enrollment, and payment records independently trustworthy. Show exceptions when action is needed instead of repeating routine successful states.
 4. Preserve history, explain consequences, and make risky actions deliberate.
 5. Support migration from familiar tools without recreating a spreadsheet-shaped product.
+
+## Sunday administration
+
+Mobile is the primary staff interface. Dagplan leads navigation and combines teacher coverage with compact student attendance. Admins record most student attendance. Teachers default to present unless absence is recorded, without a separate check-in. Teachers can report several future school dates, and admins arrange substitutes.
+
+Student attendance distinguishes reported and unreported absence, with notes separate. Parents may contact teachers privately by email or SMS; teachers record the report and note manually. First-lesson attendance carries into later lessons that day while preserving explicit later corrections. Bulk present preserves existing marks and reported absence.
+
+Class information leads with teachers, times, age and capacity. Admission, placement and transfer offer an explicit capacity increase when the selected class is full, saved together with placement.
 
 ## Accessibility & Inclusion
 

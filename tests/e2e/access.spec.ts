@@ -16,6 +16,7 @@ import {
 } from "./fixtures";
 
 async function addUser(page: Page, name: string, email: string, role: "SFO" | "Administrator") {
+  await page.locator("summary").filter({ hasText: "Legg til bruker" }).click();
   const form = page.getByRole("form", { name: "Legg til bruker" });
   await expect(page.locator('input[type="password"]')).toHaveCount(0);
   await form.getByLabel("Navn").fill(name);
@@ -72,7 +73,7 @@ test.describe("/admin/brukere", () => {
     expect(await hasRole(email, "admin")).toBe(false);
     await page.reload();
     await page.getByRole("navigation", { name: "Filtrer på rolle" }).getByRole("button", { name: /^SFO/ }).click();
-    await expect(rowWith(page, email).getByText("SFO", { exact: true })).toBeVisible();
+    await expect(rowWith(page, email).getByText("SFO", { exact: true }).filter({ visible: true })).toBeVisible();
   });
 
   test("AUTH-14 Fjern administratortilgang is not offered for yourself", async ({ page }) => {

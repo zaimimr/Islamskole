@@ -99,6 +99,7 @@ export type PortalRosterRow = {
   guardians: PortalGuardianContact[];
   attendance_status: AttendanceStatus | null;
   attendance_marked_at: string | null;
+  inherited_from_lesson_id?: string | null;
   absence_report_id: string | null;
   absence_reason: string | null;
   absence_source: AbsenceSource | null;

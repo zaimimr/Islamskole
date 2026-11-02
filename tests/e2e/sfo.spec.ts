@@ -101,6 +101,7 @@ test("SFO staff publish a paid trip, parents sign up with health check, cash is 
 
   await loginAs(context, staff.email);
   await page.goto(`/admin/sfo/${activityId}`);
+  await page.locator("summary").filter({ hasText: "Rediger aktivitet" }).click();
   await page.getByRole("button", { name: "Avlys aktivitet" }).click();
   await page.getByLabel("Full", { exact: true }).check();
   await page.getByRole("button", { name: "Avlys og varsle påmeldte" }).click();
@@ -144,7 +145,8 @@ test("SFO staff run an activity without sign-up, see health and record attendanc
   const roster = page.getByRole("region", { name: "Deltakere" });
   await expect(roster.getByText("Uten påmelding · Elever: 2")).toBeVisible();
   await expect(roster.getByText("ZZTEST Gluten", { exact: false }).first()).toBeVisible();
-  await expect(roster.getByText("Foresatte:", { exact: false }).first()).toBeVisible();
+  await expect(roster.getByText("Foresatte", { exact: true }).first()).toBeVisible();
+  await expect(roster.getByRole("link", { name: new RegExp(family.guardians[0].firstName) }).first()).toHaveAttribute("href", /^tel:/);
   const child = roster.getByRole("listitem").first();
   await child.getByRole("button", { name: "Deltok", exact: true }).click();
   await expect(child.getByRole("button", { name: "Deltok", exact: true })).toHaveAttribute("aria-pressed", "true");

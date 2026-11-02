@@ -233,15 +233,18 @@ function mapRoster(rows: RosterRpcRow[] | null, year: number): PortalRosterRow[]
 
 export async function getLessonRoster(lessonId: string, yearLabel?: string | null): Promise<PortalRosterRow[]> {
   const supabase = await createClient();
-  const [{ data, error }, activeYear] = await Promise.all([
+  const [{ data, error }, inheritance, activeYear] = await Promise.all([
     supabase.rpc("portal_lesson_roster", { p_lesson_id: lessonId }),
+    supabase.from("attendance").select("student_id, inherited_from_lesson_id").eq("lesson_id", lessonId),
     getActiveYear(),
   ]);
   if (error) {
     if (error.code !== "42501") console.error("portal_lesson_roster failed", error);
     return [];
   }
-  return mapRoster(data, referenceYear(yearLabel ?? activeYear?.label));
+  if (inheritance.error) console.error("attendance inheritance failed", inheritance.error);
+  const sources = new Map((inheritance.data ?? []).map((row) => [row.student_id, row.inherited_from_lesson_id]));
+  return mapRoster(data, referenceYear(yearLabel ?? activeYear?.label)).map((row) => ({ ...row, inherited_from_lesson_id: sources.get(row.student_id) ?? null }));
 }
 
 export const getTimeSlots = cache(async (schoolYearId: string): Promise<PortalTimeSlot[]> => {

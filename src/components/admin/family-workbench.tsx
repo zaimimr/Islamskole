@@ -608,9 +608,13 @@ export function FamilyWorkbench({
                           </span>
                         ) : null}
                         <dl className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1 text-xs">
-                          <InlineFact label="Opptak" fact={child.admission} />
-                          <InlineFact label="Plassering" fact={child.placement} />
-                          <InlineFact label="Deltakelse" fact={child.enrollment} />
+                          <InlineFact label="Klasse" fact={child.placement} />
+                          {child.admission.tone !== "success" ? (
+                            <InlineFact label="Opptak" fact={child.admission} />
+                          ) : null}
+                          {child.enrollment.tone !== "success" ? (
+                            <InlineFact label="Deltakelse" fact={child.enrollment} />
+                          ) : null}
                           <div className="flex items-center gap-1.5">
                             <dt className="text-admin-muted">Kontingent</dt>
                             <dd className="font-semibold tabular-nums">

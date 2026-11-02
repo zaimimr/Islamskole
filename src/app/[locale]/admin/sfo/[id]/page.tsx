@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ChevronDown, ChevronLeft, Phone } from "lucide-react";
 import { getAccess } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { osloToday } from "@/lib/dates";
@@ -22,6 +22,20 @@ export const metadata: Metadata = { title: "SFO-aktivitet" };
 type Person = { name: string; phone: string | null; relation?: string | null };
 
 const card = "rounded-2xl bg-white p-5 ring-1 ring-[#E3DED3] sm:p-6";
+
+function PersonContacts({ label, people }: { label: string; people: Person[] }) {
+  return <div className="text-sm">
+    <p className="font-semibold text-admin-muted">{label}</p>
+    <ul className="flex flex-wrap gap-x-3 gap-y-1">
+      {people.map((person, index) => <li key={`${person.name}-${index}`}>
+        {person.phone ? <a href={`tel:${person.phone.replace(/[^\d+]/g, "")}`} className="inline-flex min-h-11 items-center gap-2 rounded-lg font-semibold text-admin-action outline-none underline-offset-4 hover:underline focus-visible:ring-3 focus-visible:ring-ring/50">
+          <Phone aria-hidden="true" className="size-3.5 shrink-0" />
+          <span className="wrap-anywhere">{person.name} · {person.phone}</span>
+        </a> : <span className="inline-flex min-h-11 items-center wrap-anywhere">{person.name}</span>}
+      </li>)}
+    </ul>
+  </div>;
+}
 
 function addDays(date: string, days: number) {
   const value = new Date(`${date}T12:00:00Z`);
@@ -61,10 +75,16 @@ export default async function SfoActivityPage({ params }: PageProps<"/[locale]/a
     <PageHeader title={activity.title} action={<StatusPill tone={tone}>{label}</StatusPill>} />
     <p className="-mt-4 text-admin-muted">{[formatSchoolDay(activity.event_date, "no"), time, activity.location].filter(Boolean).join(" · ")}</p>
 
-    {can("activities.sfo.manage") && activity.status !== "cancelled" ? <div className="grid gap-4 print:hidden">
-      <SfoActivityForm key={activity.updated_at} initial={activity} audience={(audience ?? []).map((row) => row.class_id)} classes={(classes ?? []).map((row) => ({ id: row.id, name: row.name_no }))} basePath={basePath} />
-      {activity.status === "published" ? <SfoCancel activityId={activity.id} expected={activity.updated_at} priced={activity.price_ore != null} /> : null}
-    </div> : null}
+    {can("activities.sfo.manage") && activity.status !== "cancelled" ? <details open={activity.status === "draft"} className="group print:hidden">
+      <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 rounded-xl bg-white px-4 font-heading text-lg font-bold outline-none ring-1 ring-[#E3DED3] focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
+        Rediger aktivitet
+        <ChevronDown aria-hidden="true" className="size-4 shrink-0 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="mt-4 grid gap-4">
+        <SfoActivityForm key={activity.updated_at} initial={activity} audience={(audience ?? []).map((row) => row.class_id)} classes={(classes ?? []).map((row) => ({ id: row.id, name: row.name_no }))} basePath={basePath} />
+        {activity.status === "published" ? <SfoCancel activityId={activity.id} expected={activity.updated_at} priced={activity.price_ore != null} /> : null}
+      </div>
+    </details> : null}
 
     {showRoster ? <section aria-labelledby="sfo-roster" className={`${card} grid gap-4`}>
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="sfo-roster" className="font-heading text-xl font-bold">Deltakere</h2><PrintRoster locale="no" /></div>
@@ -78,8 +98,8 @@ export default async function SfoActivityPage({ params }: PageProps<"/[locale]/a
             <p className="flex flex-wrap items-center gap-2"><span className="font-bold">{row.name}</span>{row.age != null ? <span className="text-sm text-admin-muted">{row.age} år</span> : null}{activity.signup ? <StatusPill tone={row.going ? "ok" : "neutral"}>{row.going ? "Deltar" : row.consent === "declined" ? "Ikke samtykke" : "Deltar ikke"}</StatusPill> : null}</p>
             {row.classes ? <p className="text-sm text-admin-muted">{row.classes}</p> : null}
             {row.going ? <>
-              {guardians.length ? <p className="text-sm">Foresatte: {guardians.map((person) => [person.name, person.phone].filter(Boolean).join(" ")).join(", ")}</p> : null}
-              {pickup.length ? <p className="text-sm">Henting: {pickup.map((person) => [person.name, person.phone].filter(Boolean).join(" ")).join(", ")}</p> : null}
+              {guardians.length ? <PersonContacts label="Foresatte" people={guardians} /> : null}
+              {pickup.length ? <PersonContacts label="Henting" people={pickup} /> : null}
               {row.photo_consent === false ? <p className="text-sm font-semibold">Ikke foto</p> : null}
               {activity.price_ore != null ? <p className="text-sm">{row.paid_ore >= activity.price_ore ? "Betalt" : `Betalt ${formatNok(row.paid_ore)} av ${formatNok(activity.price_ore)}`}</p> : null}
               {activity.status === "published" && activity.event_date <= today ? <ParticipationButtons activityId={activity.id} studentId={row.student_id} participation={row.participation} locale="no" /> : null}

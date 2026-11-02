@@ -62,9 +62,9 @@ export function TeacherAbsences({
   const substituteRow = absences.find((row) => row.guardianId === substituteFor);
 
   return (
-    <section aria-labelledby="teacher-absences-title" className="rounded-2xl bg-white ring-1 ring-[#E3DED3]">
+    <section aria-labelledby={`teacher-absences-title-${dayId}`} className="rounded-xl bg-white ring-1 ring-[#E3DED3]">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
-        <h2 id="teacher-absences-title" className="font-heading text-lg font-bold">
+        <h2 id={`teacher-absences-title-${dayId}`} className="font-heading text-lg font-bold">
           Lærere borte
           {absences.length ? <span className="ml-2 text-admin-muted tabular-nums">{absences.length}</span> : null}
         </h2>

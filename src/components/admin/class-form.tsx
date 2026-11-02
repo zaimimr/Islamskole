@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Eye, Globe2, Loader2, Settings2 } from "lucide-react";
-import { createClass, updateClass } from "@/app/[locale]/admin/actions";
+import { createClass } from "@/app/[locale]/admin/actions";
+import { saveClassWebsite } from "@/app/[locale]/admin/(admin-only)/klasser/class-settings-actions";
 import { ImageUpload } from "@/components/admin/image-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ export type ClassRecord = {
   image_url: string | null;
   sort_order: number | null;
   published: boolean | null;
+  updated_at?: string;
 };
 
 export function ClassForm({
@@ -45,7 +47,7 @@ export function ClassForm({
     formData.set("published", published ? "true" : "false");
     startTransition(async () => {
       const result = classRecord
-        ? await updateClass(classRecord.id, formData)
+        ? await saveClassWebsite(classRecord.id, classRecord.updated_at ?? "", formData)
         : await createClass(formData);
       if (result.ok) {
         toast.success(classRecord ? "Klasse oppdatert" : "Klasse opprettet");
@@ -179,7 +181,7 @@ export function ClassForm({
         </section>
 
         <aside className="grid gap-5 xl:sticky xl:top-24">
-          <section className="rounded-2xl bg-white p-5 ring-1 ring-[#E3DED3] sm:p-6">
+          {!classRecord ? <section className="rounded-2xl bg-white p-5 ring-1 ring-[#E3DED3] sm:p-6">
             <div className="flex items-start gap-3">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FEEDCA] text-[#775108]">
                 <Settings2 aria-hidden="true" className="size-5" />
@@ -202,7 +204,7 @@ export function ClassForm({
                     type="number"
                     min="0"
                     inputMode="numeric"
-                    defaultValue={classRecord?.age_min ?? ""}
+                    defaultValue=""
                   />
                 </div>
                 <div className="grid gap-2">
@@ -213,7 +215,7 @@ export function ClassForm({
                     type="number"
                     min="0"
                     inputMode="numeric"
-                    defaultValue={classRecord?.age_max ?? ""}
+                    defaultValue=""
                   />
                 </div>
                 <div className="grid gap-2">
@@ -224,7 +226,7 @@ export function ClassForm({
                     type="number"
                     min="0"
                     inputMode="numeric"
-                    defaultValue={classRecord?.capacity ?? ""}
+                    defaultValue=""
                   />
                 </div>
               </div>
@@ -238,7 +240,7 @@ export function ClassForm({
                   min="0"
                   inputMode="numeric"
                   placeholder="La stå tom for å bruke årsavgiften"
-                  defaultValue={classRecord?.price ?? ""}
+                  defaultValue=""
                 />
                 <p className="text-sm text-admin-muted">
                   Brukes sjelden. En egen pris overstyrer årsavgiften for alle
@@ -246,7 +248,7 @@ export function ClassForm({
                 </p>
               </div>
             </div>
-          </section>
+          </section> : null}
 
           <section className="rounded-2xl bg-white p-5 ring-1 ring-[#E3DED3] sm:p-6">
             <div className="flex items-start gap-3">

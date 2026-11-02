@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils";
 const COLUMNS: { status: DayStatus; label: string; dot: string }[] = [
   { status: "til_stede", label: "Møtt", dot: "bg-admin-action" },
   { status: "sent", label: "Forsinket", dot: "bg-brand-sun" },
-  { status: "meldt_fravaer", label: "Gyldig fravær", dot: "bg-brand-sky" },
-  { status: "fravaer", label: "Ugyldig fravær", dot: "bg-destructive" },
+  { status: "meldt_fravaer", label: "Meldt fravær", dot: "bg-brand-sky" },
+  { status: "fravaer", label: "Ikke meldt fravær", dot: "bg-destructive" },
 ];
 
 type SummaryRow = { id: string; name: string; counts: AttendanceCounts; unmarked?: number };
@@ -108,7 +108,7 @@ export async function AttendanceTotals({
           CSV
         </a>
       </div>
-      <p className="text-sm text-admin-muted">Oppmøte = (møtt + forsinket) / registrerte dager. Gyldig og ugyldig fravær teller som fravær.</p>
+      <p className="text-sm text-admin-muted">Oppmøte = (møtt + forsinket) / registrerte dager. Meldt og ikke meldt fravær teller som fravær.</p>
       <div className="grid gap-1.5 rounded-2xl bg-[#F7F5F0] px-4 py-3 ring-1 ring-[#E3DED3]">
         <p className="flex items-baseline justify-between gap-3 font-heading text-xl font-bold">
           <span>Totalt <span className="sr-only">{yearLabel}</span></span>

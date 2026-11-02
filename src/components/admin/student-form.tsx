@@ -439,7 +439,7 @@ export function StudentForm({
         </div>
       </section>
 
-      <div className="sticky bottom-4 z-10 flex flex-col-reverse gap-2 rounded-2xl bg-white p-3 ring-1 ring-[#D8D3C8] sm:flex-row sm:justify-end">
+      <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 flex flex-col-reverse gap-2 rounded-2xl bg-white p-3 ring-1 ring-[#D8D3C8] sm:flex-row sm:justify-end lg:bottom-4">
         <Button
           type="button"
           variant="outline"

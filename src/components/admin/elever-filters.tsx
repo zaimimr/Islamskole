@@ -109,7 +109,30 @@ export function EleverFilters({
     (payValue !== "alle" ? 1 : 0);
 
   return (
-    <div aria-busy={pending}>
+    <div aria-busy={pending} className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_3fr] xl:items-end">
+        <div className="grid gap-1.5">
+          <Label htmlFor="elever-sok">Søk</Label>
+          <div className="relative">
+            <SearchIcon
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-[#2F7938]"
+            />
+            <Input
+              id="elever-sok"
+              type="search"
+              defaultValue={searchParams.get("q") ?? ""}
+              placeholder="Elevens fornavn, foresatt eller e-post"
+              className="min-h-11 rounded-xl border-[#CFC9BD] bg-white pl-10 shadow-none focus-visible:border-[#2F7938] focus-visible:ring-[#2F7938]/20"
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  if (timer.current) clearTimeout(timer.current);
+                  setParam("q", e.currentTarget.value.trim(), "");
+                }
+              }}
+            />
+          </div>
+        </div>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -119,7 +142,7 @@ export function EleverFilters({
       >
         <span className="inline-flex items-center gap-2">
           <ListFilter aria-hidden="true" className="size-4 text-[#2F7938]" />
-          Søk og filtre
+          Filtre
           {activeFilters > 0 ? (
             <span className="rounded-full bg-[#DCEDDD] px-2 py-0.5 text-xs text-[#216A2B]">
               {activeFilters} aktive
@@ -134,34 +157,10 @@ export function EleverFilters({
       <div
         id="elever-filter-fields"
         className={cn(
-          "mt-3 gap-3 pb-2 sm:mt-0 sm:grid sm:grid-cols-2 sm:pb-0 xl:grid-cols-4 xl:items-end",
+          "mt-3 gap-3 pb-2 sm:mt-0 sm:grid sm:grid-cols-3 sm:pb-0 xl:items-end",
           open ? "grid" : "hidden",
         )}
       >
-        <div className="grid gap-1.5">
-          <Label htmlFor="elever-sok">Søk</Label>
-          <div className="relative">
-            <SearchIcon
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-[#2F7938]"
-            />
-            <Input
-              id="elever-sok"
-              type="search"
-              defaultValue={searchParams.get("q") ?? ""}
-              placeholder="Navn, foresatt eller e-post"
-              className="min-h-11 rounded-xl border-[#CFC9BD] bg-white pl-10 shadow-none focus-visible:border-[#2F7938] focus-visible:ring-[#2F7938]/20"
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  if (timer.current) clearTimeout(timer.current);
-                  setParam("q", e.currentTarget.value.trim(), "");
-                }
-              }}
-            />
-          </div>
-        </div>
-
         <div className="grid gap-1.5">
           <Label htmlFor="elever-school-year">Skoleår</Label>
           <Select

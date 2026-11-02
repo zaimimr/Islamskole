@@ -268,7 +268,7 @@ export function EventForm({
         </aside>
       </div>
 
-      <div className="sticky bottom-0 z-10 flex flex-col-reverse gap-3 rounded-2xl bg-white/95 p-4 ring-1 ring-[#E3DED3] supports-backdrop-filter:backdrop-blur-md sm:flex-row sm:items-center sm:justify-end">
+      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 flex flex-col-reverse gap-3 rounded-2xl bg-white/95 p-4 ring-1 ring-[#E3DED3] supports-backdrop-filter:backdrop-blur-md sm:flex-row sm:items-center sm:justify-end lg:bottom-0">
         <Button
           type="button"
           variant="outline"

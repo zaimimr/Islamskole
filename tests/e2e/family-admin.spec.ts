@@ -70,6 +70,7 @@ test.describe("families and students", () => {
     const to = await seedFamily();
     const student = from.students[0];
     await page.goto(`/admin/elever/${student.id}`);
+    await page.getByText("Elevopplysninger", { exact: true }).click();
     await page.getByRole("button", { name: "Flytt til annen familie" }).click();
     const dialog = page.getByRole("dialog").or(page.getByRole("alertdialog")).first();
     await pickOption(page, dialog, "Familie", to.displayName);
@@ -87,6 +88,7 @@ test.describe("families and students", () => {
     const student = family.students[0];
     const email = zzEmail("elevlogin");
     await page.goto(`/admin/elever/${student.id}`);
+    await page.getByText("Elevopplysninger", { exact: true }).click();
     await page.getByLabel("Elevens e-post (innlogging)").fill(email);
     await page.getByRole("button", { name: "Lagre endringer" }).click();
     await expect

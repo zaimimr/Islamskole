@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { adminBasePath, localePrefix } from "@/components/admin/paths";
 import { buttonVariants } from "@/components/ui/button";
+import { ClassSettings } from "./class-settings";
 import { ClassForm, type ClassRecord } from "@/components/admin/class-form";
 import { SectionNavigation } from "@/components/admin/section-navigation";
 import { ageInYear, schoolYearStart } from "@/lib/age";
@@ -382,7 +383,7 @@ export default async function KlassePage({
   const basePath = adminBasePath(locale);
   const listHref = `${basePath}/klasser`;
   const classHref = `${listHref}/${id}`;
-  const tab = typeof query.fane === "string" && ["undervisning", "semesterplan", "materiell", "aktiviteter", "nettside"].includes(query.fane) ? query.fane : "elever";
+  const tab = typeof query.fane === "string" && ["elever", "undervisning", "semesterplan", "materiell", "aktiviteter", "nettside"].includes(query.fane) ? query.fane : "klasseinfo";
   const data = await getClassPage(id);
   const { classRecord, activeYear } = data;
 
@@ -597,7 +598,8 @@ export default async function KlassePage({
       </header>
 
       <SectionNavigation label={locale === "en" ? "Class views" : "Klassevisning"} current={tab} items={[
-        { id: "elever", label: locale === "en" ? "Students" : "Elever i år", href: classHref },
+        { id: "klasseinfo", label: "Klasseinfo", href: classHref },
+        { id: "elever", label: locale === "en" ? "Students" : "Elever i år", href: `${classHref}?fane=elever` },
         { id: "undervisning", label: locale === "en" ? "Teaching" : "Undervisning", href: `${classHref}?fane=undervisning` },
         { id: "semesterplan", label: locale === "en" ? "Semester plan" : "Semesterplan", href: `${classHref}?fane=semesterplan` },
         { id: "materiell", label: locale === "en" ? "Materials" : "Materiell", href: `${classHref}?fane=materiell` },
@@ -618,7 +620,17 @@ export default async function KlassePage({
         </section>
       ) : (
         <>
-          {activeYear && tab === "undervisning" ? (
+          {activeYear && (tab === "klasseinfo" || tab === "undervisning") ? (
+            <ClassTeachers
+              classId={classRecord.id}
+              yearLabel={activeYear.label}
+              assigned={classTeachers}
+              candidates={teacherCandidates}
+              teachersHref={`${basePath}/laerere`}
+            />
+          ) : null}
+          {tab === "klasseinfo" ? <ClassSettings key={classRecord.updated_at} schoolClass={classRecord} enrolled={data.enrollments.length} /> : null}
+          {activeYear && (tab === "klasseinfo" || tab === "undervisning") ? (
             <SlotPlanEditor
               key={JSON.stringify(data.plans)}
               classId={classRecord.id}
@@ -631,15 +643,6 @@ export default async function KlassePage({
                 name: joinName(row.first_name, row.last_name) || "(uten navn)",
               }))}
               dayPlanHref={`${basePath}/dagsplan`}
-            />
-          ) : null}
-          {activeYear && tab === "undervisning" ? (
-            <ClassTeachers
-              classId={classRecord.id}
-              yearLabel={activeYear.label}
-              assigned={classTeachers}
-              candidates={teacherCandidates}
-              teachersHref={`${basePath}/laerere`}
             />
           ) : null}
           {activeYear && tab === "semesterplan" ? (

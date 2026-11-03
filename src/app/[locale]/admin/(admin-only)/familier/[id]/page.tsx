@@ -529,9 +529,6 @@ export default async function FamilyPage({
     email: guardian.email ?? undefined,
     isTeacher: guardian.isTeacher,
   }));
-  const primaryGuardian =
-    family.guardians.find((guardian) => guardian.isPrimaryContact) ??
-    family.guardians[0];
   const totalFeeOre = children.some((child) => child.feeAmountOre != null)
     ? children.reduce((sum, child) => sum + (child.feeAmountOre ?? 0), 0)
     : null;
@@ -731,8 +728,6 @@ export default async function FamilyPage({
         address: [family.address, family.postalCode, family.city]
           .filter(Boolean)
           .join(", "),
-        phone: primaryGuardian?.phone ?? undefined,
-        email: primaryGuardian?.email ?? undefined,
         guardians,
         children,
         schoolYearLabel: activeYear?.label,
@@ -767,6 +762,7 @@ export default async function FamilyPage({
           />
         ) : null
       }
+      paymentStatus={activeYear ? <FamilyEconomy {...economyProps!} part="status" /> : null}
       economy={activeYear ? <FamilyEconomy {...economyProps!} /> : null}
       economySetup={activeYear ? <FamilyEconomy {...economyProps!} part="setup" /> : null}
       />

@@ -3,10 +3,8 @@ import Link from "next/link";
 import {
   ArrowRight,
   CircleAlert,
-  Clock3,
   GraduationCap,
   Mail,
-  Pencil,
   Phone,
   ReceiptText,
   UserRound,
@@ -22,12 +20,11 @@ import {
   TeacherToggleButton,
 } from "@/components/admin/teacher-toggle-button";
 import {
-  FamilyPickerDialog,
+  FamilyActionsMenu,
   MergeDuplicateButton,
   RemoveGuardianButton,
   type FamilyOption,
 } from "@/app/[locale]/admin/(admin-only)/familier/family-controls";
-import { mergeFamilies } from "@/app/[locale]/admin/(admin-only)/familier/families-actions";
 import { ChildMergeDialog } from "@/app/[locale]/admin/(admin-only)/familier/child-merge-dialog";
 
 export type FamilyStatusTone =
@@ -108,8 +105,6 @@ export type FamilyWorkbenchProps = {
     status?: FamilyFact;
     updatedAt?: string;
     address?: string;
-    phone?: string;
-    email?: string;
     language?: string;
     guardians: FamilyGuardianSummary[];
     children: FamilyChildSummary[];
@@ -131,6 +126,7 @@ export type FamilyWorkbenchProps = {
   allAttentionHref?: string;
   duplicateFamilies?: FamilyDuplicate[];
   mergeOptions?: FamilyOption[];
+  paymentStatus?: ReactNode;
   economy?: ReactNode;
   economySetup?: ReactNode;
   paymentHistory?: ReactNode;
@@ -383,6 +379,7 @@ export function FamilyWorkbench({
   allAttentionHref,
   duplicateFamilies = [],
   mergeOptions = [],
+  paymentStatus,
   economy,
   economySetup,
   paymentHistory,
@@ -395,58 +392,148 @@ export function FamilyWorkbench({
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-5">
-      <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
-        <div className="min-w-0 max-w-full">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h1 className="text-balance font-heading text-[1.875rem] leading-tight font-bold tracking-[-0.02em] sm:text-[2.25rem]">
-              {family.name}
-            </h1>
-            {family.status ? <StatusBadge fact={family.status} /> : null}
+      <header className="flex items-start gap-3">
+        <h1 className="min-w-0 flex-1 wrap-anywhere text-balance font-heading text-[1.875rem] leading-tight font-bold tracking-[-0.02em] sm:text-[2.25rem]">
+          {family.name}
+        </h1>
+        {editFamilyHref || mergeOptions.length > 0 ? <FamilyActionsMenu familyId={family.id} familyName={family.name} editHref={editFamilyHref} options={mergeOptions} /> : null}
+      </header>
+
+      <div className="grid min-w-0 grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1.9fr)_minmax(18rem,1fr)]">
+        <section
+          aria-labelledby={`family-children-${family.id}`}
+          className={panelClass}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id={`family-children-${family.id}`} className={panelTitleClass}>
+              Barn ({family.children.length})
+            </h2>
+            <div className="flex min-w-0 max-w-full flex-wrap gap-2">
+              <ChildMergeDialog
+                options={family.children.map((child) => ({
+                  id: child.id.startsWith("application-")
+                    ? child.id.slice(12)
+                    : child.id,
+                  type: child.id.startsWith("application-")
+                    ? "application"
+                    : "student",
+                  name: child.name,
+                  description: `${child.description ?? ""} · ${child.placement.value} · ${child.payment.value}`,
+                }))}
+              />
+              {addChildHref ? (
+                <Link href={addChildHref} className={secondaryLinkClass}>
+                  <GraduationCap aria-hidden="true" className="size-4" />
+                  Legg til barn
+                </Link>
+              ) : null}
+            </div>
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-x-5 text-sm">
-            {family.phone ? (
-              <a href={telHref(family.phone)} className={contactLinkClass}>
-                <Phone aria-hidden="true" className="size-4 shrink-0" />
-                {family.phone}
-              </a>
-            ) : null}
-            {family.email ? (
-              <a
-                href={`mailto:${family.email}`}
-                className={cn(contactLinkClass, "min-w-0 max-w-full")}
-              >
-                <Mail aria-hidden="true" className="size-4 shrink-0" />
-                <span className="min-w-0 truncate">{family.email}</span>
-              </a>
-            ) : null}
-            {family.updatedAt ? (
-              <p className="flex min-h-11 items-center gap-1.5 text-xs text-admin-muted lg:min-h-8">
-                <Clock3 aria-hidden="true" className="size-3.5" />
-                Sist oppdatert {formatTimestamp(family.updatedAt)}
-              </p>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {editFamilyHref ? (
-            <Link href={editFamilyHref} className={secondaryLinkClass}>
-              <Pencil aria-hidden="true" className="size-4" />
-              Rediger familie
+          {family.children.length === 0 ? (
+            <p className="mt-4 rounded-xl bg-[#F7F6F1] px-4 py-5 text-sm text-admin-muted">
+              Ingen barn er knyttet til familien.
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y divide-[#ECE8DF]">
+              {family.children.map((child) => (
+                <li key={child.id}>
+                  <Link
+                    href={child.href}
+                    className="group -mx-2 flex min-w-0 items-start gap-3 rounded-xl px-2 py-4 outline-none transition-colors hover:bg-[#FBFAF6] focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50"
+                  >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FEEDCA] font-heading text-sm font-bold text-[#775108]">
+                      {initials(child.name)}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+                        <span className="min-w-0">
+                          <span className="block wrap-anywhere font-bold">{child.name}</span>
+                          {child.description ? (
+                            <span className="block text-xs text-admin-muted">
+                              {child.description}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <span className="sr-only">Betaling</span>
+                          <StatusBadge fact={child.payment} />
+                        </span>
+                      </span>
+                      {child.payment.detail ? (
+                        <span className="mt-1 block text-xs text-admin-muted">
+                          {child.payment.detail}
+                        </span>
+                      ) : null}
+                      <dl className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1 text-xs">
+                        <InlineFact label="Klasse" fact={child.placement} />
+                        {child.admission.tone !== "success" ? (
+                          <InlineFact label="Opptak" fact={child.admission} />
+                        ) : null}
+                        {child.enrollment.tone !== "success" ? (
+                          <InlineFact label="Deltakelse" fact={child.enrollment} />
+                        ) : null}
+                        <div className="flex items-center gap-1.5">
+                          <dt className="text-admin-muted">Kontingent</dt>
+                          <dd className="font-semibold tabular-nums">
+                            {child.feeAmountOre == null
+                              ? "Ikke fastsatt"
+                              : formatNok(child.feeAmountOre)}
+                          </dd>
+                        </div>
+                      </dl>
+                    </span>
+                    <ArrowRight
+                      aria-hidden="true"
+                      className="mt-2.5 size-5 shrink-0 text-admin-muted transition-transform group-hover:translate-x-0.5"
+                    />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section
+          aria-labelledby={`family-guardians-${family.id}`}
+          className={panelClass}
+        >
+          <h2 id={`family-guardians-${family.id}`} className={panelTitleClass}>
+            Foresatte
+          </h2>
+          {family.guardians.length === 0 ? (
+            <p className="mt-3 text-sm text-admin-muted">
+              Ingen foresatte er registrert.
+            </p>
+          ) : (
+            <ul className="mt-4 divide-y divide-[#ECE8DF]">
+              {family.guardians.map((guardian) => (
+                <GuardianItem
+                  key={guardian.id}
+                  familyId={family.id}
+                  guardian={guardian}
+                  removable={family.guardians.length > 1}
+                />
+              ))}
+            </ul>
+          )}
+          {addGuardianHref ? (
+            <Link
+              href={addGuardianHref}
+              className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#CFC8BA] px-3 text-sm font-bold text-[#277A31] outline-none transition-colors hover:border-[#8DB793] hover:bg-[#F7FBF7] focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              <UserRound aria-hidden="true" className="size-4" />
+              Legg til foresatt
             </Link>
           ) : null}
-          {mergeOptions.length > 0 ? (
-            <FamilyPickerDialog
-              triggerLabel="Slå sammen med annen familie"
-              title={`Slå sammen med ${family.name}`}
-              description="Barn, foresatte, betalingsplaner og innmeldinger fra familien du velger flyttes hit. Foresatte med samme e-post blir én person, og den andre familien slettes."
-              confirmLabel="Slå sammen"
-              successMessage="Familiene er slått sammen"
-              options={mergeOptions}
-              action={mergeFamilies.bind(null, family.id)}
-            />
-          ) : null}
-        </div>
-      </header>
+        </section>
+
+        {paymentStatus ? (
+          <section aria-labelledby={`family-payment-status-${family.id}`} className={cn(panelClass, "lg:col-span-2")}>
+            <h2 id={`family-payment-status-${family.id}`} className={panelTitleClass}>Betalingsstatus {family.schoolYearLabel}</h2>
+            <div className="mt-4">{paymentStatus}</div>
+          </section>
+        ) : null}
+      </div>
 
       {duplicateFamilies.length > 0 ? (
         <section
@@ -543,99 +630,6 @@ export function FamilyWorkbench({
             </section>
           ) : null}
 
-          <section
-            aria-labelledby={`family-children-${family.id}`}
-            className={panelClass}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 id={`family-children-${family.id}`} className={panelTitleClass}>
-                Barn ({family.children.length})
-              </h2>
-              <div className="flex min-w-0 max-w-full flex-wrap gap-2">
-                <ChildMergeDialog
-                  options={family.children.map((child) => ({
-                    id: child.id.startsWith("application-")
-                      ? child.id.slice(12)
-                      : child.id,
-                    type: child.id.startsWith("application-")
-                      ? "application"
-                      : "student",
-                    name: child.name,
-                    description: `${child.description ?? ""} · ${child.placement.value} · ${child.payment.value}`,
-                  }))}
-                />
-                {addChildHref ? (
-                  <Link href={addChildHref} className={secondaryLinkClass}>
-                    <GraduationCap aria-hidden="true" className="size-4" />
-                    Legg til barn
-                  </Link>
-                ) : null}
-              </div>
-            </div>
-            {family.children.length === 0 ? (
-              <p className="mt-4 rounded-xl bg-[#F7F6F1] px-4 py-5 text-sm text-admin-muted">
-                Ingen barn er knyttet til familien.
-              </p>
-            ) : (
-              <ul className="mt-3 divide-y divide-[#ECE8DF]">
-                {family.children.map((child) => (
-                  <li key={child.id}>
-                    <Link
-                      href={child.href}
-                      className="group -mx-2 flex min-w-0 items-start gap-3 rounded-xl px-2 py-4 outline-none transition-colors hover:bg-[#FBFAF6] focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50"
-                    >
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FEEDCA] font-heading text-sm font-bold text-[#775108]">
-                        {initials(child.name)}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-                          <span className="min-w-0">
-                            <span className="block wrap-anywhere font-bold">{child.name}</span>
-                            {child.description ? (
-                              <span className="block text-xs text-admin-muted">
-                                {child.description}
-                              </span>
-                            ) : null}
-                          </span>
-                          <span className="flex items-center gap-2">
-                            <span className="sr-only">Betaling</span>
-                            <StatusBadge fact={child.payment} />
-                          </span>
-                        </span>
-                        {child.payment.detail ? (
-                          <span className="mt-1 block text-xs text-admin-muted">
-                            {child.payment.detail}
-                          </span>
-                        ) : null}
-                        <dl className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1 text-xs">
-                          <InlineFact label="Klasse" fact={child.placement} />
-                          {child.admission.tone !== "success" ? (
-                            <InlineFact label="Opptak" fact={child.admission} />
-                          ) : null}
-                          {child.enrollment.tone !== "success" ? (
-                            <InlineFact label="Deltakelse" fact={child.enrollment} />
-                          ) : null}
-                          <div className="flex items-center gap-1.5">
-                            <dt className="text-admin-muted">Kontingent</dt>
-                            <dd className="font-semibold tabular-nums">
-                              {child.feeAmountOre == null
-                                ? "Ikke fastsatt"
-                                : formatNok(child.feeAmountOre)}
-                            </dd>
-                          </div>
-                        </dl>
-                      </span>
-                      <ArrowRight
-                        aria-hidden="true"
-                        className="mt-2.5 size-5 shrink-0 text-admin-muted transition-transform group-hover:translate-x-0.5"
-                      />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
           {paymentHistory}
 
           {economySetup ? (
@@ -650,40 +644,6 @@ export function FamilyWorkbench({
 
         <div className="grid min-w-0 grid-cols-1 gap-5">
           <section
-            aria-labelledby={`family-guardians-${family.id}`}
-            className={panelClass}
-          >
-            <h2 id={`family-guardians-${family.id}`} className={panelTitleClass}>
-              Foresatte
-            </h2>
-            {family.guardians.length === 0 ? (
-              <p className="mt-3 text-sm text-admin-muted">
-                Ingen foresatte er registrert.
-              </p>
-            ) : (
-              <ul className="mt-4 divide-y divide-[#ECE8DF]">
-                {family.guardians.map((guardian) => (
-                  <GuardianItem
-                    key={guardian.id}
-                    familyId={family.id}
-                    guardian={guardian}
-                    removable={family.guardians.length > 1}
-                  />
-                ))}
-              </ul>
-            )}
-            {addGuardianHref ? (
-              <Link
-                href={addGuardianHref}
-                className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#CFC8BA] px-3 text-sm font-bold text-[#277A31] outline-none transition-colors hover:border-[#8DB793] hover:bg-[#F7FBF7] focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                <UserRound aria-hidden="true" className="size-4" />
-                Legg til foresatt
-              </Link>
-            ) : null}
-          </section>
-
-          <section
             aria-labelledby={`family-info-${family.id}`}
             className={panelClass}
           >
@@ -691,6 +651,8 @@ export function FamilyWorkbench({
               Familieinformasjon
             </h2>
             <dl className="mt-3 divide-y divide-[#ECE8DF] text-sm">
+              {family.status ? <div className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-3 py-2.5"><dt className="text-admin-muted">Status</dt><dd><StatusBadge fact={family.status} /></dd></div> : null}
+              {family.updatedAt ? <div className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-3 py-2.5"><dt className="text-admin-muted">Sist oppdatert</dt><dd className="font-semibold">{formatTimestamp(family.updatedAt)}</dd></div> : null}
               <div className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-3 py-2.5">
                 <dt className="text-admin-muted">Primær kontakt</dt>
                 <dd className="font-semibold">

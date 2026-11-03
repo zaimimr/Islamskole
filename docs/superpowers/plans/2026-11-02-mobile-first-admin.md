@@ -35,3 +35,11 @@ Navigation, student overview, Sunday workflow, class capacity and remaining-admi
 - [x] Verify default expansion, compact mobile collapse, future writes and permission boundaries with focused browser/database checks, then lint, typecheck, build and release.
 
 Follow-up checks: all four attendance scenarios and all three mobile scenarios pass, including the 37-route 360px walkthrough. Compact collapse was visually checked on a phone. The database suite passes 44 files and 982 assertions; 153 unit tests, lint, typecheck and production build pass. Future reported absence correctly replaces a previously recorded present status, while safe bulk present preserves late arrivals and reports. Production preflight includes only migration 20261103110000_admin_future_attendance.
+
+## Follow-up: family information hierarchy
+
+- [x] Move family editing and merging into a three-dot menu, preserving the existing merge confirmation.
+- [x] Show student details, parent contacts and payment status first; place Vipps actions, history, setup and family metadata afterward.
+- [x] Check mobile order, menu keyboard access, editing and family merging, then run static checks and deploy.
+
+Family follow-up checks: 13/13 focused family/mobile browser checks pass, including the 37-route 360px walkthrough, payment history and actual merging. The menu ref correction passes a further 4/4 focused checks for editing, keyboard access and dialog focus return. The 360px family layout was visually reviewed. Final lint, typecheck and production build pass.

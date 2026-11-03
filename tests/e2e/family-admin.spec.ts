@@ -53,8 +53,14 @@ test.describe("families and students", () => {
     const keep = await seedFamily({ guardians: [{ email: sharedEmail }] });
     const merge = await seedFamily({ guardians: [{ email: sharedEmail.toUpperCase() }, {}] });
     await page.goto(`/admin/familier/${keep.id}`);
-    await page.getByRole("button", { name: "Slå sammen med annen familie" }).click();
+    await page.getByRole("button", { name: "Familiehandlinger", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Slå sammen med annen familie", exact: true }).click();
     const dialog = page.getByRole("dialog").or(page.getByRole("alertdialog")).first();
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Familiehandlinger", exact: true })).toBeFocused();
+    await page.getByRole("button", { name: "Familiehandlinger", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Slå sammen med annen familie", exact: true }).click();
     await pickOption(page, dialog, "Familie", merge.displayName);
     await dialog.getByRole("button", { name: "Slå sammen" }).click();
 

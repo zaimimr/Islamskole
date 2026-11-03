@@ -1,9 +1,10 @@
 "use client";
 
-import { useId, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition, type ReactNode, type RefObject } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { GitMerge, Loader2, UserX } from "lucide-react";
+import { GitMerge, Loader2, MoreHorizontal, Pencil, UserX } from "lucide-react";
 import {
   mergeFamilies,
   removeGuardianFromFamily,
@@ -11,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/ui/select-field";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +48,8 @@ export function FamilyPickerDialog({
   options,
   action,
   triggerClassName,
+  renderTrigger,
+  finalFocus,
 }: {
   triggerLabel: string;
   title: string;
@@ -55,6 +59,8 @@ export function FamilyPickerDialog({
   options: FamilyOption[];
   action: (familyId: string) => Promise<Result>;
   triggerClassName?: string;
+  renderTrigger?: (open: () => void) => ReactNode;
+  finalFocus?: RefObject<HTMLButtonElement | null>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -82,7 +88,7 @@ export function FamilyPickerDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
+      {renderTrigger ? renderTrigger(() => setOpen(true)) : <DialogTrigger
         render={
           <Button
             type="button"
@@ -93,8 +99,8 @@ export function FamilyPickerDialog({
             {triggerLabel}
           </Button>
         }
-      />
-      <DialogContent className="sm:max-w-md">
+      />}
+      <DialogContent className="sm:max-w-md" finalFocus={finalFocus}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -126,6 +132,38 @@ export function FamilyPickerDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+export function FamilyActionsMenu({ familyId, familyName, editHref, options }: {
+  familyId: string;
+  familyName: string;
+  editHref?: string;
+  options: FamilyOption[];
+}) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  return (
+    <FamilyPickerDialog
+      triggerLabel="Slå sammen med annen familie"
+      title={`Slå sammen med ${familyName}`}
+      description="Barn, foresatte, betalingsplaner og innmeldinger fra familien du velger flyttes hit. Foresatte med samme e-post blir én person, og den andre familien slettes."
+      confirmLabel="Slå sammen"
+      successMessage="Familiene er slått sammen"
+      options={options}
+      action={mergeFamilies.bind(null, familyId)}
+      finalFocus={triggerRef}
+      renderTrigger={(open) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger ref={triggerRef} render={<Button type="button" variant="ghost" size="icon" aria-label="Familiehandlinger" className="size-11 shrink-0" />}>
+            <MoreHorizontal aria-hidden="true" className="size-5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-64">
+            {editHref ? <DropdownMenuItem nativeButton={false} render={<Link href={editHref} />}><Pencil aria-hidden="true" />Rediger familie</DropdownMenuItem> : null}
+            {options.length > 0 ? <DropdownMenuItem onClick={open}><GitMerge aria-hidden="true" />Slå sammen med annen familie</DropdownMenuItem> : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    />
   );
 }
 

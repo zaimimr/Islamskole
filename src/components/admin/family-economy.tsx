@@ -160,7 +160,7 @@ export function FamilyEconomy({
   autoEnabled = false,
   uncoveredOre = 0,
   today,
-  part = "summary",
+  part = "actions",
 }: {
   familyId: string;
   familyName: string;
@@ -181,7 +181,7 @@ export function FamilyEconomy({
   autoEnabled?: boolean;
   uncoveredOre?: number;
   today: string;
-  part?: "summary" | "setup";
+  part?: "status" | "actions" | "setup";
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -349,58 +349,56 @@ export function FamilyEconomy({
 
   return (
     <>
-      {part === "summary" && childBalances ? (
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
-          <dl className="grid grid-cols-2 gap-4">
-            <div>
-              <dt className="text-sm font-semibold text-admin-muted">Har igjen</dt>
-              <dd
-                className={`font-heading text-3xl font-bold tabular-nums ${familyRemaining > 0 ? "text-[#775108]" : "text-[#216A2B]"}`}
-              >
-                {formatNok(familyRemaining)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-semibold text-admin-muted">Innbetalt</dt>
-              <dd className="font-heading text-xl font-bold tabular-nums">
-                {formatNok(familyPaid)}
-                <span className="block font-sans text-sm font-semibold text-admin-muted">
-                  {" "}
-                  av {formatNok(familyOwed)}
-                </span>
-              </dd>
-            </div>
-          </dl>
-          {childrenOptions.length > 0 ? (
-            <div className="grid gap-2 border-t border-[#ECE8DF] pt-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-5">
-              <VippsRequestBlock
-                schoolYearId={schoolYearId}
-                studentIds={owingChildIds}
-                balance={{
-                  owed: familyOwed,
-                  paid: familyPaid,
-                  remaining: familyRemaining,
-                }}
-                request={request}
-                today={today}
-                nextInstallment={nextInstallment}
-                title={familyName}
-                manualChildren={paymentChildren}
-                sadaqa={{ id: familyId, name: familyName, children: paymentChildren }}
-                auto={{ familyId, paused: requestsPaused, globalEnabled: autoEnabled }}
-                className="w-full"
-              />
-              {request && uncoveredOre > 0 ? (
-                <p className="text-sm font-bold text-[#775108] tabular-nums">
-                  Uten forespørsel: {formatNok(uncoveredOre)}
-                </p>
-              ) : null}
-            </div>
+      {part === "status" && childBalances ? (
+        <dl className="grid grid-cols-2 gap-4">
+          <div>
+            <dt className="text-sm font-semibold text-admin-muted">Har igjen</dt>
+            <dd
+              className={`font-heading text-3xl font-bold tabular-nums ${familyRemaining > 0 ? "text-[#775108]" : "text-[#216A2B]"}`}
+            >
+              {formatNok(familyRemaining)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-sm font-semibold text-admin-muted">Innbetalt</dt>
+            <dd className="font-heading text-xl font-bold tabular-nums">
+              {formatNok(familyPaid)}
+              <span className="block font-sans text-sm font-semibold text-admin-muted">
+                {" "}
+                av {formatNok(familyOwed)}
+              </span>
+            </dd>
+          </div>
+        </dl>
+      ) : null}
+      {part === "actions" && childBalances && childrenOptions.length > 0 ? (
+        <div className="grid gap-2">
+          <VippsRequestBlock
+            schoolYearId={schoolYearId}
+            studentIds={owingChildIds}
+            balance={{
+              owed: familyOwed,
+              paid: familyPaid,
+              remaining: familyRemaining,
+            }}
+            request={request}
+            today={today}
+            nextInstallment={nextInstallment}
+            title={familyName}
+            manualChildren={paymentChildren}
+            sadaqa={{ id: familyId, name: familyName, children: paymentChildren }}
+            auto={{ familyId, paused: requestsPaused, globalEnabled: autoEnabled }}
+            className="w-full"
+          />
+          {request && uncoveredOre > 0 ? (
+            <p className="text-sm font-bold text-[#775108] tabular-nums">
+              Uten forespørsel: {formatNok(uncoveredOre)}
+            </p>
           ) : null}
-        </div>
+            </div>
       ) : null}
 
-      {part === "summary" && siblingSuggestion ? (
+      {part === "actions" && siblingSuggestion ? (
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#FFF8E9] p-4 ring-1 ring-[#E8D6AA]">
             <div className="flex items-start gap-3">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FEEDCA] text-[#775108]">

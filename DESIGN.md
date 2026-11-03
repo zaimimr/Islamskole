@@ -54,7 +54,7 @@ Islamskole Bærum feels welcoming, trustworthy, and rooted in its local school c
 - `/admin/elever` and global first-name search lead staff lookup. Student identity, age and class precede guardian contact, then payment controls. Family records retain shared relationships and billing, with child names prominent in lists.
 - The shell exposes Dagplan, Elever and Klasser directly, grouped secondary tools, the active school year, student-first search, account access, and a scrollable mobile drawer under Mer.
 - `--admin-muted` is the minimum muted text tone on light admin surfaces. `--admin-action` is the accessible green used for primary admin actions.
-- Child summaries use an auto-fitting fact grid with a minimum readable column width. Mobile keeps the next action before detailed records and relationship history.
+- Family detail leads with student details, parent contacts and payment status. Vipps requests, payment history, setup and family metadata follow. Editing and merging are secondary actions in the family heading's three-dot menu.
 - Family editing keeps the primary contact, relationship labels, address, new guardians, and data-review resolution in one task-focused surface.
 - Public enrollment fails closed when no active fee exists and restores an unfinished family draft after refresh or accidental navigation.
 - Healthy, pending, informational, blocked, and neutral states pair color with labels and status marks. Captured payments, refunds, admission decisions, and placement are never collapsed into one status.

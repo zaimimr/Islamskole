@@ -134,6 +134,27 @@ test("phone tasks retain student identity, class context and accessible payment 
   const familyLink = page.locator(`a[href="/admin/familier/${family.id}"]`).first();
   await expect(familyLink).toContainText(family.students[0].name);
   expect((await familyLink.innerText()).indexOf(family.students[0].name)).toBeLessThan((await familyLink.innerText()).indexOf(family.displayName));
+  await familyLink.click();
+  const familyChildren = page.getByRole("region", { name: "Barn (1)", exact: true });
+  const familyParents = page.getByRole("region", { name: "Foresatte", exact: true });
+  const familyPayment = page.getByRole("region", { name: /^Betalingsstatus / });
+  await expect(familyChildren).toContainText(family.students[0].name);
+  await expect(familyParents.locator(`a[href="tel:${family.guardians[0].phone}"]`)).toBeVisible();
+  expect((await familyChildren.boundingBox())!.y).toBeLessThan((await familyParents.boundingBox())!.y);
+  expect((await familyParents.boundingBox())!.y).toBeLessThan((await familyPayment.boundingBox())!.y);
+  expect((await familyPayment.boundingBox())!.y).toBeLessThan((await page.getByRole("region", { name: /^Økonomi / }).boundingBox())!.y);
+  await expect(page.getByRole("link", { name: "Rediger familie", exact: true })).toHaveCount(0);
+  const familyActions = page.getByRole("button", { name: "Familiehandlinger", exact: true });
+  await familyActions.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("menuitem", { name: "Rediger familie", exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(familyActions).toBeFocused();
+  await expectNoOverflow(page, "family-info-first-360");
+  await page.screenshot({ path: "test-results/mobile-admin-family-info-first-360.png", animations: "disabled", fullPage: true });
+  await familyActions.click();
+  await page.getByRole("menuitem", { name: "Rediger familie", exact: true }).click();
+  await expect(page).toHaveURL(`/admin/familier/${family.id}/rediger`);
 
   await page.goto("/admin/betaling");
   const finance = page.getByRole("navigation", { name: "Betaling", exact: true });

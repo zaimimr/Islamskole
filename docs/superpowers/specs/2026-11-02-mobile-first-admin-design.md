@@ -45,6 +45,8 @@ Keep the existing cream, green, typography and school identity. Improve informat
 
 Teachers see identity, relevant parent contacts and teaching information within their assigned access. Payment information remains restricted to admins. Family records continue to hold shared guardian, sibling and billing relationships; changing the entry point does not split family accounts.
 
+Family detail shows student information, parent contacts and payment status before Vipps payment requests and the remaining administration sections. Editing and merging live in a three-dot menu beside the family heading. Keep merge confirmation, payment history, setup and family metadata available below the primary information.
+
 Show admission, missing placement, ended enrollment and payment issues when they require action. Retain the underlying independent records and historical facts. Do not show several healthy-state badges for every child.
 
 ### Dagplan and student attendance

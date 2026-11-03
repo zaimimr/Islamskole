@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(18);
+select plan(21);
 select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 insert into auth.users(id, email, raw_app_meta_data) values
   ('a7300000-0000-0000-0000-000000000001', 'zz-bulk-admin@zztest.local', '{"role":"admin"}'),
@@ -56,10 +56,15 @@ select is((select status from public.attendance where student_id = 'a7300000-000
 select is((select count(*) from public.attendance where student_id = 'a7300000-0000-0000-0000-000000000034'), 0::bigint, 'an active absence report blocks bulk present even without an attendance row');
 select is((select reason from public.absence_reports where student_id = 'a7300000-0000-0000-0000-000000000034' and withdrawn_at is null), 'ZZTEST Parent message', 'the parent report and note remain intact');
 select is(cardinality(public.portal_mark_unrecorded_present('a7300000-0000-0000-0000-000000000051', array['a7300000-0000-0000-0000-000000000031']::uuid[])), 0, 'repeating a completed bulk action changes nothing');
-select throws_ok($$select public.portal_mark_unrecorded_present('a7300000-0000-0000-0000-000000000054', array['a7300000-0000-0000-0000-000000000031']::uuid[])$$, '42501', null, 'future lessons cannot be marked present');
+select is(public.portal_mark_unrecorded_present('a7300000-0000-0000-0000-000000000054', array['a7300000-0000-0000-0000-000000000031']::uuid[]), array['a7300000-0000-0000-0000-000000000031']::uuid[], 'admins can bulk mark future lessons present');
+select is((select status from public.attendance where student_id = 'a7300000-0000-0000-0000-000000000031' and lesson_id = 'a7300000-0000-0000-0000-000000000054'), 'til_stede', 'future attendance is saved');
+update public.school_days set cancelled = true where id = 'a7300000-0000-0000-0000-000000000041';
+select throws_ok($$select public.portal_mark_unrecorded_present('a7300000-0000-0000-0000-000000000054', array['a7300000-0000-0000-0000-000000000032']::uuid[])$$, '42501', null, 'cancelled future school days cannot be marked present');
+update public.school_days set cancelled = false where id = 'a7300000-0000-0000-0000-000000000041';
 update public.lessons set cancelled = true where id = 'a7300000-0000-0000-0000-000000000053';
 select throws_ok($$select public.portal_mark_unrecorded_present('a7300000-0000-0000-0000-000000000053', array['a7300000-0000-0000-0000-000000000031']::uuid[])$$, '42501', null, 'cancelled lessons cannot be marked present');
 select set_config('request.jwt.claims', '{"sub":"a7300000-0000-0000-0000-000000000002","email":"zz-bulk-teacher@zztest.local","role":"authenticated"}', true);
+select throws_ok($$select public.portal_mark_unrecorded_present('a7300000-0000-0000-0000-000000000054', array['a7300000-0000-0000-0000-000000000032']::uuid[])$$, '42501', null, 'future attendance remains restricted for teachers');
 select is(cardinality(public.portal_mark_unrecorded_present('a7300000-0000-0000-0000-000000000051', array['a7300000-0000-0000-0000-000000000031']::uuid[])), 0, 'assigned teachers can safely repeat a completed bulk action');
 select throws_ok($$select public.portal_mark_unrecorded_present('a7300000-0000-0000-0000-000000000055', array['a7300000-0000-0000-0000-000000000035']::uuid[])$$, '42501', null, 'teachers cannot mark another class');
 select set_config('request.jwt.claims', '{"role":"authenticated"}', true);

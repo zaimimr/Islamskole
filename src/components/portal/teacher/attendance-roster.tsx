@@ -124,7 +124,7 @@ export function AttendanceRoster({
   return (
     <div className="grid min-w-0 grid-cols-1 gap-2">
       {header}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3">
+      {expanded ? <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3">
         {STATUS_OPTIONS.map(({ status, color }) => (
           <button key={status} type="button" onClick={() => toggleFilter(status)} aria-pressed={filter === status} className={cn("min-h-11 rounded-lg px-1 text-xs font-semibold tabular-nums outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 sm:text-sm", color, filter === status && "bg-muted ring-1 ring-current")}>
             {counts[status]} {t(`summary.${status === "til_stede" ? "present" : status === "sent" ? "late" : status === "meldt_fravaer" ? "reported" : "unreported"}`)}
@@ -133,8 +133,13 @@ export function AttendanceRoster({
         <button type="button" onClick={() => toggleFilter("unmarked")} aria-pressed={filter === "unmarked"} className={cn("min-h-11 rounded-lg px-1 text-xs font-semibold text-admin-muted tabular-nums outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 sm:text-sm", filter === "unmarked" && "bg-muted ring-1 ring-current")}>
           {counts.unmarked} {t("summary.unmarked")}
         </button>
-      </div>
-      {markable && unmarkedIds.length ? (
+      </div> : <div className="flex flex-wrap gap-x-3 gap-y-0.5 px-3 text-xs font-semibold tabular-nums">
+        {STATUS_OPTIONS.filter(({ status }) => counts[status] > 0).map(({ status, color }) => (
+          <span key={status} className={color}>{counts[status]} {t(`summary.${status === "til_stede" ? "present" : status === "sent" ? "late" : status === "meldt_fravaer" ? "reported" : "unreported"}`)}</span>
+        ))}
+        {counts.unmarked > 0 || !rows.length ? <span className="text-admin-muted">{counts.unmarked} {t("summary.unmarked")}</span> : null}
+      </div>}
+      {expanded && markable && unmarkedIds.length ? (
         <Button type="button" variant="secondary" onClick={markRest} disabled={!ready || bulkPending || pendingIds.length > 0} className="mx-3 mb-1 min-h-11 justify-self-start text-sm">
           {bulkPending ? <Loader2 aria-hidden="true" className="animate-spin" /> : <CheckCheck aria-hidden="true" />}
           {t("roster.markUnrecorded", { count: unmarkedIds.length })}

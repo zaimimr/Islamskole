@@ -137,7 +137,7 @@ insert into public.attendance (student_id, lesson_id, status) values ('f8000000-
 select is((select status from public.attendance where student_id = 'f8000000-0000-0000-0000-000000000052' and lesson_id = (select id from propagation_lessons where class = 'a' and day = 'past' and start_position = 3)), 'til_stede', 'an admin without a teaching assignment propagates attendance');
 
 insert into public.attendance (student_id, lesson_id, status) values ('f8000000-0000-0000-0000-000000000052', (select id from propagation_lessons where class = 'a' and day = 'future' and start_position = 1), 'til_stede') on conflict (student_id, lesson_id) do update set status = excluded.status;
-select is((select count(*) from public.attendance where student_id = 'f8000000-0000-0000-0000-000000000052' and lesson_id = (select id from propagation_lessons where class = 'a' and day = 'future' and start_position = 3)), 0::bigint, 'future attendance is not propagated');
+select is((select status from public.attendance where student_id = 'f8000000-0000-0000-0000-000000000052' and lesson_id = (select id from propagation_lessons where class = 'a' and day = 'future' and start_position = 3)), 'til_stede', 'admin attendance propagates into later lessons on future dates');
 
 reset role;
 update public.attendance set inherited_from_lesson_id = null where student_id = 'f8000000-0000-0000-0000-000000000052' and lesson_id = (select id from propagation_lessons where class = 'a' and day = 'past' and start_position = 2);

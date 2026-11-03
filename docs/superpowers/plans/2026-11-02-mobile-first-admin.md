@@ -27,3 +27,11 @@ Navigation, student overview, Sunday workflow, class capacity and remaining-admi
 - Release preflight found three historical migration filenames differed from production timestamps. Fetched migration statements match exactly apart from trailing empty statements. Local files and local test history now use production's versions; production history was not modified. Remote dry-run now includes only the two new migrations.
 - The two new production migrations were applied successfully on 2026-11-03. Source and data checks are complete. Application release follows a commit and push to main, with production deployment status checked before handover.
 - Production deployment is live. CI database checks pass all 979 assertions. CI browser checks found narrow-screen grid sizing with long names and a timing-sensitive attendance interaction. Grid tracks and name wrapping are constrained, attendance controls wait for hydration, and browser assertions wait for completed saves. A long unbroken surname now exercises the mobile checks.
+
+## Follow-up: open rosters and future admin attendance
+
+- [x] Open every class by default. Collapse to a compact teacher summary and attendance counts, with full filters and bulk controls only when expanded.
+- [x] Allow admin attendance on future school days, including individual statuses and safe bulk present. Preserve cancellation checks and existing teacher/parent permissions.
+- [x] Verify default expansion, compact mobile collapse, future writes and permission boundaries with focused browser/database checks, then lint, typecheck, build and release.
+
+Follow-up checks: all four attendance scenarios and all three mobile scenarios pass, including the 37-route 360px walkthrough. Compact collapse was visually checked on a phone. The database suite passes 44 files and 982 assertions; 153 unit tests, lint, typecheck and production build pass. Future reported absence correctly replaces a previously recorded present status, while safe bulk present preserves late arrivals and reports. Production preflight includes only migration 20261103110000_admin_future_attendance.

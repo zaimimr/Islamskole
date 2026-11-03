@@ -8,7 +8,7 @@ import { after } from "next/server";
 import { z } from "zod";
 import { writeAudit } from "@/lib/audit";
 import { osloToday } from "@/lib/dates";
-import { getUser } from "@/lib/auth";
+import { getAccess, getUser } from "@/lib/auth";
 import { findAuthUserId, sendLoginLink } from "@/lib/login-link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -268,7 +268,7 @@ export async function reportAbsenceForStudent(studentId: string, lessonId: strin
   }
 
   const date = lesson.school_days?.date;
-  if (date && date <= osloToday()) {
+  if (date && (date <= osloToday() || (await getAccess()).admin)) {
     const { error } = await supabase.from("attendance").upsert(
       {
         student_id: parsed.data.studentId,

@@ -30,6 +30,82 @@ async function attendance(studentId: string, dayId: string) {
   return data ?? [];
 }
 
+test("admin opens every roster, collapses compactly and records attendance for the coming Sunday", async ({ page, context }) => {
+  const year = await activeYear();
+  const sunday = new Date(`${new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Oslo" }).format(new Date())}T12:00:00Z`);
+  sunday.setUTCDate(sunday.getUTCDate() + 7 - sunday.getUTCDay());
+  const { data: day, error: dayError } = await db().from("school_days").upsert({
+    school_year_id: year.id, date: sunday.toISOString().slice(0, 10), cancelled: false, note: "ZZTEST",
+  }, { onConflict: "school_year_id,date" }).select("id").single();
+  if (dayError || !day) throw dayError ?? new Error("Missing future school day");
+  const firstClass = await seedClass();
+  const secondClass = await seedClass();
+  const family = await seedFamily({ students: [{}, {}, {}, {}] });
+  const [unrecorded, late, reported, otherClass] = family.students;
+  for (const child of [unrecorded, late, reported]) await enroll(child.id, firstClass.id, year.id);
+  await enroll(otherClass.id, secondClass.id, year.id);
+  const teacher = await seedTeacher();
+  await assignTeacher(teacher.id, firstClass.id, year.id);
+  const cleared = await db().from("lessons").delete().eq("school_day_id", day.id).in("class_id", [firstClass.id, secondClass.id]);
+  if (cleared.error) throw cleared.error;
+  const { data: lessons, error } = await db().from("lessons").insert(
+    [firstClass, secondClass].flatMap((row) => [1, 2, 3].map((position) => ({
+      class_id: row.id, school_day_id: day.id, start_position: position, end_position: position, subject: "Islam",
+    }))),
+  ).select("id, class_id, start_position");
+  if (error || !lessons) throw error ?? new Error("Missing lessons");
+  const firstLessons = lessons.filter((row) => row.class_id === firstClass.id)
+    .sort((left, right) => left.start_position - right.start_position);
+  const admin = await seedAdmin();
+  await loginAs(context, admin.email);
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto(`/admin/dagsplan?dag=${day.id}`);
+  const overview = page.getByRole("region", { name: "Oppmøte", exact: true });
+  const firstRoster = overview.getByRole("region", { name: firstClass.name, exact: true });
+  const secondRoster = overview.getByRole("region", { name: secondClass.name, exact: true });
+  await expect(firstRoster.getByText(unrecorded.name, { exact: true })).toBeVisible();
+  await expect(secondRoster.getByText(otherClass.name, { exact: true })).toBeVisible();
+  await expect(overview.getByRole("button", { name: "Skjul elevlister", exact: true })).toBeVisible();
+  await expect(firstRoster.getByRole("button", { name: "Merk 3 uregistrerte som møtt", exact: true })).toBeEnabled();
+  const expandedHeight = (await firstRoster.boundingBox())!.height;
+  const collapse = firstRoster.locator("button[aria-expanded]").first();
+  await collapse.click();
+  await expect(collapse).toHaveAttribute("aria-expanded", "false");
+  await expect(firstRoster.getByText(unrecorded.name, { exact: true })).toHaveCount(0);
+  await expect(firstRoster).toContainText("3 ikke registrert");
+  await expect(firstRoster).toContainText(teacher.name);
+  await expect(firstRoster.getByRole("button", { name: "Merk 3 uregistrerte som møtt", exact: true })).toHaveCount(0);
+  expect((await firstRoster.boundingBox())!.height).toBeLessThan(Math.min(140, expandedHeight / 2));
+  await page.screenshot({ path: "test-results/mobile-admin-collapsed-attendance-360.png", animations: "disabled" });
+  await collapse.click();
+  await chooseStatus(page, late.name, "Forsinket");
+  await chooseStatus(page, reported.name, "Møtt");
+  await chooseStatus(page, reported.name, "Meldt fravær");
+  await firstRoster.getByRole("textbox").fill("Foresatt meldte fra om kommende søndag");
+  await firstRoster.getByRole("button", { name: "Lagre meldt fravær", exact: true }).click();
+  await expect.poll(async () => (await attendance(reported.id, day.id)).map((row) => row.status)).toEqual(["meldt_fravaer", "meldt_fravaer", "meldt_fravaer"]);
+  await firstRoster.getByRole("button", { name: "Merk 1 uregistrert som møtt", exact: true }).click();
+  await expect.poll(async () => (await attendance(unrecorded.id, day.id)).map((row) => row.status)).toEqual(["til_stede", "til_stede", "til_stede"]);
+  expect((await attendance(late.id, day.id)).map((row) => row.status)).toEqual(["sent", "sent", "sent"]);
+  const time = overview.getByRole("navigation", { name: "Time", exact: true });
+  const secondTime = time.getByRole("link", { name: /^2\. time/ });
+  const firstTime = time.getByRole("link", { name: /^1\. time/ });
+  await secondTime.click();
+  await expect(secondTime).toHaveAttribute("aria-current", "page");
+  await chooseStatus(page, unrecorded.name, "Ikke meldt fravær");
+  await firstTime.click();
+  await expect(firstTime).toHaveAttribute("aria-current", "page");
+  await chooseStatus(page, unrecorded.name, "Forsinket");
+  const saved = await attendance(unrecorded.id, day.id);
+  expect(saved.find((row) => row.lesson_id === firstLessons[0].id)?.status).toBe("sent");
+  expect(saved.find((row) => row.lesson_id === firstLessons[1].id)?.status).toBe("fravaer");
+  expect(saved.find((row) => row.lesson_id === firstLessons[2].id)?.status).toBe("fravaer");
+  await page.reload();
+  await expect(firstRoster.getByText(unrecorded.name, { exact: true })).toBeVisible();
+  await expect(secondRoster.getByText(otherClass.name, { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test("admin takes attendance across classes and teachers correct later lessons", async ({ page, context }) => {
   const year = await activeYear();
   const [day, nextDay] = await seedSchoolDays(year, 2);
@@ -62,7 +138,7 @@ test("admin takes attendance across classes and teachers correct later lessons",
   await loginAs(context, admin.email);
   await page.goto(`/admin/dagsplan?dag=${day.id}`);
   const overview = page.getByRole("region", { name: "Oppmøte", exact: true });
-  await overview.getByRole("button", { name: "Vis alle elevlister", exact: true }).click();
+  await expect(overview.getByRole("button", { name: "Skjul elevlister", exact: true })).toBeVisible();
   const firstRoster = overview.getByRole("region", { name: firstClass.name, exact: true });
   const secondRoster = overview.getByRole("region", { name: secondClass.name, exact: true });
   await expect(firstRoster).toContainText(firstChild.name);
@@ -85,7 +161,7 @@ test("admin takes attendance across classes and teachers correct later lessons",
   await expect.poll(async () => (await attendance(firstChild.id, day.id))
     .find((row) => row.lesson_id === firstLessons[0].id)?.status).toBe("til_stede");
   await page.reload();
-  await overview.getByRole("button", { name: "Vis alle elevlister", exact: true }).click();
+  await expect(overview.getByRole("button", { name: "Skjul elevlister", exact: true })).toBeVisible();
   await expect(firstStatus).toContainText("Møtt");
   await expect(firstRoster).toContainText("1 møtt");
   await secondRoster.getByRole("button", { name: "Merk 1 uregistrert som møtt", exact: true }).click();

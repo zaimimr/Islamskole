@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -16,6 +16,10 @@ import { cn } from "@/lib/utils";
 type Entry = { status: AttendanceStatus | null; source: AbsenceSource | null };
 type EntryMap = Record<string, Entry>;
 type StatusFilter = AttendanceStatus | "unmarked" | null;
+
+function subscribeToHydration() {
+  return () => {};
+}
 
 const STATUS_OPTIONS = [
   { status: "til_stede", icon: Check, color: "text-admin-action" },
@@ -40,6 +44,7 @@ export function AttendanceRoster({
   const tErrors = useTranslations("portal.errors");
   const router = useRouter();
   const pathname = usePathname();
+  const ready = useSyncExternalStore(subscribeToHydration, () => true, () => false);
   const [overrides, setOverrides] = useState<EntryMap>({});
   const [pendingIds, setPendingIds] = useState<string[]>([]);
   const [bulkPending, setBulkPending] = useState(false);
@@ -117,7 +122,7 @@ export function AttendanceRoster({
   }
 
   return (
-    <div className="grid gap-2">
+    <div className="grid min-w-0 grid-cols-1 gap-2">
       {header}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3">
         {STATUS_OPTIONS.map(({ status, color }) => (
@@ -130,7 +135,7 @@ export function AttendanceRoster({
         </button>
       </div>
       {markable && unmarkedIds.length ? (
-        <Button type="button" variant="secondary" onClick={markRest} disabled={bulkPending || pendingIds.length > 0} className="mx-3 mb-1 min-h-11 justify-self-start text-sm">
+        <Button type="button" variant="secondary" onClick={markRest} disabled={!ready || bulkPending || pendingIds.length > 0} className="mx-3 mb-1 min-h-11 justify-self-start text-sm">
           {bulkPending ? <Loader2 aria-hidden="true" className="animate-spin" /> : <CheckCheck aria-hidden="true" />}
           {t("roster.markUnrecorded", { count: unmarkedIds.length })}
         </Button>
@@ -142,13 +147,13 @@ export function AttendanceRoster({
             const entry = entries[row.student_id];
             const option = STATUS_OPTIONS.find((item) => item.status === entry.status);
             const StatusIcon = option?.icon ?? Check;
-            const pending = pendingIds.includes(row.student_id) || bulkPending;
+            const pending = !ready || pendingIds.includes(row.student_id) || bulkPending;
             const detailsOpen = detailsId === row.student_id;
             return (
               <li key={row.student_id} className="px-3 py-1">
                 <div className="flex min-h-14 items-center gap-1.5">
                   <div className="min-w-0 flex-1 py-1">
-                    <p className="text-sm leading-snug font-bold break-words sm:text-base">{name}</p>
+                    <p className="wrap-anywhere text-sm leading-snug font-bold sm:text-base">{name}</p>
                     {row.age !== null ? <p className="text-xs text-admin-muted">{t("roster.age", { age: row.age })}</p> : null}
                     {row.allergies || row.medical_notes || row.photo_consent === false ? (
                       <button type="button" onClick={() => setDetailsId(detailsOpen ? null : row.student_id)} className="min-h-11 text-xs font-bold text-destructive underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50">

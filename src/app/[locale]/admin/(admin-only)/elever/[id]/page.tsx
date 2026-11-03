@@ -601,7 +601,7 @@ export default async function ElevDetailPage({
       </Link>
       <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="text-balance font-heading text-3xl font-bold tracking-[-0.02em] sm:text-4xl">
+          <h1 className="wrap-anywhere text-balance font-heading text-3xl font-bold tracking-[-0.02em] sm:text-4xl">
             {editing ? `Rediger ${name}` : name}
           </h1>
           {!editing && childAge != null ? (

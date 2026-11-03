@@ -61,7 +61,7 @@ test.beforeAll(async () => {
   year = await activeYear();
   admin = await seedAdmin();
   schoolClass = await seedClass();
-  family = await seedFamily({ students: [{ firstName: `ZZTEST Amira ${uid()}`, lastName: "Abdulrahman Solberg" }] });
+  family = await seedFamily({ students: [{ firstName: `ZZTEST Amira ${uid()}`, lastName: "AbdulrahmanSolbergAbdullahHassan" }] });
   teacher = await seedTeacher();
   await enroll(family.students[0].id, schoolClass.id, year.id);
   await assignTeacher(teacher.id, schoolClass.id, year.id);

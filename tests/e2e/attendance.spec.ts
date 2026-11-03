@@ -13,8 +13,13 @@ import {
 } from "./fixtures";
 
 async function chooseStatus(page: Page, studentName: string, status: string) {
-  await page.getByRole("button", { name: `Oppmøte for ${studentName}`, exact: true }).click();
+  const trigger = page.getByRole("button", { name: `Oppmøte for ${studentName}`, exact: true });
+  await trigger.click();
   await page.getByRole("menuitem", { name: status, exact: true }).click();
+  if (status !== "Meldt fravær") {
+    await expect(trigger).toBeEnabled();
+    await expect(trigger).toContainText(status);
+  }
 }
 
 async function attendance(studentId: string, dayId: string) {

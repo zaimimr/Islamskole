@@ -193,7 +193,7 @@ function telHref(phone: string) {
 const contactLinkClass =
   "inline-flex min-h-11 items-center gap-2 rounded-lg font-semibold text-[#277A31] underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 lg:min-h-8";
 
-const panelClass = "rounded-2xl bg-white p-5 ring-1 ring-[#E3DED3] sm:p-6";
+const panelClass = "min-w-0 rounded-2xl bg-white p-5 ring-1 ring-[#E3DED3] sm:p-6";
 
 const panelTitleClass = "font-heading text-lg font-bold";
 
@@ -394,9 +394,9 @@ export function FamilyWorkbench({
   const bannerAction = nextAction && !economyAction ? nextAction : null;
 
   return (
-    <div className="grid gap-5">
+    <div className="grid min-w-0 grid-cols-1 gap-5">
       <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
-        <div className="min-w-0">
+        <div className="min-w-0 max-w-full">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <h1 className="text-balance font-heading text-[1.875rem] leading-tight font-bold tracking-[-0.02em] sm:text-[2.25rem]">
               {family.name}
@@ -519,8 +519,8 @@ export function FamilyWorkbench({
         </nav>
       ) : null}
 
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.9fr)_minmax(18rem,1fr)]">
-        <div className="grid min-w-0 gap-5">
+      <div className="grid min-w-0 grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1.9fr)_minmax(18rem,1fr)]">
+        <div className="grid min-w-0 grid-cols-1 gap-5">
           {economy ? (
             <section
               id="family-economy"
@@ -551,7 +551,7 @@ export function FamilyWorkbench({
               <h2 id={`family-children-${family.id}`} className={panelTitleClass}>
                 Barn ({family.children.length})
               </h2>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex min-w-0 max-w-full flex-wrap gap-2">
                 <ChildMergeDialog
                   options={family.children.map((child) => ({
                     id: child.id.startsWith("application-")
@@ -582,7 +582,7 @@ export function FamilyWorkbench({
                   <li key={child.id}>
                     <Link
                       href={child.href}
-                      className="group -mx-2 flex items-start gap-3 rounded-xl px-2 py-4 outline-none transition-colors hover:bg-[#FBFAF6] focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50"
+                      className="group -mx-2 flex min-w-0 items-start gap-3 rounded-xl px-2 py-4 outline-none transition-colors hover:bg-[#FBFAF6] focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50"
                     >
                       <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FEEDCA] font-heading text-sm font-bold text-[#775108]">
                         {initials(child.name)}
@@ -590,7 +590,7 @@ export function FamilyWorkbench({
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
                           <span className="min-w-0">
-                            <span className="block font-bold">{child.name}</span>
+                            <span className="block wrap-anywhere font-bold">{child.name}</span>
                             {child.description ? (
                               <span className="block text-xs text-admin-muted">
                                 {child.description}
@@ -648,7 +648,7 @@ export function FamilyWorkbench({
           ) : null}
         </div>
 
-        <div className="grid min-w-0 gap-5">
+        <div className="grid min-w-0 grid-cols-1 gap-5">
           <section
             aria-labelledby={`family-guardians-${family.id}`}
             className={panelClass}

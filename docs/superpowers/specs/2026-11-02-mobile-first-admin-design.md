@@ -83,7 +83,7 @@ Attendance inheritance:
 ### Classes and placement
 
 - Class list prioritizes class name, teachers, age range and occupied places/capacity. Move public website ordering away from the main operational list.
-- First tab: Klasseinfo, showing teachers, timetable, age range and capacity with direct editing. Keep Elever and teaching resources reachable without restoring a long semester plan above the roster.
+- Class detail has three primary views: Oversikt, Elever and Undervisning, in one row on mobile. Oversikt shows teachers/contact, timetable, age range and capacity without editing forms. Undervisning groups semester plans, materials, activities and notes. A three-dot menu opens class setup and public website editing; setup retains teacher assignment, class settings and timetable editors.
 - Nettside contains public descriptions, images and publication controls. Capacity and age are edited in class setup even if those values also appear publicly.
 - A full class remains selectable during admission, placement and transfer. Reveal current occupancy/capacity, an editable new capacity, and the explicit action Øk kapasitet og plasser. Default to the minimum capacity needed for this placement, never increase silently.
 - Save the capacity change and placement together. Concurrent placements must not overfill the class or leave a capacity change behind after failed placement. Preserve the entered form if another admin changes the class.
@@ -100,7 +100,7 @@ Every route and its create/edit/detail variants receives a mobile pass. Grouping
 | Elever, /admin/elever, /ny, /[id] | First-name lookup, identity/contact order, compact editing and secondary history |
 | Familier, /admin/familier, /[id], /[id]/rediger | Child names visible in matching results; preserve siblings, shared guardians, merging and billing |
 | Opptak, /admin/register | Student-led review, inline capacity increase, preserve admission and waiting workflows |
-| Klasser, /admin/klasser, /ny, /[id] | Operational directory, Klasseinfo first, separate public content |
+| Klasser, /admin/klasser, /ny, /[id] | Operational directory, clear overview first, three primary views and secondary setup |
 | Lærere, /admin/laerere | Contact, classes, future absence and cover; retain application/archive flows |
 | Betaling overview, /admin/betaling | Student-led identification with family billing totals; Vipps action primary |
 | Betaling /oppfolging and /avdrag | Identify the child immediately; payment follow-up and installment actions in context |

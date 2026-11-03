@@ -173,9 +173,9 @@ test("phone tasks retain student identity, class context and accessible payment 
 
   await page.goto(`/admin/klasser/${schoolClass.id}`);
   const classNavigation = page.getByRole("navigation", { name: "Klassevisning", exact: true });
-  await expect(classNavigation.getByRole("link", { name: "Klasseinfo", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(classNavigation.getByRole("link", { name: "Oversikt", exact: true })).toHaveAttribute("aria-current", "page");
   await expect(page.getByText(teacher.name, { exact: true }).first()).toBeVisible();
-  await expect(page.getByLabel("Kapasitet for klassen", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Klasseinfo", exact: true })).toContainText("Kapasitet");
   await expectNoOverflow(page, "class-360");
 
   await page.goto(`/admin/dagsplan?dag=${days[0].id}`);

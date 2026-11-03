@@ -3,14 +3,14 @@ import { LessonMaterials } from "@/components/portal/lesson-materials";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ClipboardCheck, Mail, Phone, UsersRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, Mail, Phone, UsersRound } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { adminBasePath, localePrefix } from "@/components/admin/paths";
-import { buttonVariants } from "@/components/ui/button";
 import { ClassSettings } from "./class-settings";
 import { ClassForm, type ClassRecord } from "@/components/admin/class-form";
-import { SectionNavigation } from "@/components/admin/section-navigation";
+import { ClassNavigation, ClassActionsMenu } from "./class-navigation";
+import { ClassOverview } from "./class-overview";
 import { ageInYear, schoolYearStart } from "@/lib/age";
 import { formatNok } from "@/lib/money";
 import { osloToday } from "@/lib/dates";
@@ -383,7 +383,7 @@ export default async function KlassePage({
   const basePath = adminBasePath(locale);
   const listHref = `${basePath}/klasser`;
   const classHref = `${listHref}/${id}`;
-  const tab = typeof query.fane === "string" && ["elever", "undervisning", "semesterplan", "materiell", "aktiviteter", "nettside"].includes(query.fane) ? query.fane : "klasseinfo";
+  const tab = typeof query.fane === "string" && ["elever", "undervisning", "semesterplan", "materiell", "aktiviteter", "nettside", "oppsett"].includes(query.fane) ? query.fane : "klasseinfo";
   const data = await getClassPage(id);
   const { classRecord, activeYear } = data;
 
@@ -578,34 +578,16 @@ export default async function KlassePage({
           <ArrowLeft aria-hidden="true" className="size-4" />
           Tilbake til klasser
         </Link>
-        <h1 className="mt-3 text-balance font-heading text-[2rem] leading-tight font-bold tracking-[-0.02em] sm:text-4xl">
-          {className}
-        </h1>
-        <p className="mt-1 max-w-2xl text-admin-muted">
-          {activeYear
-            ? activeYear.label
-            : "Velg et aktivt skoleår for å se elevlisten."}
-        </p>
-        {activeYear ? (
-          <Link
-            href={`${localePrefix(locale)}/min-side/klasse/${id}`}
-            className={cn(buttonVariants({ variant: "outline" }), "mt-4 print:hidden")}
-          >
-            <ClipboardCheck aria-hidden="true" />
-            Oppmøte og notater
-          </Link>
-        ) : null}
+        <div className="mt-3 flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <h1 className="wrap-anywhere text-balance font-heading text-[2rem] leading-tight font-bold tracking-[-0.02em] sm:text-4xl">{className}</h1>
+            <p className="mt-1 text-admin-muted">{activeYear?.label ?? "Velg et aktivt skoleår for å se elevlisten."}</p>
+          </div>
+          <ClassActionsMenu href={classHref} current={tab} />
+        </div>
       </header>
 
-      <SectionNavigation label={locale === "en" ? "Class views" : "Klassevisning"} current={tab} items={[
-        { id: "klasseinfo", label: "Klasseinfo", href: classHref },
-        { id: "elever", label: locale === "en" ? "Students" : "Elever i år", href: `${classHref}?fane=elever` },
-        { id: "undervisning", label: locale === "en" ? "Teaching" : "Undervisning", href: `${classHref}?fane=undervisning` },
-        { id: "semesterplan", label: locale === "en" ? "Semester plan" : "Semesterplan", href: `${classHref}?fane=semesterplan` },
-        { id: "materiell", label: locale === "en" ? "Materials" : "Materiell", href: `${classHref}?fane=materiell` },
-        { id: "aktiviteter", label: locale === "en" ? "Activities" : "Aktiviteter", href: `${classHref}?fane=aktiviteter` },
-        { id: "nettside", label: locale === "en" ? "Website" : "Nettside", href: `${classHref}?fane=nettside` },
-      ]} />
+      <ClassNavigation href={classHref} current={tab} />
 
       {tab === "nettside" ? (
         <ClassForm classRecord={classRecord} listHref={listHref} />
@@ -620,7 +602,31 @@ export default async function KlassePage({
         </section>
       ) : (
         <>
-          {activeYear && (tab === "klasseinfo" || tab === "undervisning") ? (
+          {tab === "klasseinfo" ? <ClassOverview
+            schoolClass={classRecord}
+            enrolled={data.enrollments.length}
+            teachers={classTeachers}
+            teacherNames={new Map([...classTeachers, ...teacherCandidates, ...data.inactivePlanTeachers.map((row) => ({ id: row.id, name: joinName(row.first_name, row.last_name) || "(uten navn)" }))].map((teacher) => [teacher.id, teacher.name]))}
+            slots={data.slots}
+            plans={data.plans}
+            attendanceHref={activeYear ? `${basePath}/dagsplan?visning=oppmote&klasse=${id}` : undefined}
+            settingsHref={`${classHref}?fane=oppsett`}
+          /> : null}
+          {tab === "oppsett" ? <h2 className="font-heading text-2xl font-bold">Oppsett for klassen</h2> : null}
+          {activeYear && tab === "undervisning" ? (
+            <section aria-labelledby="class-teaching-title" className="overflow-hidden rounded-2xl bg-white ring-1 ring-[#E3DED3]">
+              <h2 id="class-teaching-title" className="px-4 py-4 font-heading text-xl font-bold sm:px-5">Undervisning</h2>
+              <ul className="divide-y divide-[#ECE8DF] border-t border-[#ECE8DF]">
+                {[
+                  { label: "Semesterplan", href: `${classHref}?fane=semesterplan` },
+                  { label: "Materiell", href: `${classHref}?fane=materiell` },
+                  { label: "Aktiviteter", href: `${classHref}?fane=aktiviteter` },
+                  { label: "Notater og historikk", href: `${localePrefix(locale)}/min-side/klasse/${id}` },
+                ].map((item) => <li key={item.href}><Link href={item.href} className="flex min-h-14 items-center justify-between gap-3 px-4 py-3 font-bold outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 sm:px-5">{item.label}<ArrowRight aria-hidden="true" className="size-4 shrink-0 text-admin-muted" /></Link></li>)}
+              </ul>
+            </section>
+          ) : null}
+          {activeYear && tab === "oppsett" ? (
             <ClassTeachers
               classId={classRecord.id}
               yearLabel={activeYear.label}
@@ -629,8 +635,8 @@ export default async function KlassePage({
               teachersHref={`${basePath}/laerere`}
             />
           ) : null}
-          {tab === "klasseinfo" ? <ClassSettings key={classRecord.updated_at} schoolClass={classRecord} enrolled={data.enrollments.length} /> : null}
-          {activeYear && (tab === "klasseinfo" || tab === "undervisning") ? (
+          {tab === "oppsett" ? <ClassSettings key={classRecord.updated_at} schoolClass={classRecord} enrolled={data.enrollments.length} /> : null}
+          {activeYear && tab === "oppsett" ? (
             <SlotPlanEditor
               key={JSON.stringify(data.plans)}
               classId={classRecord.id}

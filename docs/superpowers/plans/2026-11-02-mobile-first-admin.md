@@ -43,3 +43,11 @@ Follow-up checks: all four attendance scenarios and all three mobile scenarios p
 - [x] Check mobile order, menu keyboard access, editing and family merging, then run static checks and deploy.
 
 Family follow-up checks: 13/13 focused family/mobile browser checks pass, including the 37-route 360px walkthrough, payment history and actual merging. The menu ref correction passes a further 4/4 focused checks for editing, keyboard access and dialog focus return. The 360px family layout was visually reviewed. Final lint, typecheck and production build pass.
+
+## Follow-up: simpler class detail
+
+- [x] Replace seven wrapped navigation items with Oversikt, Elever and Undervisning. Keep resource destinations reachable under Undervisning and setup/website editing in a three-dot menu.
+- [x] Make the default overview readable: assigned teachers/contact, age, capacity and fixed timetable, with attendance access. Keep teacher assignment, class settings and timetable editors in setup.
+- [x] Check mobile navigation, resources, setup, existing deep links and permissions; run lint, typecheck and build before deploying.
+
+Class follow-up checks: 15/15 focused class/mobile/teacher checks pass, including the 37-route 360px walkthrough, class capacity editing, teaching resources, public-content editing, existing resource links and permission boundaries. A further 3/3 checks verify the 320px layout and corrected desktop capture. Mobile and desktop visual review found no clipping or crowded navigation. Final lint, typecheck and production build pass.

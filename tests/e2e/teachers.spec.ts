@@ -146,7 +146,7 @@ test.describe("/admin/laerere", () => {
     const teacher = await seedTeacher();
     await assignTeacher(teacher.id, schoolClass.id, year.id);
 
-    await page.goto(`/admin/klasser/${schoolClass.id}?fane=undervisning`);
+    await page.goto(`/admin/klasser/${schoolClass.id}?fane=oppsett`);
     await expect(page.locator("main").getByText(teacher.firstName).first()).toBeVisible();
 
     await page.goto("/admin/laerere");
@@ -157,7 +157,7 @@ test.describe("/admin/laerere", () => {
       .toBe(false);
     await expect.poll(() => classTeacherCount(teacher.id)).toBe(0);
 
-    await page.goto(`/admin/klasser/${schoolClass.id}?fane=undervisning`);
+    await page.goto(`/admin/klasser/${schoolClass.id}?fane=oppsett`);
     await expect(page.locator("main").getByText(teacher.firstName)).toHaveCount(0);
   });
 
@@ -178,7 +178,7 @@ test.describe("/admin/laerere", () => {
     await expect.poll(async () => (await guardiansWithEmail(teacher.email)).map((row) => row.is_teacher)).toEqual([true]);
     expect(await classTeacherCount(teacher.id)).toBe(0);
 
-    await page.goto(`/admin/klasser/${schoolClass.id}?fane=undervisning`);
+    await page.goto(`/admin/klasser/${schoolClass.id}?fane=oppsett`);
     await expect(page.locator("main").getByText(teacher.firstName)).toHaveCount(0);
   });
 

@@ -12,6 +12,15 @@
         ],
         "createdAt": "2026-09-27T10:20:33.974Z",
         "reason": "agent triage: standard tab underline (border-b-2); rounded-t-lg applies only to the focus-visible ring, not a rounded card"
+      },
+      {
+        "rule": "border-accent-on-rounded",
+        "value": "*",
+        "files": [
+          "src/app/[locale]/admin/(admin-only)/betaling/finance-tabs.tsx"
+        ],
+        "createdAt": "2026-11-03T10:02:02.023Z",
+        "reason": "Design review: border-b-2 is the active navigation tab underline; rounded top corners apply only to the keyboard focus ring, not a card."
       }
     ]
   }

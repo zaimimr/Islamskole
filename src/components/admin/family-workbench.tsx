@@ -45,6 +45,7 @@ export type FamilyGuardianSummary = {
   email?: string;
   href?: string;
   isTeacher?: boolean;
+  contactPending?: boolean;
 };
 
 export type FamilyChildSummary = {
@@ -304,6 +305,12 @@ function GuardianItem({
               </a>
             ) : null}
           </div>
+        ) : null}
+        {guardian.contactPending ? (
+          <p className="flex items-center gap-1.5 pl-[3.25rem] text-sm font-semibold text-[#775108]">
+            <CircleAlert aria-hidden="true" className="size-4 shrink-0" />
+            E-post eller telefon finnes på en annen person
+          </p>
         ) : null}
         <div className="flex flex-wrap items-center gap-x-1 gap-y-1 pl-[3.25rem] text-xs">
           {guardian.email ? (

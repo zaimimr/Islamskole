@@ -15,6 +15,7 @@ import { formatNok } from "@/lib/money";
 import { getSiteSettings } from "@/lib/data";
 import { writeAudit } from "@/lib/audit";
 import { findAuthUserId, sendLoginLink } from "@/lib/login-link";
+import { isValidPhone } from "@/lib/portal/family-types";
 import { rateLimit } from "@/lib/rate-limit";
 import { scheduleSchoolEmails } from "@/lib/school-emails/delivery";
 import {
@@ -903,8 +904,40 @@ const addUserSchema = z.object({
     .min(1, "E-post er påkrevd")
     .email("Ugyldig e-postadresse"),
   fullName: z.string().trim().max(200),
+  phone: z
+    .string()
+    .trim()
+    .max(40)
+    .refine((value) => !value || isValidPhone(value), "Ugyldig telefonnummer"),
   role: z.enum(["admin", "sfo"], { message: "Velg en rolle" }),
 });
+
+const userContactSchema = z.object({
+  userId: z.string().uuid("Ugyldig bruker."),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(1, "E-post er påkrevd")
+    .email("Ugyldig e-postadresse"),
+  phone: z
+    .string()
+    .trim()
+    .max(40)
+    .refine((value) => !value || isValidPhone(value), "Ugyldig telefonnummer"),
+});
+
+async function phoneTakenError(phone: string, guardianId: string | null) {
+  if (!phone) return null;
+  const { data, error } = await createAdminClient().rpc("guardian_contact_conflict", {
+    p_guardian_id: guardianId,
+    p_email: null,
+    p_phone: phone,
+    p_strict: false,
+  });
+  if (error) return toUserError(error);
+  return data ? "Telefonnummeret er allerede registrert på en annen person." : null;
+}
 
 const roleKeySchema = z.enum(["admin", "sfo", "teacher", "volunteer"]);
 
@@ -959,14 +992,25 @@ export async function addUserWithRole(
   const parsed = addUserSchema.safeParse({
     email: readString(formData, "email"),
     fullName: readString(formData, "full_name"),
+    phone: readString(formData, "phone"),
     role: readString(formData, "role"),
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0].message };
   }
-  const { email, fullName, role } = parsed.data;
+  const { email, fullName, phone, role } = parsed.data;
 
   const admin = createAdminClient();
+  const { data: existingGuardian } = await admin
+    .from("guardians")
+    .select("id")
+    .ilike("email", email.replace(/[\\%_]/g, "\\$&"))
+    .order("contact_pending")
+    .order("created_at")
+    .limit(1)
+    .maybeSingle();
+  const phoneError = await phoneTakenError(phone, existingGuardian?.id ?? null);
+  if (phoneError) return { ok: false, error: phoneError };
   let existingId;
   try {
     existingId = await findAuthUserId(email);
@@ -988,6 +1032,13 @@ export async function addUserWithRole(
 
   const guardian = await guardianIdForEmail(email, fullName);
   if (!guardian.ok) return guardian;
+  if (phone) {
+    const { error: phoneUpdateError } = await admin
+      .from("guardians")
+      .update({ phone })
+      .eq("id", guardian.id);
+    if (phoneUpdateError) return { ok: false, error: toUserError(phoneUpdateError) };
+  }
   const grantError = await grantRole(guardian.id, role);
   if (grantError) return { ok: false, error: toUserError(grantError) };
   revalidatePath("/", "layout");
@@ -1122,6 +1173,123 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
     action: "user.delete",
     entityType: "users",
     entityId: userId,
+  });
+  revalidatePath("/", "layout");
+  return { ok: true, id: userId };
+}
+
+export async function updateUserContact(
+  _previous: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+  const parsed = userContactSchema.safeParse({
+    userId: readString(formData, "user_id"),
+    email: readString(formData, "email"),
+    phone: readString(formData, "phone"),
+  });
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  const { userId, email, phone } = parsed.data;
+
+  const admin = createAdminClient();
+  const { data: authUser, error: userError } = await admin.auth.admin.getUserById(userId);
+  const oldEmail = authUser.user?.email?.trim().toLowerCase();
+  if (userError || !oldEmail) return { ok: false, error: "Fant ikke brukeren. Last siden på nytt." };
+  const emailChanged = email !== oldEmail;
+
+  if (emailChanged) {
+    let otherId;
+    try {
+      otherId = await findAuthUserId(email);
+    } catch (error) {
+      return { ok: false, error: toUserError(error as { code?: string; message?: string }) };
+    }
+    if (otherId && otherId !== userId) {
+      return { ok: false, error: "E-postadressen brukes av en annen bruker." };
+    }
+  }
+
+  const pattern = oldEmail.replace(/[\\%_]/g, "\\$&");
+  const [guardianResult, studentResult] = await Promise.all([
+    admin
+      .from("guardians")
+      .select("id, phone")
+      .ilike("email", pattern)
+      .order("contact_pending")
+      .order("created_at"),
+    admin.from("students").select("id, child_phone").ilike("child_email", pattern),
+  ]);
+  if (guardianResult.error) return { ok: false, error: toUserError(guardianResult.error) };
+  if (studentResult.error) return { ok: false, error: toUserError(studentResult.error) };
+  const guardians = guardianResult.data ?? [];
+  const students = studentResult.data ?? [];
+  const nextPhone = phone || null;
+
+  if (guardians[0]) {
+    if ((guardians[0].phone ?? null) !== nextPhone) {
+      const { error } = await admin.from("guardians").update({ phone: nextPhone }).eq("id", guardians[0].id);
+      if (error) return { ok: false, error: toUserError(error) };
+    }
+  } else if (students.length > 0) {
+    const { error } = await admin
+      .from("students")
+      .update({ child_phone: nextPhone })
+      .in("id", students.map((student) => student.id));
+    if (error) return { ok: false, error: toUserError(error) };
+  } else if (nextPhone) {
+    const name = splitFullName(String(authUser.user?.user_metadata?.full_name ?? ""), oldEmail);
+    const { error } = await admin
+      .from("guardians")
+      .insert({ email: oldEmail, first_name: name.first, last_name: name.last, phone: nextPhone });
+    if (error) return { ok: false, error: toUserError(error) };
+  }
+
+  if (emailChanged) {
+    const { data: movedGuardians, error: guardianError } = await admin
+      .from("guardians")
+      .update({ email })
+      .ilike("email", pattern)
+      .select("id");
+    if (guardianError) return { ok: false, error: toUserError(guardianError) };
+    const revertGuardians = () =>
+      admin
+        .from("guardians")
+        .update({ email: oldEmail })
+        .in("id", (movedGuardians ?? []).map((row) => row.id));
+
+    if (students.length > 0) {
+      const { error } = await admin
+        .from("students")
+        .update({ child_email: email })
+        .in("id", students.map((student) => student.id));
+      if (error) {
+        await revertGuardians();
+        return { ok: false, error: toUserError(error) };
+      }
+    }
+
+    const { error: authError } = await admin.auth.admin.updateUserById(userId, {
+      email,
+      email_confirm: true,
+    });
+    if (authError) {
+      await revertGuardians();
+      if (students.length > 0) {
+        await admin
+          .from("students")
+          .update({ child_email: oldEmail })
+          .in("id", students.map((student) => student.id));
+      }
+      return { ok: false, error: toAuthUserError(authError) };
+    }
+  }
+
+  await writeAudit({
+    action: "user.contact_updated",
+    entityType: "users",
+    entityId: userId,
+    metadata: { email_changed: emailChanged, from_email: emailChanged ? oldEmail : undefined },
   });
   revalidatePath("/", "layout");
   return { ok: true, id: userId };

@@ -96,7 +96,10 @@ async function getFamilyStates(families: FamilyDetails[]) {
       missingPlacement: activeYearId
         ? family.students.filter((student) => expectsPlacement(student.id)).length
         : 0,
-      needsReview: family.openReviews.length > 0 || duplicates.has(family.id),
+      needsReview:
+        family.openReviews.length > 0 ||
+        duplicates.has(family.id) ||
+        family.guardians.some((guardian) => guardian.contactPending),
       newApplications: family.applications.filter(
         (application) =>
           application.status === "ny" && !converted.has(application.id),

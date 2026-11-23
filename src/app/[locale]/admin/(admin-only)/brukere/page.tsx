@@ -31,15 +31,18 @@ async function getUsers(): Promise<
       admin.from("profiles").select("id, full_name, role"),
       admin
         .from("guardians")
-        .select("email, family_guardians(family_id), person_roles(role_key, suspended_at)")
+        .select("email, phone, contact_pending, created_at, family_guardians(family_id), person_roles(role_key, suspended_at)")
+        .order("contact_pending")
+        .order("created_at")
         .not("email", "is", null),
-      admin.from("students").select("child_email").not("child_email", "is", null),
+      admin.from("students").select("child_email, child_phone").not("child_email", "is", null),
     ]);
     if (profiles.error || guardians.error || students.error) return { ok: false };
 
     const profileMap = new Map(profiles.data.map((p) => [p.id, p]));
     const rolesByEmail = new Map<string, Set<string>>();
     const guardianEmails = new Set<string>();
+    const phoneByEmail = new Map<string, string>();
     for (const guardian of guardians.data) {
       const email = (guardian.email ?? "").trim().toLowerCase();
       const roles = rolesByEmail.get(email) ?? new Set<string>();
@@ -47,11 +50,15 @@ async function getUsers(): Promise<
         if (!role.suspended_at) roles.add(role.role_key);
       }
       rolesByEmail.set(email, roles);
+      if (guardian.phone && !phoneByEmail.has(email)) phoneByEmail.set(email, guardian.phone);
       if (guardian.family_guardians.length > 0) guardianEmails.add(email);
     }
-    const studentEmails = new Set(
-      students.data.map((student) => (student.child_email ?? "").trim().toLowerCase()),
-    );
+    const studentEmails = new Set<string>();
+    for (const student of students.data) {
+      const email = (student.child_email ?? "").trim().toLowerCase();
+      studentEmails.add(email);
+      if (student.child_phone && !phoneByEmail.has(email)) phoneByEmail.set(email, student.child_phone);
+    }
 
     return {
       ok: true,
@@ -62,6 +69,7 @@ async function getUsers(): Promise<
           return {
             id: user.id,
             email: user.email ?? "-",
+            phone: phoneByEmail.get(email) ?? null,
             fullName:
               profile?.full_name ||
               (user.user_metadata?.full_name as string | undefined) ||

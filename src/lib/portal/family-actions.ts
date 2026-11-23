@@ -39,7 +39,8 @@ const levelSchema = z
   .nullable()
   .transform((value) => value || null);
 
-function dbError(error: { code?: string } | null | undefined): PortalErrorCode {
+function dbError(error: { code?: string; message?: string } | null | undefined): PortalErrorCode {
+  if (error?.message?.includes("allerede registrert på en annen person")) return "duplicate";
   switch (error?.code) {
     case "42501":
       return "forbidden";

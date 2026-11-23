@@ -32,7 +32,7 @@ export function GrantAdminForm() {
         aria-labelledby="grant-admin-title"
         className="mt-4 grid gap-4"
       >
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,12rem)_auto] sm:items-end">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,10rem)_minmax(0,10rem)_auto] sm:items-end">
           <div className="grid gap-2">
             <Label htmlFor="grant-full-name">Navn</Label>
             <Input
@@ -55,6 +55,16 @@ export function GrantAdminForm() {
               placeholder="navn@eksempel.no"
               autoComplete="off"
               spellCheck={false}
+              className="shadow-none"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="grant-phone">Telefon</Label>
+            <Input
+              id="grant-phone"
+              name="phone"
+              type="tel"
+              autoComplete="off"
               className="shadow-none"
             />
           </div>

@@ -528,6 +528,7 @@ export default async function FamilyPage({
     phone: guardian.phone ?? undefined,
     email: guardian.email ?? undefined,
     isTeacher: guardian.isTeacher,
+    contactPending: guardian.contactPending,
   }));
   const totalFeeOre = children.some((child) => child.feeAmountOre != null)
     ? children.reduce((sum, child) => sum + (child.feeAmountOre ?? 0), 0)

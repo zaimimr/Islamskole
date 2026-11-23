@@ -125,6 +125,7 @@ set local role authenticated;
 select is((select count(*) from public.lesson_materials), 0::bigint, 'another family sees no materials from the class');
 select is((select count(*) from storage.objects where bucket_id = 'lesson-materials'), 0::bigint, 'another family cannot bypass material policy through storage');
 reset role;
+select set_config('request.jwt.claims', '', true);
 insert into auth.users (id, email, raw_app_meta_data) values ('f2000000-0000-0000-0000-0000000000a7', 'zz-f2-substitute@zztest.local', '{"role":"member"}');
 insert into public.guardians (id, first_name, email) values ('f2000000-0000-0000-0000-000000000065', 'ZZTEST Substitute', 'zz-f2-substitute@zztest.local');
 insert into public.person_roles (guardian_id, role_key) values ('f2000000-0000-0000-0000-000000000065', 'teacher');

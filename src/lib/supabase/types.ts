@@ -2311,6 +2311,7 @@ export type Database = {
       }
       guardians: {
         Row: {
+          contact_pending: boolean
           created_at: string
           email: string | null
           first_name: string | null
@@ -2321,6 +2322,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          contact_pending?: boolean
           created_at?: string
           email?: string | null
           first_name?: string | null
@@ -2331,6 +2333,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          contact_pending?: boolean
           created_at?: string
           email?: string | null
           first_name?: string | null
@@ -5250,6 +5253,10 @@ export type Database = {
       }
       auth_user_id_by_email: { Args: { p_email: string }; Returns: string }
       vipps_login_email_for_phone: { Args: { p_phone: string }; Returns: string | null }
+      guardian_contact_conflict: {
+        Args: { p_guardian_id: string | null; p_email: string | null; p_phone: string | null; p_strict: boolean }
+        Returns: string | null
+      }
       create_manual_family_student: {
         Args: { p_student: Json }
         Returns: string

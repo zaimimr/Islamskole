@@ -15,6 +15,7 @@ import { UserRowActions } from "./user-row-actions";
 export type AdminUser = {
   id: string;
   email: string;
+  phone: string | null;
   fullName: string | null;
   roles: string[];
   isDeveloper: boolean;
@@ -85,7 +86,7 @@ export function UserList({
     roleFilters.find((filter) => filter.value === role) ?? roleFilters[0];
   const searched = term
     ? allUsers.filter((user) =>
-        matchesSearch(query, `${user.fullName ?? ""} ${user.email}`),
+        matchesSearch(query, `${user.fullName ?? ""} ${user.email} ${user.phone ?? ""}`),
       )
     : allUsers;
   const filtered = searched.filter(activeRole.match);
@@ -182,6 +183,7 @@ export function UserList({
                     {user.fullName ? (
                       <span className="break-all">{user.email} · </span>
                     ) : null}
+                    {user.phone ? <span>{user.phone} · </span> : null}
                     {user.lastSignInAt
                       ? `Sist inne ${formatOsloDate(user.lastSignInAt)}`
                       : "Aldri logget inn"}
@@ -218,6 +220,7 @@ export function UserList({
                 <UserRowActions
                   userId={user.id}
                   email={user.email}
+                  phone={user.phone}
                   isSelf={user.id === currentId}
                   roles={user.roles}
                   canImpersonate={canImpersonate}

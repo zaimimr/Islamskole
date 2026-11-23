@@ -19,7 +19,7 @@ type FamilyGuardianQueryRow = {
   sort_order: number;
   guardian: Pick<
     GuardianRow,
-    "id" | "first_name" | "last_name" | "email" | "phone"
+    "id" | "first_name" | "last_name" | "email" | "phone" | "contact_pending"
   > & { person_roles: { role_key: string }[] };
 };
 
@@ -33,6 +33,7 @@ export type FamilyGuardian = {
   lastName: string | null;
   email: string | null;
   phone: string | null;
+  contactPending: boolean;
   isTeacher: boolean;
   relationshipLabel: string;
   isPrimaryContact: boolean;
@@ -98,6 +99,7 @@ function mapGuardian(row: FamilyGuardianQueryRow): FamilyGuardian {
     lastName: row.guardian.last_name,
     email: row.guardian.email,
     phone: row.guardian.phone,
+    contactPending: row.guardian.contact_pending,
     isTeacher: row.guardian.person_roles.some((role) => role.role_key === "teacher"),
     relationshipLabel: row.relationship_label,
     isPrimaryContact: row.is_primary_contact,
@@ -156,7 +158,7 @@ export function createFamilyRepository(client: Client) {
         client
           .from("family_guardians")
           .select(
-            "family_id, guardian_id, relationship_label, is_primary_contact, is_billing_contact, receives_communication, sort_order, guardian:guardians(id, first_name, last_name, email, phone, person_roles(role_key))",
+            "family_id, guardian_id, relationship_label, is_primary_contact, is_billing_contact, receives_communication, sort_order, guardian:guardians(id, first_name, last_name, email, phone, contact_pending, person_roles(role_key))",
           )
           .in("family_id", familyIds)
           .order("sort_order")
@@ -276,7 +278,7 @@ export function createFamilyRepository(client: Client) {
         client
           .from("family_guardians")
           .select(
-            "guardian_id, relationship_label, is_primary_contact, is_billing_contact, receives_communication, sort_order, guardian:guardians(id, first_name, last_name, email, phone, person_roles(role_key))",
+            "guardian_id, relationship_label, is_primary_contact, is_billing_contact, receives_communication, sort_order, guardian:guardians(id, first_name, last_name, email, phone, contact_pending, person_roles(role_key))",
           )
           .eq("family_id", familyId)
           .order("sort_order")

@@ -26,11 +26,11 @@ values
   ('d4000000-0000-0000-0000-0000000000e1', 'test'),
   ('d4000000-0000-0000-0000-0000000000e2', 'test');
 
-insert into public.guardians (id, first_name, last_name, email, phone)
+insert into public.guardians (id, first_name, last_name, email, phone, contact_pending)
 values
-  ('d4000000-0000-0000-0000-000000000061', 'ZZTEST', 'Dup Behold', 'zz-d4-dup@zztest.local', null),
-  ('d4000000-0000-0000-0000-000000000062', 'ZZTEST', 'Dup Slett', 'ZZ-D4-Dup@zztest.local', '+4790000004'),
-  ('d4000000-0000-0000-0000-000000000063', 'ZZTEST', 'Annen', 'zz-d4-c@zztest.local', null);
+  ('d4000000-0000-0000-0000-000000000061', 'ZZTEST', 'Dup Behold', 'zz-d4-dup@zztest.local', null, false),
+  ('d4000000-0000-0000-0000-000000000062', 'ZZTEST', 'Dup Slett', 'ZZ-D4-Dup@zztest.local', '+4790000004', true),
+  ('d4000000-0000-0000-0000-000000000063', 'ZZTEST', 'Annen', 'zz-d4-c@zztest.local', null, false);
 insert into public.person_roles (guardian_id, role_key) values ('d4000000-0000-0000-0000-000000000062', 'teacher');
 
 insert into public.family_guardians (family_id, guardian_id, is_primary_contact)

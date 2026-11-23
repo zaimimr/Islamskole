@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   GraduationCap,
   MoreHorizontal,
+  Pencil,
   ShieldMinus,
   ShieldPlus,
   Tent,
@@ -15,6 +16,7 @@ import {
 import { deleteUser, setUserRole } from "@/app/[locale]/admin/actions";
 import { useRemoveRow } from "@/components/admin/optimistic-removal-list";
 import { startImpersonation } from "@/lib/impersonation/actions";
+import { UserContactDialog } from "./user-contact-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -36,6 +38,7 @@ import {
 export function UserRowActions({
   userId,
   email,
+  phone,
   isSelf,
   roles,
   canImpersonate,
@@ -43,6 +46,7 @@ export function UserRowActions({
 }: {
   userId: string;
   email: string;
+  phone: string | null;
   isSelf: boolean;
   roles: string[];
   canImpersonate: boolean;
@@ -51,6 +55,7 @@ export function UserRowActions({
   const removeRow = useRemoveRow();
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const isAdmin = roles.includes("admin");
@@ -105,6 +110,10 @@ export function UserRowActions({
           <MoreHorizontal aria-hidden="true" className="size-5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-auto min-w-56">
+          <DropdownMenuItem onClick={() => setContactOpen(true)}>
+            <Pencil aria-hidden="true" />
+            Endre e-post og telefon
+          </DropdownMenuItem>
           {canImpersonate && !isSelf ? (
             <DropdownMenuItem onClick={impersonate}>
               <UserRoundCog aria-hidden="true" />
@@ -174,6 +183,13 @@ export function UserRowActions({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+      <UserContactDialog
+        open={contactOpen}
+        onOpenChange={setContactOpen}
+        userId={userId}
+        email={email}
+        phone={phone}
+      />
       {isSelf ? null : (
           <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
             <AlertDialogContent>

@@ -8,6 +8,7 @@ import { addUserWithRole } from "@/app/[locale]/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneField } from "@/components/admin/phone-field";
 import { SelectField } from "@/components/ui/select-field";
 
 export function GrantAdminForm() {
@@ -32,7 +33,7 @@ export function GrantAdminForm() {
         aria-labelledby="grant-admin-title"
         className="mt-4 grid gap-4"
       >
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,10rem)_minmax(0,10rem)_auto] sm:items-end">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,14rem)_minmax(0,10rem)_auto] sm:items-end">
           <div className="grid gap-2">
             <Label htmlFor="grant-full-name">Navn</Label>
             <Input
@@ -60,13 +61,7 @@ export function GrantAdminForm() {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="grant-phone">Telefon</Label>
-            <Input
-              id="grant-phone"
-              name="phone"
-              type="tel"
-              autoComplete="off"
-              className="shadow-none"
-            />
+            <PhoneField id="grant-phone" name="phone" className="shadow-none" />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="grant-role" required>

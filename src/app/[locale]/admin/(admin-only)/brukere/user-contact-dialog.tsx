@@ -8,6 +8,7 @@ import { updateUserContact } from "@/app/[locale]/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneField } from "@/components/admin/phone-field";
 import {
   Dialog,
   DialogContent,
@@ -71,13 +72,7 @@ export function UserContactDialog({
           </div>
           <div className="grid gap-2">
             <Label htmlFor={`contact-phone-${userId}`}>Telefon</Label>
-            <Input
-              id={`contact-phone-${userId}`}
-              name="phone"
-              type="tel"
-              defaultValue={phone ?? ""}
-              autoComplete="off"
-            />
+            <PhoneField id={`contact-phone-${userId}`} name="phone" defaultValue={phone} />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

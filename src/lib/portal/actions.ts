@@ -1,7 +1,5 @@
 "use server";
 
-import { hasAdminRole } from "@/lib/impersonation/constants";
-
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { after } from "next/server";
@@ -9,7 +7,7 @@ import { z } from "zod";
 import { writeAudit } from "@/lib/audit";
 import { osloToday } from "@/lib/dates";
 import { getAccess, getUser } from "@/lib/auth";
-import { findAuthUserId, sendLoginLink } from "@/lib/login-link";
+import { isKnownEmail, sendLoginLink } from "@/lib/login-link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getPortalContext } from "@/lib/portal/data";
@@ -64,32 +62,6 @@ async function allowLogin(key: string, limit: number, windowSeconds: number) {
     return false;
   }
   return data === true;
-}
-
-function escapeLike(value: string) {
-  return value.replace(/[\\%_]/g, "\\$&");
-}
-
-async function isKnownEmail(email: string) {
-  const admin = createAdminClient();
-  const pattern = escapeLike(email);
-  const [guardians, students] = await Promise.all([
-    admin.from("guardians").select("id").ilike("email", pattern).limit(1),
-    admin.from("students").select("id").ilike("child_email", pattern).limit(1),
-  ]);
-  if (guardians.error || students.error) {
-    console.error("portal login lookup failed", guardians.error ?? students.error);
-    return false;
-  }
-  if (guardians.data?.length || students.data?.length) return true;
-  const userId = await findAuthUserId(email);
-  if (!userId) return false;
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("role")
-    .eq("id", userId)
-    .maybeSingle();
-  return hasAdminRole(profile?.role);
 }
 
 async function deliverLoginLink(email: string, locale: "no" | "en", next: string | undefined) {

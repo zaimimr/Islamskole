@@ -666,7 +666,11 @@
       "sentTitle": "Check your email",
       "sent": "If the email is registered with us, you will receive a link within a few minutes. Also check your spam folder.",
       "again": "Use a different email",
-      "invalidLink": "The link has been used or has expired. Request a new link below."
+      "invalidLink": "The link has been used or has expired. Request a new link below.",
+      "vipps": "Sign in with Vipps",
+      "or": "or with email",
+      "vippsNoAccount": "We found no account with your Vipps number or email. Use email below.",
+      "vippsFailed": "Vipps sign-in failed. Please try again."
     },
     "adminLink": "Administration",
     "errors": {

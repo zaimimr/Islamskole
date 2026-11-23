@@ -666,7 +666,11 @@
       "sentTitle": "Sjekk e-posten din",
       "sent": "Hvis e-posten er registrert hos oss, får du en lenke i løpet av noen minutter. Sjekk også søppelposten.",
       "again": "Bruk en annen e-post",
-      "invalidLink": "Lenken er brukt eller utløpt. Be om en ny lenke under."
+      "invalidLink": "Lenken er brukt eller utløpt. Be om en ny lenke under.",
+      "vipps": "Logg inn med Vipps",
+      "or": "eller med e-post",
+      "vippsNoAccount": "Fant ingen konto med Vipps-nummeret eller e-posten din. Bruk e-post under.",
+      "vippsFailed": "Vipps-innloggingen feilet. Prøv igjen."
     },
     "adminLink": "Administrasjon",
     "errors": {

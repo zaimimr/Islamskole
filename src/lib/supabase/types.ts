@@ -4153,6 +4153,51 @@ export type Database = {
         }
         Relationships: []
       }
+      vipps_logins: {
+        Row: {
+          address: Json | null
+          birthdate: string | null
+          created_at: string
+          email: string | null
+          email_verified: boolean
+          family_name: string | null
+          given_name: string | null
+          last_login_at: string
+          name: string | null
+          phone: string | null
+          sub: string
+          user_id: string
+        }
+        Insert: {
+          address?: Json | null
+          birthdate?: string | null
+          created_at?: string
+          email?: string | null
+          email_verified?: boolean
+          family_name?: string | null
+          given_name?: string | null
+          last_login_at?: string
+          name?: string | null
+          phone?: string | null
+          sub: string
+          user_id: string
+        }
+        Update: {
+          address?: Json | null
+          birthdate?: string | null
+          created_at?: string
+          email?: string | null
+          email_verified?: boolean
+          family_name?: string | null
+          given_name?: string | null
+          last_login_at?: string
+          name?: string | null
+          phone?: string | null
+          sub?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       duplicate_payment_candidates: {
@@ -5204,6 +5249,7 @@ export type Database = {
         Returns: undefined
       }
       auth_user_id_by_email: { Args: { p_email: string }; Returns: string }
+      vipps_login_email_for_phone: { Args: { p_phone: string }; Returns: string | null }
       create_manual_family_student: {
         Args: { p_student: Json }
         Returns: string

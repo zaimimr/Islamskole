@@ -294,7 +294,7 @@ select is(
 
 select is(
   (select mother_last_name || '|' || father_last_name || '|' || father_phone from public.students where id = '5e000000-0000-0000-0000-000000000051'),
-  'Forelder A2|Ny Far|44 44 44 44',
+  'Forelder A2|Ny Far|+47 44444444',
   'student contact mirror follows guardian edits'
 );
 

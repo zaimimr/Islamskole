@@ -89,7 +89,7 @@ select lives_ok(
 
 select is(
   public.portal_my_families() -> 0 -> 'guardians' -> 0 ->> 'phone',
-  '99999999',
+  '+47 99999999',
   'phone is saved'
 );
 

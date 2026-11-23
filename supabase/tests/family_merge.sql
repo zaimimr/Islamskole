@@ -131,7 +131,7 @@ select is(
     join public.family_guardians fg on fg.guardian_id = g.id and fg.family_id = 'd4000000-0000-0000-0000-0000000000e1'
     where lower(g.email) = 'zz-d4-dup@zztest.local'
   ),
-  '+4790000004',
+  '+47 90000004',
   'D4 FAM-22: the merged guardian keeps a non-empty phone'
 );
 

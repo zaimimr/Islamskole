@@ -133,7 +133,7 @@ select set_config('request.jwt.claims', '{"sub":"5f000000-0000-0000-0000-0000000
 set local role authenticated;
 select is((select count(*) from public.sfo_activity_roster('5f000000-0000-0000-0000-0000000000b1')), 2::bigint, 'roster lists children with a response');
 select is((select allergies from public.sfo_activity_roster('5f000000-0000-0000-0000-0000000000b1') where student_id = '5f000000-0000-0000-0000-000000000051'), 'Nøtter', 'roster shows allergies');
-select is((select guardians -> 0 ->> 'phone' from public.sfo_activity_roster('5f000000-0000-0000-0000-0000000000b1') where student_id = '5f000000-0000-0000-0000-000000000051'), '+4790000001', 'roster shows guardian phone');
+select is((select guardians -> 0 ->> 'phone' from public.sfo_activity_roster('5f000000-0000-0000-0000-0000000000b1') where student_id = '5f000000-0000-0000-0000-000000000051'), '+47 90000001', 'roster shows guardian phone');
 select is((select count(*) from public.students), 0::bigint, 'roster access does not open the students table');
 select lives_ok($$ select public.register_activity_cash('5f000000-0000-0000-0000-0000000000b1', '5f000000-0000-0000-0000-000000000051', 5000, public.oslo_today()) $$, 'SFO registers cash');
 select throws_ok($$ select public.register_activity_cash('5f000000-0000-0000-0000-0000000000b1', '5f000000-0000-0000-0000-000000000052', 5000, public.oslo_today()) $$, '22023', null, 'cash only for invited children');
@@ -238,7 +238,7 @@ select throws_ok(
 select is((select count(*) from public.sfo_activity_roster('5f000000-0000-0000-0000-0000000000b3')), 4::bigint, 'roster lists every invited child without responses');
 select ok((select bool_and(going) from public.sfo_activity_roster('5f000000-0000-0000-0000-0000000000b3')), 'every child counts as attending');
 select is((select allergies from public.sfo_activity_roster('5f000000-0000-0000-0000-0000000000b3') where student_id = '5f000000-0000-0000-0000-000000000051'), 'Nøtter', 'roster shows allergies');
-select is((select guardians->0->>'phone' from public.sfo_activity_roster('5f000000-0000-0000-0000-0000000000b3') where student_id = '5f000000-0000-0000-0000-000000000051'), '+4790000001', 'roster shows guardian phone');
+select is((select guardians->0->>'phone' from public.sfo_activity_roster('5f000000-0000-0000-0000-0000000000b3') where student_id = '5f000000-0000-0000-0000-000000000051'), '+47 90000001', 'roster shows guardian phone');
 select lives_ok($$ select public.record_activity_participation('5f000000-0000-0000-0000-0000000000b3', '5f000000-0000-0000-0000-000000000052', 'participated') $$, 'attendance is recorded without a response');
 select is((select participation from public.activity_students where activity_id = '5f000000-0000-0000-0000-0000000000b3' and student_id = '5f000000-0000-0000-0000-000000000052'), 'participated', 'attendance is stored');
 select is((select allergies from public.sfo_allergy_list() where student_id = '5f000000-0000-0000-0000-000000000051'), 'Nøtter', 'SFO staff read the allergy list');

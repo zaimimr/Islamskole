@@ -9,6 +9,7 @@ import type { FamilyPickup, PortalFamily } from "@/lib/portal/family-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FormDialog, PHONE_PATTERN, formText, useErrorText } from "@/components/portal/family/family-ui";
+import { PhoneField } from "@/components/ui/phone-field";
 
 function PickupFields({ idPrefix, person }: { idPrefix: string; person?: FamilyPickup }) {
   const t = useTranslations("portal.family.pickup");
@@ -25,15 +26,12 @@ function PickupFields({ idPrefix, person }: { idPrefix: string; person?: FamilyP
         />
       </Field>
       <Field id={`${idPrefix}-phone`} label={t("phone")} optional>
-        <Input
+        <PhoneField
           id={`${idPrefix}-phone`}
           name="phone"
-          type="tel"
-          inputMode="tel"
           maxLength={40}
           pattern={PHONE_PATTERN}
-          autoComplete="off"
-          defaultValue={person?.phone ?? ""}
+          defaultValue={person?.phone}
         />
       </Field>
       <Field id={`${idPrefix}-relation`} label={t("relation")} optional>

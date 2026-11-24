@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/ui/select-field";
+import { PhoneField } from "@/components/ui/phone-field";
 
 type GuardianEditorValue = {
   key: string;
@@ -243,10 +244,9 @@ export function FamilyEditor({
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor={`${prefix}_phone`}>Telefon</Label>
-                    <Input
+                    <PhoneField
                       id={`${prefix}_phone`}
                       name={`${prefix}_phone`}
-                      type="tel"
                       defaultValue={guardian.phone}
                       className="min-h-11"
                     />

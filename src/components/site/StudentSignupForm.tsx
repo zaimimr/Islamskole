@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/ui/select-field";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { PhoneField } from "@/components/ui/phone-field";
 
 const inputClassName = "h-12";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -593,11 +594,9 @@ export function StudentSignupForm({
           </div>
           <div className="grid gap-2">
             <Label htmlFor={field("phone")}>{t("fieldPhone")}</Label>
-            <Input
+            <PhoneField
               id={field("phone")}
               name={field("phone")}
-              type="tel"
-              inputMode="tel"
               className={inputClassName}
               placeholder={t("placeholderPhone")}
               aria-invalid={invalid(field("phone"))}
@@ -776,11 +775,9 @@ export function StudentSignupForm({
               <Label htmlFor={field("phone")} required>
                 {t("fieldParentPhone")}
               </Label>
-              <Input
+              <PhoneField
                 id={field("phone")}
                 name={field("phone")}
-                type="tel"
-                inputMode="tel"
                 className={inputClassName}
                 autoComplete="off"
                 placeholder={t("placeholderParentPhone")}
@@ -901,11 +898,9 @@ export function StudentSignupForm({
             <Label htmlFor={field("phone")} required>
               {t("fieldParentPhone")}
             </Label>
-            <Input
+            <PhoneField
               id={field("phone")}
               name={field("phone")}
-              type="tel"
-              inputMode="tel"
               className={inputClassName}
               autoComplete="off"
               placeholder={t("placeholderParentPhone")}

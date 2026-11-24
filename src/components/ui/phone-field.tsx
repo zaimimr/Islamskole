@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -16,17 +16,12 @@ function splitPhone(value: string | null | undefined) {
   return { code: "", number: raw };
 }
 
-export function PhoneField({
-  id,
-  name,
-  defaultValue,
-  className,
-}: {
-  id: string;
+type PhoneFieldProps = Omit<ComponentProps<"input">, "name" | "defaultValue" | "value" | "onChange" | "type"> & {
   name: string;
   defaultValue?: string | null;
-  className?: string;
-}) {
+};
+
+export function PhoneField({ name, defaultValue, className, disabled, ...props }: PhoneFieldProps) {
   const initial = splitPhone(defaultValue);
   const [code, setCode] = useState(initial.code);
   const [number, setNumber] = useState(initial.number);
@@ -45,17 +40,20 @@ export function PhoneField({
         onChange={(event) => setCode(event.target.value)}
         inputMode="tel"
         autoComplete="off"
-        className={cn("w-16 shrink-0", className)}
+        disabled={disabled}
+        className={cn(className, "w-16 shrink-0")}
       />
       <Input
-        id={id}
+        autoComplete="off"
+        {...props}
         type="tel"
+        inputMode="tel"
         value={number}
         onChange={(event) => setNumber(event.target.value)}
-        autoComplete="off"
-        className={cn("min-w-0 flex-1", className)}
+        disabled={disabled}
+        className={cn(className, "min-w-0 flex-1")}
       />
-      <input type="hidden" name={name} value={value} />
+      <input type="hidden" name={name} value={value} disabled={disabled} />
     </div>
   );
 }

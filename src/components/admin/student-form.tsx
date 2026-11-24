@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/ui/select-field";
 import { Textarea } from "@/components/ui/textarea";
+import { PhoneField } from "@/components/ui/phone-field";
 
 export type StudentRecord = {
   id: string;
@@ -272,12 +273,7 @@ export function StudentForm({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="phone">Telefon (kontakt)</Label>
-              <Input
-                id="phone"
-                name="phone"
-                type="tel"
-                defaultValue={student?.child_phone ?? ""}
-              />
+              <PhoneField id="phone" name="phone" defaultValue={student?.child_phone} />
             </div>
           </div>
         </div>
@@ -320,11 +316,7 @@ export function StudentForm({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <Label htmlFor="mother_phone">Telefon</Label>
-                  <Input
-                    id="mother_phone"
-                    name="mother_phone"
-                    type="tel"
-                  />
+                  <PhoneField id="mother_phone" name="mother_phone" />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="mother_email">E-post</Label>
@@ -373,11 +365,7 @@ export function StudentForm({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <Label htmlFor="father_phone">Telefon</Label>
-                  <Input
-                    id="father_phone"
-                    name="father_phone"
-                    type="tel"
-                  />
+                  <PhoneField id="father_phone" name="father_phone" />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="father_email">E-post</Label>

@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PhoneField } from "@/components/ui/phone-field";
 
 export type EditableTeacher = {
   id: string;
@@ -98,12 +99,7 @@ export function TeacherEditDialog({
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor={field("phone")}>Telefon</Label>
-            <Input
-              id={field("phone")}
-              name="phone"
-              defaultValue={teacher.phone ?? ""}
-              className="h-11 rounded-xl"
-            />
+            <PhoneField id={field("phone")} name="phone" defaultValue={teacher.phone} className="h-11 rounded-xl" />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor={field("note")}>Notat</Label>

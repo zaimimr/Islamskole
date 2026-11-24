@@ -123,7 +123,7 @@ test("phone tasks retain student identity, class context and accessible payment 
   await expect(result).toContainText(schoolClass.name);
   await result.click();
   await expect(page).toHaveURL(`/admin/elever/${family.students[0].id}`);
-  const contact = page.locator(`a[href="tel:${family.guardians[0].phone}"]`).first();
+  const contact = page.locator(`a[href$="${family.guardians[0].phone}"]`).first();
   await expect(contact).toBeInViewport();
   const payment = page.getByRole("heading", { name: "Betaling", exact: true }).first();
   expect((await contact.boundingBox())!.y).toBeLessThan((await payment.boundingBox())!.y);
@@ -139,7 +139,7 @@ test("phone tasks retain student identity, class context and accessible payment 
   const familyParents = page.getByRole("region", { name: "Foresatte", exact: true });
   const familyPayment = page.getByRole("region", { name: /^Betalingsstatus / });
   await expect(familyChildren).toContainText(family.students[0].name);
-  await expect(familyParents.locator(`a[href="tel:${family.guardians[0].phone}"]`)).toBeVisible();
+  await expect(familyParents.locator(`a[href$="${family.guardians[0].phone}"]`)).toBeVisible();
   expect((await familyChildren.boundingBox())!.y).toBeLessThan((await familyParents.boundingBox())!.y);
   expect((await familyParents.boundingBox())!.y).toBeLessThan((await familyPayment.boundingBox())!.y);
   expect((await familyPayment.boundingBox())!.y).toBeLessThan((await page.getByRole("region", { name: /^Økonomi / }).boundingBox())!.y);

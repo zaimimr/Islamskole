@@ -18,6 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { PhoneField } from "@/components/ui/phone-field";
 
 export function TeacherRegisterDialog({
   sourceApplicationId,
@@ -136,12 +137,7 @@ export function TeacherRegisterDialog({
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="teacher-phone">Telefon</Label>
-            <Input
-              id="teacher-phone"
-              name="phone"
-              defaultValue={defaultPhone ?? ""}
-              className="h-11 rounded-xl"
-            />
+            <PhoneField id="teacher-phone" name="phone" defaultValue={defaultPhone} className="h-11 rounded-xl" />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="teacher-note">Notat</Label>

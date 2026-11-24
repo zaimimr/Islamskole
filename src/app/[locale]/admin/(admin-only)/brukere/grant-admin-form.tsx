@@ -8,7 +8,7 @@ import { addUserWithRole } from "@/app/[locale]/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PhoneField } from "@/components/admin/phone-field";
+import { PhoneField } from "@/components/ui/phone-field";
 import { SelectField } from "@/components/ui/select-field";
 
 export function GrantAdminForm() {

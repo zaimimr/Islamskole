@@ -366,7 +366,7 @@ async function TeacherContent({
                     <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-admin-muted">
                       {teacher.phone ? (
                         <a
-                          href={`tel:${teacher.phone}`}
+                          href={`tel:${teacher.phone.replace(/[^\d+]/g, "")}`}
                           className="inline-flex min-h-11 items-center gap-1.5 font-bold text-[#277A31] underline-offset-2 hover:underline sm:min-h-0"
                         >
                           <Phone aria-hidden="true" className="size-3.5" />
@@ -643,7 +643,7 @@ async function TeacherContent({
                         ) : null}
                         {application.phone ? (
                           <a
-                            href={`tel:${application.phone}`}
+                            href={`tel:${application.phone.replace(/[^\d+]/g, "")}`}
                             className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#F2F7F2] px-3 text-sm font-bold text-[#277A31] outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                           >
                             <Phone aria-hidden="true" className="size-4" />

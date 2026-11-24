@@ -100,7 +100,7 @@ export type SeededGuardian = { id: string; firstName: string; lastName: string; 
 export type SeededStudent = { id: string; firstName: string; lastName: string; name: string; childEmail: string | null };
 export type SeededFamily = { id: string; displayName: string; guardians: SeededGuardian[]; students: SeededStudent[] };
 
-type GuardianInput = { firstName?: string; lastName?: string; email?: string; phone?: string; isTeacher?: boolean };
+type GuardianInput = { firstName?: string; lastName?: string; email?: string; phone?: string; isTeacher?: boolean; contactPending?: boolean };
 type StudentInput = { firstName?: string; lastName?: string; birthDate?: string; childEmail?: string | null };
 
 export async function grantRole(guardianId: string, role: "admin" | "sfo" | "teacher" | "volunteer") {
@@ -132,7 +132,7 @@ export async function seedGuardian(input: GuardianInput = {}): Promise<SeededGua
   const row = must(
     await db()
       .from("guardians")
-      .insert({ first_name: firstName, last_name: lastName, email, phone })
+      .insert({ first_name: firstName, last_name: lastName, email, phone, contact_pending: input.contactPending ?? false })
       .select("id")
       .single(),
     "insert guardian",

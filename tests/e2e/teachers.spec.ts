@@ -100,7 +100,7 @@ test.describe("/admin/laerere", () => {
   test("TCH-02 Legg til lærer refuses when two guardians share the email", async ({ page }) => {
     const email = zzEmail("delt");
     await seedFamily({ guardians: [{ email }] });
-    await seedFamily({ guardians: [{ email }] });
+    await seedFamily({ guardians: [{ email, contactPending: true }] });
     const dialog = await openAddTeacher(page);
     await fillTeacher(dialog, { first: "ZZTEST Delt", last: "ZZTEST", email, phone: "91234568" });
     await dialog.getByRole("button", { name: "Registrer lærer" }).click();
@@ -128,7 +128,7 @@ test.describe("/admin/laerere", () => {
         const { data } = await db().from("guardians").select("first_name, email, phone").eq("id", teacher.id).single();
         return data;
       })
-      .toEqual({ first_name: newFirst, email: newEmail, phone: "98765432" });
+      .toEqual({ first_name: newFirst, email: newEmail, phone: "+47 98765432" });
     await expect.poll(async () => (await findAuthUser(newEmail))?.id ?? null).toBe(login.id);
   });
 

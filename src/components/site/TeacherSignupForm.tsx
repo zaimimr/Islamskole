@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PhoneField } from "@/components/ui/phone-field";
 
 export function TeacherSignupForm() {
   const t = useTranslations("teacher");
@@ -102,13 +103,7 @@ export function TeacherSignupForm() {
 
       <div className="grid gap-2">
         <Label htmlFor="phone">{t("fieldPhone")}</Label>
-        <Input
-          id="phone"
-          name="phone"
-          type="tel"
-          autoComplete="tel"
-          placeholder={t("placeholderPhone")}
-        />
+        <PhoneField id="phone" name="phone" autoComplete="tel-national" placeholder={t("placeholderPhone")} />
       </div>
 
       <div className="grid gap-2">

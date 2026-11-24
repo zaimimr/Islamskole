@@ -494,7 +494,6 @@
           "verge": "Legal guardian",
           "annet": "Other"
         },
-        "phoneHint": "8 digits, or with country code, for example +47 912 34 567.",
         "noMessages": "Does not get messages from the school",
         "receivesMessages": "Gets messages from the school",
         "receivesMessagesHint": "Invoices, reminders and other messages by email. At least one guardian must get messages.",

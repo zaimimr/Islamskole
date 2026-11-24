@@ -27,6 +27,7 @@ import {
   formText,
   useErrorText,
 } from "@/components/portal/family/family-ui";
+import { PhoneField } from "@/components/ui/phone-field";
 
 function guardianName(guardian: Pick<FamilyGuardian, "first_name" | "last_name">) {
   return [guardian.first_name, guardian.last_name].filter(Boolean).join(" ");
@@ -62,17 +63,13 @@ function NameFields({ idPrefix, guardian }: { idPrefix: string; guardian?: Famil
           />
         </Field>
       </div>
-      <Field id={`${idPrefix}-phone`} label={t("phone")} hint={t("phoneHint")} optional>
-        <Input
+      <Field id={`${idPrefix}-phone`} label={t("phone")} optional>
+        <PhoneField
           id={`${idPrefix}-phone`}
           name="phone"
-          type="tel"
-          inputMode="tel"
           maxLength={40}
           pattern={PHONE_PATTERN}
-          autoComplete="off"
-          defaultValue={guardian?.phone ?? ""}
-          aria-describedby={`${idPrefix}-phone-hint`}
+          defaultValue={guardian?.phone}
         />
       </Field>
     </>

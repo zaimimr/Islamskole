@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SelectField } from "@/components/ui/select-field";
 import { Field, FormDialog, PHONE_PATTERN, RadioPills, formText } from "@/components/portal/family/family-ui";
+import { PhoneField } from "@/components/ui/phone-field";
 
 const LEVEL_FIELDS = [
   { name: "level_quran", key: "levelQuran" },
@@ -138,15 +139,12 @@ export function ChildDetails({ child, name }: { child: FamilyChild; name: string
             />
           </Field>
           <Field id={`${idPrefix}-phone`} label={t("phone")} optional>
-            <Input
+            <PhoneField
               id={`${idPrefix}-phone`}
               name="phone"
-              type="tel"
-              inputMode="tel"
               maxLength={40}
               pattern={PHONE_PATTERN}
-              autoComplete="off"
-              defaultValue={child.phone ?? ""}
+              defaultValue={child.phone}
             />
           </Field>
         </div>

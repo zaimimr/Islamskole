@@ -494,7 +494,6 @@
           "verge": "Verge",
           "annet": "Annet"
         },
-        "phoneHint": "8 sifre, eller med landskode, for eksempel +47 912 34 567.",
         "noMessages": "Får ikke beskjeder fra skolen",
         "receivesMessages": "Får beskjeder fra skolen",
         "receivesMessagesHint": "Fakturaer, påminnelser og andre beskjeder på e-post. Minst én foresatt må få beskjeder.",
